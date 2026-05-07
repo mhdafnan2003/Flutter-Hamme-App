@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/utils/constants/colors.dart';
+import 'package:hamme_app/utils/constants/fonts.dart';
+import 'package:hamme_app/utils/constants/text_strings.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
-import '../widgets/date_picker_wheels.dart';
 import '../widgets/dob_top_bar.dart';
 
 class DobScreen extends ConsumerStatefulWidget {
@@ -15,120 +18,66 @@ class DobScreen extends ConsumerStatefulWidget {
 }
 
 class _DobScreenState extends ConsumerState<DobScreen> {
-  int _selectedDay = 1;
-  int _selectedMonth = 0;
-  int _selectedYear = 2000;
-
+  int _selectedAge = 19;
   bool _hasInteracted = false;
 
-  late final FixedExtentScrollController _dayController;
-  late final FixedExtentScrollController _monthController;
-  late final FixedExtentScrollController _yearController;
+  static const int _minAge = 13;
+  static const int _maxAge = 100;
 
-  final List<String> _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  final int _startYear = 1940;
-  final int _endYear = DateTime.now().year - 5;
+  FixedExtentScrollController? _ageController;
 
   @override
   void initState() {
     super.initState();
     final existingDob = ref.read(onboardingDraftProvider).birthday;
     if (existingDob != null) {
-      _selectedDay = existingDob.day;
-      _selectedMonth = existingDob.month - 1;
-      _selectedYear = existingDob.year;
+      final now = DateTime.now();
+      var age = now.year - existingDob.year;
+      if (now.month < existingDob.month ||
+          (now.month == existingDob.month && now.day < existingDob.day)) {
+        age--;
+      }
+      _selectedAge = age.clamp(_minAge, _maxAge);
       _hasInteracted = true;
     }
 
-    _dayController = FixedExtentScrollController(initialItem: _selectedDay - 1);
-    _monthController = FixedExtentScrollController(initialItem: _selectedMonth);
-    _yearController = FixedExtentScrollController(
-      initialItem: _selectedYear - _startYear,
+    _ageController ??= FixedExtentScrollController(
+      initialItem: _selectedAge - _minAge,
     );
   }
 
   @override
   void dispose() {
-    _dayController.dispose();
-    _monthController.dispose();
-    _yearController.dispose();
+    _ageController?.dispose();
     super.dispose();
   }
 
-  int _daysInMonth(int month, int year) {
-    return DateTime(year, month + 1, 0).day;
-  }
-
-  int get _age {
+  DateTime get _selectedBirthday {
     final now = DateTime.now();
-    final dob = DateTime(_selectedYear, _selectedMonth + 1, _selectedDay);
-    int age = now.year - dob.year;
-    if (now.month < dob.month ||
-        (now.month == dob.month && now.day < dob.day)) {
-      age--;
-    }
-    return age < 0 ? 0 : age;
+    return DateTime(now.year - _selectedAge, now.month, now.day);
   }
 
-  void _onDayChanged(int index) {
+  void _onAgeChanged(int index) {
     setState(() {
-      _selectedDay = index + 1;
+      _selectedAge = _minAge + index;
       _hasInteracted = true;
-    });
-  }
-
-  void _onMonthChanged(int index) {
-    setState(() {
-      _selectedMonth = index;
-      _hasInteracted = true;
-      final maxDay = _daysInMonth(_selectedMonth + 1, _selectedYear);
-      if (_selectedDay > maxDay) {
-        _selectedDay = maxDay;
-        _dayController.jumpToItem(_selectedDay - 1);
-      }
-    });
-  }
-
-  void _onYearChanged(int index) {
-    setState(() {
-      _selectedYear = _startYear + index;
-      _hasInteracted = true;
-      final maxDay = _daysInMonth(_selectedMonth + 1, _selectedYear);
-      if (_selectedDay > maxDay) {
-        _selectedDay = maxDay;
-        _dayController.jumpToItem(_selectedDay - 1);
-      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final maxDay = _daysInMonth(_selectedMonth + 1, _selectedYear);
-    final displayAge = _hasInteracted ? _age.toString().padLeft(2, '0') : '00';
+    final displayAge =
+        _hasInteracted ? _selectedAge.toString().padLeft(2, '0') : '00';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: TColors.white,
       body: SafeArea(
         child: SizedBox(
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              DobTopBar(onBack: () => context.pop()),
+              DobTopBar(onBack: () => context.pop(), progress: 0.35),
               const SizedBox(height: 30),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24),
@@ -136,10 +85,10 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                   "When's your birthday?",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'Nunito',
+                    fontFamily: TFonts.nunito,
                     fontWeight: FontWeight.w900,
                     fontSize: 26,
-                    color: Colors.black,
+                    color: TColors.black,
                   ),
                 ),
               ),
@@ -150,7 +99,7 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                 width: 140,
                 height: 116,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F2F6),
+                  color: TColors.hammeSurface,
                   borderRadius: BorderRadius.circular(28),
                 ),
                 child: Column(
@@ -159,10 +108,10 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                     Text(
                       displayAge,
                       style: const TextStyle(
-                        fontFamily: 'Nunito',
+                        fontFamily: TFonts.nunito,
                         fontWeight: FontWeight.w800,
                         fontSize: 52,
-                        color: Colors.black,
+                        color: TColors.black,
                         height: 1,
                       ),
                     ),
@@ -170,10 +119,10 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                     const Text(
                       'years old',
                       style: TextStyle(
-                        fontFamily: 'Nunito',
+                        fontFamily: TFonts.nunito,
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
-                        color: Color(0xFF8A96D0),
+                        color: TColors.hammePrimary,
                       ),
                     ),
                   ],
@@ -181,36 +130,90 @@ class _DobScreenState extends ConsumerState<DobScreen> {
               ),
               const SizedBox(height: 32),
               Expanded(
-                child: DatePickerWheels(
-                  maxDay: maxDay,
-                  selectedDay: _selectedDay,
-                  selectedMonth: _selectedMonth,
-                  selectedYear: _selectedYear,
-                  startYear: _startYear,
-                  endYear: _endYear,
-                  months: _months,
-                  dayController: _dayController,
-                  monthController: _monthController,
-                  yearController: _yearController,
-                  onDayChanged: _onDayChanged,
-                  onMonthChanged: _onMonthChanged,
-                  onYearChanged: _onYearChanged,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned(
+                      child: IgnorePointer(
+                        child: Container(
+                          height: 44,
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: TColors.hammeSurface,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 16,
+                      child: const RotatedBox(
+                        quarterTurns: 2,
+                        child: Icon(
+                          CupertinoIcons.play_arrow_solid,
+                          color: TColors.hammeAccentBlue,
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 16,
+                      child: const Icon(
+                        CupertinoIcons.play_arrow_solid,
+                        color: TColors.hammeAccentBlue,
+                        size: 14,
+                      ),
+                    ),
+                    CupertinoTheme(
+                      data: const CupertinoThemeData(
+                        brightness: Brightness.light,
+                      ),
+                      child: CupertinoPicker.builder(
+                        scrollController:
+                            _ageController ??= FixedExtentScrollController(
+                              initialItem: _selectedAge - _minAge,
+                            ),
+                        itemExtent: 44,
+                        onSelectedItemChanged: _onAgeChanged,
+                        selectionOverlay: const SizedBox.shrink(),
+                        squeeze: 1.0,
+                        magnification: 1.15,
+                        useMagnifier: true,
+                        childCount: _maxAge - _minAge + 1,
+                        itemBuilder: (context, index) {
+                          final age = _minAge + index;
+                          final isSelected = age == _selectedAge;
+                          return Center(
+                            child: Text(
+                              age.toString(),
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontSize: isSelected ? 17 : 15,
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w500,
+                                color:
+                                    isSelected
+                                        ? TColors.black
+                                        : TColors.darkGrey,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: GradientButton(
-                  label: 'Next',
+                  label: TTexts.next,
                   onTap: () {
                     ref
                         .read(onboardingDraftProvider.notifier)
-                        .setBirthday(
-                          DateTime(
-                            _selectedYear,
-                            _selectedMonth + 1,
-                            _selectedDay,
-                          ),
-                        );
+                        .setBirthday(_selectedBirthday);
                     context.go('/onboarding/name');
                   },
                 ),

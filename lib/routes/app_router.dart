@@ -6,8 +6,10 @@ import '../features/onboarding/presentation/screens/name_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/home/presentation/screens/share_preview_screen.dart';
 import '../features/inbox/presentation/screens/inbox_screen.dart';
+import '../features/matches/presentation/screens/matches_screen.dart';
 import '../features/play/presentation/screens/play_screen.dart';
 import '../features/onboarding/presentation/screens/profile_upload_screen.dart';
+import '../features/onboarding/presentation/screens/pro_screen.dart';
 import '../features/onboarding/presentation/screens/social_media_screen.dart';
 import '../features/onboarding/presentation/screens/splash_screen.dart';
 import '../providers/auth_providers.dart';
@@ -31,7 +33,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/onboarding/social_media',
         builder: (_, _) => const SocialMediaScreen(),
       ),
+      GoRoute(path: '/onboarding/pro', builder: (_, _) => const ProScreen()),
       GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+      GoRoute(path: '/matches', builder: (_, _) => const MatchesScreen()),
       GoRoute(path: '/inbox', builder: (_, _) => const InboxScreen()),
       GoRoute(path: '/play', builder: (_, _) => const PlayScreen()),
       GoRoute(path: '/share', builder: (_, _) => const SharePreviewScreen()),

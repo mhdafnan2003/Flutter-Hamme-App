@@ -50,12 +50,8 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
               onBack: () => context.pop(),
               progress: 1.0,
               trailing: GestureDetector(
-                onTap: () async {
-                  await ref
-                      .read(onboardingCompletionProvider.notifier)
-                      .markComplete();
-                  if (!context.mounted) return;
-                  context.go('/home');
+                onTap: () {
+                  context.go('/onboarding/pro');
                 },
                 child: const Text(
                   TTexts.skipAction,
@@ -187,7 +183,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: GradientButton(
                 label: TTexts.next,
-                onTap: () async {
+                onTap: () {
                   ref
                       .read(onboardingDraftProvider.notifier)
                       .setSocial(
@@ -197,11 +193,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                                 : TTexts.socialSnapchat,
                         username: _usernameController.text.trim(),
                       );
-                  await ref
-                      .read(onboardingCompletionProvider.notifier)
-                      .markComplete();
-                  if (!context.mounted) return;
-                  context.go('/home');
+                  context.go('/onboarding/pro');
                 },
               ),
             ),

@@ -39,7 +39,6 @@ class DatePickerWheels extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Selection highlight row
         Positioned(
           child: IgnorePointer(
             child: Container(
@@ -52,8 +51,6 @@ class DatePickerWheels extends StatelessWidget {
             ),
           ),
         ),
-
-        // Left purple arrow indicator
         Positioned(
           left: 16,
           child: const RotatedBox(
@@ -65,7 +62,6 @@ class DatePickerWheels extends StatelessWidget {
             ),
           ),
         ),
-        // Right purple arrow indicator
         Positioned(
           right: 16,
           child: const Icon(
@@ -74,10 +70,8 @@ class DatePickerWheels extends StatelessWidget {
             size: 14,
           ),
         ),
-
         Row(
           children: [
-            // Day
             Expanded(
               flex: 2,
               child: WheelColumn(
@@ -88,7 +82,6 @@ class DatePickerWheels extends StatelessWidget {
                 onChanged: onDayChanged,
               ),
             ),
-            // Month
             Expanded(
               flex: 4,
               child: WheelColumn(
@@ -99,7 +92,6 @@ class DatePickerWheels extends StatelessWidget {
                 onChanged: onMonthChanged,
               ),
             ),
-            // Year
             Expanded(
               flex: 3,
               child: WheelColumn(
@@ -141,7 +133,7 @@ class WheelColumn extends StatelessWidget {
         scrollController: controller,
         itemExtent: 44,
         onSelectedItemChanged: onChanged,
-        selectionOverlay: const SizedBox.shrink(), // we draw our own
+        selectionOverlay: const SizedBox.shrink(),
         squeeze: 1.0,
         magnification: 1.15,
         useMagnifier: true,

@@ -39,7 +39,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
       trim: true,
     },
     refreshTokens: {
@@ -62,8 +61,5 @@ const userSchema = new mongoose.Schema(
     },
   }
 );
-
-userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ shareCode: 1 }, { unique: true });
 
 module.exports = mongoose.model('User', userSchema);
