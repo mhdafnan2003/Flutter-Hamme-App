@@ -97,7 +97,7 @@ class SharePreviewScreen extends ConsumerWidget {
                         child: hasProfileImage
                             ? ClipOval(
                                 child: Image.file(
-                                  File(profileImagePath!),
+                                  File(profileImagePath),
                                   fit: BoxFit.cover,
                                   width: 100,
                                   height: 100,
