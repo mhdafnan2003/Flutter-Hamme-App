@@ -33,30 +33,59 @@ class OnboardingDraft {
   }
 }
 
-class OnboardingDraftNotifier extends StateNotifier<OnboardingDraft> {
-  OnboardingDraftNotifier() : super(const OnboardingDraft());
+class OnboardingDraftNotifier extends AsyncNotifier<OnboardingDraft> {
+  static const _nameKey = 'onboarding_name';
+  static const _birthdayKey = 'onboarding_birthday';
+  static const _socialPlatformKey = 'onboarding_social_platform';
+  static const _usernameKey = 'onboarding_username';
+  static const _profileImageKey = 'onboarding_profile_image';
 
-  void setName(String name) {
-    state = state.copyWith(name: name);
+  @override
+  Future<OnboardingDraft> build() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    final birthdayStr = prefs.getString(_birthdayKey);
+    final birthday = birthdayStr != null ? DateTime.parse(birthdayStr) : null;
+
+    return OnboardingDraft(
+      name: prefs.getString(_nameKey),
+      birthday: birthday,
+      socialPlatform: prefs.getString(_socialPlatformKey),
+      username: prefs.getString(_usernameKey),
+      profileImagePath: prefs.getString(_profileImageKey),
+    );
   }
 
-  void setBirthday(DateTime birthday) {
-    state = state.copyWith(birthday: birthday);
+  Future<void> setName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_nameKey, name);
+    state = AsyncData(state.value!.copyWith(name: name));
   }
 
-  void setSocial({required String platform, required String username}) {
-    state = state.copyWith(socialPlatform: platform, username: username);
+  Future<void> setBirthday(DateTime birthday) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_birthdayKey, birthday.toIso8601String());
+    state = AsyncData(state.value!.copyWith(birthday: birthday));
   }
 
-  void setProfileImagePath(String path) {
-    state = state.copyWith(profileImagePath: path);
+  Future<void> setSocial({required String platform, required String username}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_socialPlatformKey, platform);
+    await prefs.setString(_usernameKey, username);
+    state = AsyncData(state.value!.copyWith(socialPlatform: platform, username: username));
+  }
+
+  Future<void> setProfileImagePath(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_profileImageKey, path);
+    state = AsyncData(state.value!.copyWith(profileImagePath: path));
   }
 }
 
 final onboardingDraftProvider =
-    StateNotifierProvider<OnboardingDraftNotifier, OnboardingDraft>((ref) {
-      return OnboardingDraftNotifier();
-    });
+    AsyncNotifierProvider<OnboardingDraftNotifier, OnboardingDraft>(
+      OnboardingDraftNotifier.new,
+    );
 
 final onboardingCompletionProvider =
     AsyncNotifierProvider<OnboardingCompletionNotifier, bool>(

@@ -28,7 +28,7 @@ class _DobScreenState extends ConsumerState<DobScreen> {
   @override
   void initState() {
     super.initState();
-    final existingDob = ref.read(onboardingDraftProvider).birthday;
+    final existingDob = ref.read(onboardingDraftProvider).value?.birthday;
     if (existingDob != null) {
       final now = DateTime.now();
       var age = now.year - existingDob.year;

@@ -22,7 +22,7 @@ class _NameScreenState extends ConsumerState<NameScreen> {
   @override
   void initState() {
     super.initState();
-    final existingName = ref.read(onboardingDraftProvider).name;
+    final existingName = ref.read(onboardingDraftProvider).value?.name;
     if (existingName != null && existingName.isNotEmpty) {
       _nameController.text = existingName;
     }

@@ -63,6 +63,9 @@ class TColors {
     instagramGradient3,
   ];
 
+  // Snapchat brand color
+  static const Color snapchatYellow = Color(0xFFFFFC00);
+
   // Inbox reaction card palette — Pink
   static const Color hammeInboxPinkStart = Color(0xFFCE58E6);
   static const Color hammeInboxPinkEnd = Color(0xFFFE3B9D);

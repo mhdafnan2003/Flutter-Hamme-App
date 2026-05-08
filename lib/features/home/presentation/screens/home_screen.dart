@@ -18,7 +18,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final username = ref.watch(onboardingDraftProvider).username?.trim();
+    final username = ref.watch(onboardingDraftProvider).value?.username?.trim();
     final normalizedUsername =
         (username != null && username.isNotEmpty)
             ? username.replaceAll('@', '')

@@ -23,12 +23,14 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
   @override
   void initState() {
     super.initState();
-    final draft = ref.read(onboardingDraftProvider);
-    if (draft.username != null && draft.username!.isNotEmpty) {
-      _usernameController.text = draft.username!;
-    }
-    if (draft.socialPlatform == TTexts.socialSnapchat) {
-      _isInstagramSelected = false;
+    final draft = ref.read(onboardingDraftProvider).value;
+    if (draft != null) {
+      if (draft.username != null && draft.username!.isNotEmpty) {
+        _usernameController.text = draft.username!;
+      }
+      if (draft.socialPlatform == TTexts.socialSnapchat) {
+        _isInstagramSelected = false;
+      }
     }
   }
 

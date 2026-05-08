@@ -17,7 +17,7 @@ class SharePlayingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final draft = ref.watch(onboardingDraftProvider);
+    final draft = ref.watch(onboardingDraftProvider).value ?? const OnboardingDraft();
     final profileImagePath = draft.profileImagePath;
     final hasProfileImage =
         profileImagePath != null &&
@@ -103,28 +103,25 @@ class SharePlayingScreen extends ConsumerWidget {
                                 ),
                                 color: TColors.hammeSurface,
                               ),
-                              child:
-                                  hasProfileImage
-                                      ? ClipOval(
-                                        child: kIsWeb
-                                            ? Image.network(
-                                              profileImagePath!,
-                                              fit: BoxFit.cover,
-                                              width: 96,
-                                              height: 96,
-                                            )
-                                            : Image.file(
-                                              File(profileImagePath!),
-                                              fit: BoxFit.cover,
-                                              width: 96,
-                                              height: 96,
-                                            ),
-                                      )
-                                      : const Icon(
-                                        CupertinoIcons.person_solid,
-                                        size: 50,
-                                        color: TColors.grey,
-                                      ),
+                              child: hasProfileImage ? ClipOval(
+                                child: kIsWeb
+                                    ? Image.network(
+                                      profileImagePath!,
+                                      fit: BoxFit.cover,
+                                      width: 96,
+                                      height: 96,
+                                    )
+                                    : Image.file(
+                                      File(profileImagePath!),
+                                      fit: BoxFit.cover,
+                                      width: 96,
+                                      height: 96,
+                                    ),
+                              ) : const Icon(
+                                CupertinoIcons.person_solid,
+                                size: 50,
+                                color: TColors.grey,
+                              ),
                             ),
                           ],
                         ),

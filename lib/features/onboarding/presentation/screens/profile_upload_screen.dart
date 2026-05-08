@@ -39,7 +39,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
   @override
   void initState() {
     super.initState();
-    final imagePath = ref.read(onboardingDraftProvider).profileImagePath;
+    final imagePath = ref.read(onboardingDraftProvider).value?.profileImagePath;
     if (imagePath != null && imagePath.isNotEmpty) {
       if (kIsWeb) {
         setState(() {
@@ -224,7 +224,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: ClipOval(
-                              child: ref.watch(onboardingDraftProvider).profileImagePath == null
+                              child: ref.watch(onboardingDraftProvider).value?.profileImagePath == null
                                       ? const Icon(
                                         CupertinoIcons.person_solid,
                                         size: 80,
@@ -234,6 +234,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                                           ? Image.network(
                                             ref
                                                 .watch(onboardingDraftProvider)
+                                                .value!
                                                 .profileImagePath!,
                                             fit: BoxFit.cover,
                                           )

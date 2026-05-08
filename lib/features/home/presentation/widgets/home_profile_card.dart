@@ -8,13 +8,14 @@ import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
+import 'package:hamme_app/utils/constants/image_strings.dart';
 
 class HomeProfileCard extends ConsumerWidget {
   const HomeProfileCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final draft = ref.watch(onboardingDraftProvider);
+    final draft = ref.watch(onboardingDraftProvider).value ?? const OnboardingDraft();
     final profileName =
         (draft.name != null && draft.name!.trim().isNotEmpty)
             ? draft.name!.trim()
@@ -107,59 +108,67 @@ class HomeProfileCard extends ConsumerWidget {
                   border: Border.all(color: TColors.white, width: 4),
                   color: TColors.hammeSurface,
                 ),
-                child: hasProfileImage
-                        ? ClipOval(
-                          child: kIsWeb
-                              ? Image.network(
-                                profileImagePath!,
-                                fit: BoxFit.cover,
-                                width: 100,
-                                height: 100,
-                              )
-                              : Image.file(
-                                File(profileImagePath!),
-                                fit: BoxFit.cover,
-                                width: 100,
-                                height: 100,
-                              ),
-                        )
-                        : const Icon(
-                          CupertinoIcons.person_solid,
-                          size: 50,
-                          color: TColors.grey,
-                        ),
+                child: hasProfileImage ? ClipOval(
+                  child: kIsWeb
+                      ? Image.network(
+                        profileImagePath!,
+                        fit: BoxFit.cover,
+                        width: 100,
+                        height: 100,
+                      )
+                      : Image.file(
+                        File(profileImagePath!),
+                        fit: BoxFit.cover,
+                        width: 100,
+                        height: 100,
+                      ),
+                ) : const Icon(
+                  CupertinoIcons.person_solid,
+                  size: 50,
+                  color: TColors.grey,
+                ),
               ),
-              Positioned(
-                bottom: 4,
-                right: 0,
+        if (draft.socialPlatform != null && draft.socialPlatform!.isNotEmpty)
+          Positioned(
+            bottom: 4,
+            right: 0,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
                 child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: draft.socialPlatform == TTexts.socialSnapchat
+                        ? TColors.snapchatYellow
+                        : null,
+                    gradient: draft.socialPlatform == TTexts.socialInstagram
+                        ? const LinearGradient(
                           colors: TColors.instagramGradient,
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        CupertinoIcons.camera_fill,
-                        color: Colors.white,
-                        size: 14,
-                      ),
+                        )
+                        : null,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5.0),
+                    child: Image.asset(
+                      draft.socialPlatform == TTexts.socialInstagram
+                          ? TImages.instagramWhite
+                          : TImages.snapchatBlack,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
               ),
+            ),
+          ),
             ],
           ),
         ),
