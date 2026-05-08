@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:io' show File;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ class HomeProfileCard extends ConsumerWidget {
     final hasProfileImage =
         profileImagePath != null &&
         profileImagePath.isNotEmpty &&
-        File(profileImagePath).existsSync();
+        (kIsWeb || File(profileImagePath).existsSync());
 
     return Stack(
       clipBehavior: Clip.none,
@@ -106,15 +107,21 @@ class HomeProfileCard extends ConsumerWidget {
                   border: Border.all(color: TColors.white, width: 4),
                   color: TColors.hammeSurface,
                 ),
-                child:
-                    hasProfileImage
+                child: hasProfileImage
                         ? ClipOval(
-                          child: Image.file(
-                            File(profileImagePath),
-                            fit: BoxFit.cover,
-                            width: 100,
-                            height: 100,
-                          ),
+                          child: kIsWeb
+                              ? Image.network(
+                                profileImagePath!,
+                                fit: BoxFit.cover,
+                                width: 100,
+                                height: 100,
+                              )
+                              : Image.file(
+                                File(profileImagePath!),
+                                fit: BoxFit.cover,
+                                width: 100,
+                                height: 100,
+                              ),
                         )
                         : const Icon(
                           CupertinoIcons.person_solid,

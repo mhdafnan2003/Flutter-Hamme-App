@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:io' show File;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,7 @@ class SharePlayingScreen extends ConsumerWidget {
     final hasProfileImage =
         profileImagePath != null &&
         profileImagePath.isNotEmpty &&
-        File(profileImagePath).existsSync();
+        (kIsWeb || File(profileImagePath).existsSync());
 
     return Scaffold(
       body: Container(
@@ -105,12 +106,19 @@ class SharePlayingScreen extends ConsumerWidget {
                               child:
                                   hasProfileImage
                                       ? ClipOval(
-                                        child: Image.file(
-                                          File(profileImagePath),
-                                          fit: BoxFit.cover,
-                                          width: 96,
-                                          height: 96,
-                                        ),
+                                        child: kIsWeb
+                                            ? Image.network(
+                                              profileImagePath!,
+                                              fit: BoxFit.cover,
+                                              width: 96,
+                                              height: 96,
+                                            )
+                                            : Image.file(
+                                              File(profileImagePath!),
+                                              fit: BoxFit.cover,
+                                              width: 96,
+                                              height: 96,
+                                            ),
                                       )
                                       : const Icon(
                                         CupertinoIcons.person_solid,
