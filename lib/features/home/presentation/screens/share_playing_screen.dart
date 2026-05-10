@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:io' show File, Platform;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/constants/app_constants.dart';
+import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
@@ -40,8 +39,11 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
       debugPrint('[StoryShare] Generated file path: $tempPath');
       debugPrint('[StoryShare] File exists: ${File(tempPath).existsSync()}');
 
-      final username = draft.username?.replaceAll('@', '') ?? 'user';
-      final shareLink = 'https://hamme.app/$username';
+      final session = ref.read(authControllerProvider).value;
+      final shareCode = session?.user.shareCode;
+      final shareLink = AppConstants.buildUserShareLink(
+        (shareCode != null && shareCode.isNotEmpty) ? shareCode : draft.username,
+      );
 
       final socialShare = AppinioSocialShare();
       try {
@@ -186,11 +188,9 @@ class StoryExportWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profileImagePath = draft.profileImagePath;
+    final profileImageUrl = draft.profileImageUrl;
     final hasProfileImage =
-        profileImagePath != null &&
-        profileImagePath.isNotEmpty &&
-        (kIsWeb || File(profileImagePath).existsSync());
+      profileImageUrl != null && profileImageUrl.isNotEmpty;
 
     return Container(
       width: 1080,
@@ -217,15 +217,10 @@ class StoryExportWidget extends StatelessWidget {
             ),
             child: hasProfileImage
                 ? ClipOval(
-                    child: kIsWeb
-                        ? Image.network(
-                            profileImagePath,
-                            fit: BoxFit.cover,
-                          )
-                        : Image.file(
-                            File(profileImagePath),
-                            fit: BoxFit.cover,
-                          ),
+                    child: Image.network(
+                      profileImageUrl,
+                      fit: BoxFit.cover,
+                    ),
                   )
                 : const Icon(
                     CupertinoIcons.person_solid,

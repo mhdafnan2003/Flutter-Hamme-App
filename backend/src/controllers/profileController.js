@@ -6,6 +6,7 @@ function toPublicProfile(user) {
     name: user.name,
     instagramId: user.instagramId,
     profileImageUrl: user.profileImageUrl,
+    username: user.username,
     shareCode: user.shareCode,
     email: '',
   };
@@ -22,8 +23,8 @@ async function updateMe(req, res) {
 }
 
 async function getPublicProfile(req, res) {
-  const user = await userService.getPublicProfile(req.params.shareCode);
-  return res.status(200).json({ user: toPublicProfile(user) });
+  const { user, matchedBy } = await userService.getPublicProfile(req.params.shareCode);
+  return res.status(200).json({ user: toPublicProfile(user), matchedBy });
 }
 
 module.exports = {

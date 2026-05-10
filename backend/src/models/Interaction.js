@@ -5,7 +5,8 @@ const interactionSchema = new mongoose.Schema(
     fromUser: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
+      default: null,
       index: true,
     },
     toUser: {
@@ -16,8 +17,12 @@ const interactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['crush', 'friend', 'ameny'],
+      enum: ['crush', 'friend', 'frenemy', 'ameny'],
       required: true,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
   },
   {
@@ -26,7 +31,7 @@ const interactionSchema = new mongoose.Schema(
       versionKey: false,
       transform: (_, ret) => {
         ret.id = ret._id.toString();
-        ret.fromUser = ret.fromUser.toString();
+        ret.fromUser = ret.fromUser ? ret.fromUser.toString() : null;
         ret.toUser = ret.toUser.toString();
         delete ret._id;
         return ret;
@@ -35,7 +40,10 @@ const interactionSchema = new mongoose.Schema(
   }
 );
 
-interactionSchema.index({ fromUser: 1, toUser: 1, type: 1 }, { unique: true });
+interactionSchema.index(
+  { fromUser: 1, toUser: 1, type: 1 },
+  { unique: true, partialFilterExpression: { fromUser: { $type: 'objectId' } } }
+);
 interactionSchema.index({ toUser: 1, type: 1, createdAt: -1 });
 interactionSchema.index({ fromUser: 1, createdAt: -1 });
 

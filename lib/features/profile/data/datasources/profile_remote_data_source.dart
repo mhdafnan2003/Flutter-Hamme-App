@@ -19,4 +19,30 @@ class ProfileRemoteDataSource {
             as Map<String, dynamic>;
     return AppUser.fromJson(response['user'] as Map<String, dynamic>);
   }
+
+  Future<AppUser> updateMe({
+    String? name,
+    String? instagramId,
+    String? username,
+    String? profileImageUrl,
+  }) async {
+    final body = <String, dynamic>{};
+    if (name != null && name.isNotEmpty) body['name'] = name;
+    if (instagramId != null && instagramId.isNotEmpty) {
+      body['instagramId'] = instagramId;
+    }
+    if (username != null && username.isNotEmpty) body['username'] = username;
+    if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+      body['profileImageUrl'] = profileImageUrl;
+    }
+
+    final response =
+        await _apiService.patch(
+              '/profiles/me',
+              body: body,
+              authenticated: true,
+            )
+            as Map<String, dynamic>;
+    return AppUser.fromJson(response['user'] as Map<String, dynamic>);
+  }
 }

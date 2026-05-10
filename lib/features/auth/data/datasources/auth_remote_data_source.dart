@@ -1,6 +1,7 @@
 import '../../../../core/services/api_service.dart';
 import '../../../../models/app_user.dart';
 import '../../../../models/auth_session.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthRemoteDataSource {
   AuthRemoteDataSource(this._apiService);
@@ -41,6 +42,40 @@ class AuthRemoteDataSource {
             )
             as Map<String, dynamic>;
 
+    return AuthSession.fromJson(response);
+  }
+
+  Future<AuthSession> guestRegister({
+    required int age,
+    required String displayName,
+    required String username,
+    String? instagramId,
+    String? snapchatId,
+    String? avatarUrl,
+    String? deviceId,
+  }) async {
+    debugPrint('[AuthDS] guestRegister request begin');
+    final response =
+        await _apiService.post(
+              '/auth/guest-register',
+              body: {
+                'age': age,
+                'displayName': displayName,
+                'username': username,
+                'instagramId': instagramId,
+                'snapchatId': snapchatId,
+                'avatarUrl': avatarUrl,
+                'deviceId': deviceId,
+              },
+            )
+            as Map<String, dynamic>;
+    debugPrint('[AuthDS] guestRegister response parsed successfully');
+    debugPrint(
+      '[AuthDS] response keys: ${response.keys.join(',')} '
+      'hasAccessToken=${response['accessToken'] != null} '
+      'hasRefreshToken=${response['refreshToken'] != null} '
+      'hasUser=${response['user'] != null}',
+    );
     return AuthSession.fromJson(response);
   }
 

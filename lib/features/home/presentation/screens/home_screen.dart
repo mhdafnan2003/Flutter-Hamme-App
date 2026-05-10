@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hamme_app/core/constants/app_constants.dart';
+import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -20,15 +22,12 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final username = ref.watch(onboardingDraftProvider).value?.username?.trim();
-    final normalizedUsername =
-        (username != null && username.isNotEmpty)
-            ? username.replaceAll('@', '')
-            : null;
-    final shareLink =
-        normalizedUsername == null
-            ? TTexts.homeShareLink
-            : 'HAMME/APP/$normalizedUsername';
+    final session = ref.watch(authControllerProvider).value;
+    final shareCode = session?.user.shareCode;
+    final draftUsername = ref.watch(onboardingDraftProvider).value?.username?.trim();
+    final shareLink = AppConstants.buildUserShareLink(
+      (shareCode != null && shareCode.isNotEmpty) ? shareCode : draftUsername,
+    );
 
     return Scaffold(
       backgroundColor: TColors.white,

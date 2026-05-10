@@ -1,15 +1,16 @@
-import 'dart:io' show File;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
+import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
 import '../widgets/dob_top_bar.dart';
@@ -30,33 +31,25 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
     'jpg',
     'png',
     'webp',
-    'webg',
   };
 
   final ImagePicker _imagePicker = ImagePicker();
-  File? _selectedImage;
+  Uint8List? _previewBytes;
+  bool _isUploading = false;
+  String? _uploadError;
 
   @override
   void initState() {
     super.initState();
-    final imagePath = ref.read(onboardingDraftProvider).value?.profileImagePath;
-    if (imagePath != null && imagePath.isNotEmpty) {
-      if (kIsWeb) {
-        setState(() {
-          // On web we just store the path string
-        });
-      } else {
-        final file = File(imagePath);
-        if (file.existsSync()) {
-          _selectedImage = file;
-        }
-      }
-    }
   }
 
   Future<void> _pickProfileImage() async {
+    if (_isUploading) return;
     final XFile? pickedFile = await _imagePicker.pickImage(
       source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1600,
+      maxHeight: 1600,
     );
 
     if (pickedFile == null) return;
@@ -66,25 +59,48 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
         fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
 
     if (!_allowedExtensions.contains(extension)) {
-      _showMessage('Please upload a JPG, JPEG, PNG, WEBP, or WEBG image.');
+      _showMessage('Please upload a JPG, JPEG, PNG, or WEBP image.');
       return;
     }
 
-    final fileSize = await pickedFile.length();
-    if (fileSize > _maxImageBytes) {
+    final bytes = await pickedFile.readAsBytes();
+    if (bytes.length > _maxImageBytes) {
       _showMessage('Image size must be less than 10 MB.');
       return;
     }
 
     if (!mounted) return;
     setState(() {
-      if (!kIsWeb) {
-        _selectedImage = File(pickedFile.path);
-      }
+      _isUploading = true;
+      _uploadError = null;
+      _previewBytes = bytes;
     });
-    ref
-        .read(onboardingDraftProvider.notifier)
-        .setProfileImagePath(pickedFile.path);
+
+    try {
+      final uploadDataSource = UploadRemoteDataSource(
+        ref.read(apiServiceProvider),
+      );
+      final imageUrl = await uploadDataSource.uploadProfileImageBytes(
+        bytes: bytes,
+        filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
+      );
+      await ref
+          .read(onboardingDraftProvider.notifier)
+          .setProfileImageUrl(imageUrl);
+      if (!mounted) return;
+      context.go('/onboarding/social_media');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _uploadError = 'Upload failed. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
   }
 
   void _showMessage(String message) {
@@ -96,6 +112,9 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final draft = ref.watch(onboardingDraftProvider).value;
+    final profileImageUrl = draft?.profileImageUrl;
+
     return Scaffold(
       backgroundColor: TColors.white,
       body: SafeArea(
@@ -224,26 +243,37 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: ClipOval(
-                              child: ref.watch(onboardingDraftProvider).value?.profileImagePath == null
-                                      ? const Icon(
+                              child: profileImageUrl != null && profileImageUrl.isNotEmpty
+                                  ? Image.network(
+                                    profileImageUrl,
+                                    fit: BoxFit.cover,
+                                  )
+                                  : _previewBytes != null
+                                      ? Image.memory(
+                                        _previewBytes!,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : const Icon(
                                         CupertinoIcons.person_solid,
                                         size: 80,
                                         color: Colors.black,
-                                      )
-                                      : kIsWeb
-                                          ? Image.network(
-                                            ref
-                                                .watch(onboardingDraftProvider)
-                                                .value!
-                                                .profileImagePath!,
-                                            fit: BoxFit.cover,
-                                          )
-                                          : Image.file(
-                                            _selectedImage!,
-                                            fit: BoxFit.cover,
-                                          ),
+                                      ),
                             ),
                           ),
+                          if (_isUploading)
+                            const Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: CupertinoActivityIndicator(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
                           Positioned(
                             bottom: 0,
                             right: 0,
@@ -265,6 +295,18 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                       ),
                     ),
                   ),
+                  if (_uploadError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(
+                        _uploadError!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

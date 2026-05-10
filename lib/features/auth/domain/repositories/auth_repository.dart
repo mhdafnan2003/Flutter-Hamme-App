@@ -11,6 +11,16 @@ abstract interface class AuthRepository {
     String? profileImageUrl,
   });
 
+  Future<AuthSession> guestRegister({
+    required int age,
+    required String displayName,
+    required String username,
+    String? instagramId,
+    String? snapchatId,
+    String? avatarUrl,
+    String? deviceId,
+  });
+
   Future<AuthSession?> restoreSession();
 
   Future<void> logout();

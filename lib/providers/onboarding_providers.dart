@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingDraft {
@@ -7,28 +8,28 @@ class OnboardingDraft {
     this.birthday,
     this.socialPlatform,
     this.username,
-    this.profileImagePath,
+    this.profileImageUrl,
   });
 
   final String? name;
   final DateTime? birthday;
   final String? socialPlatform;
   final String? username;
-  final String? profileImagePath;
+  final String? profileImageUrl;
 
   OnboardingDraft copyWith({
     String? name,
     DateTime? birthday,
     String? socialPlatform,
     String? username,
-    String? profileImagePath,
+    String? profileImageUrl,
   }) {
     return OnboardingDraft(
       name: name ?? this.name,
       birthday: birthday ?? this.birthday,
       socialPlatform: socialPlatform ?? this.socialPlatform,
       username: username ?? this.username,
-      profileImagePath: profileImagePath ?? this.profileImagePath,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
     );
   }
 }
@@ -52,7 +53,7 @@ class OnboardingDraftNotifier extends AsyncNotifier<OnboardingDraft> {
       birthday: birthday,
       socialPlatform: prefs.getString(_socialPlatformKey),
       username: prefs.getString(_usernameKey),
-      profileImagePath: prefs.getString(_profileImageKey),
+      profileImageUrl: prefs.getString(_profileImageKey),
     );
   }
 
@@ -75,10 +76,10 @@ class OnboardingDraftNotifier extends AsyncNotifier<OnboardingDraft> {
     state = AsyncData(state.value!.copyWith(socialPlatform: platform, username: username));
   }
 
-  Future<void> setProfileImagePath(String path) async {
+  Future<void> setProfileImageUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_profileImageKey, path);
-    state = AsyncData(state.value!.copyWith(profileImagePath: path));
+    await prefs.setString(_profileImageKey, url);
+    state = AsyncData(state.value!.copyWith(profileImageUrl: url));
   }
 }
 
@@ -98,12 +99,19 @@ class OnboardingCompletionNotifier extends AsyncNotifier<bool> {
   @override
   Future<bool> build() async {
     final preferences = await SharedPreferences.getInstance();
-    return preferences.getBool(_onboardingCompleteKey) ?? false;
+    await preferences.reload();
+    final value = preferences.getBool(_onboardingCompleteKey) ?? false;
+    debugPrint('[OnboardingCompletion] build read value=$value');
+    return value;
   }
 
   Future<void> markComplete() async {
     final preferences = await SharedPreferences.getInstance();
+    debugPrint('[OnboardingCompletion] markComplete save start');
     await preferences.setBool(_onboardingCompleteKey, true);
+    await preferences.reload();
+    final saved = preferences.getBool(_onboardingCompleteKey) ?? false;
+    debugPrint('[OnboardingCompletion] markComplete save success value=$saved');
     state = const AsyncData(true);
   }
 

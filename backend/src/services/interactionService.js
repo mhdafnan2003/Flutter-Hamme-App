@@ -91,7 +91,41 @@ async function getMatchesForUser(userId) {
   return matches.map((match) => serializeMatch(match, userId));
 }
 
+async function createAnonymousResponse({ identifier, type, source = 'web' }) {
+  const normalized = (identifier || '').trim().toLowerCase();
+  const validTypes = new Set(['friend', 'crush', 'frenemy']);
+  if (!normalized) {
+    throw new ApiError(400, 'Profile identifier is required.');
+  }
+  if (!validTypes.has(type)) {
+    throw new ApiError(400, 'Invalid interaction type.');
+  }
+
+  const targetUser =
+    (await User.findOne({ username: normalized })) ||
+    (await User.findOne({ shareCode: normalized }));
+  if (!targetUser) {
+    throw new ApiError(404, 'Target profile not found.');
+  }
+
+  const interaction = await Interaction.create({
+    fromUser: null,
+    toUser: targetUser.id,
+    type,
+    metadata: { source, anonymous: true },
+  });
+
+  return {
+    interactionId: interaction.id,
+    targetUserId: targetUser.id,
+    shareCode: targetUser.shareCode,
+    username: targetUser.username || null,
+    next: 'install_or_open_app',
+  };
+}
+
 module.exports = {
   createInteraction,
+  createAnonymousResponse,
   getMatchesForUser,
 };

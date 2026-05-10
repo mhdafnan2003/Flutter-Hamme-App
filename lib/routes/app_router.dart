@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/onboarding/presentation/screens/dob_screen.dart';
@@ -18,6 +19,7 @@ import '../providers/onboarding_providers.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
+  final authStatus = ref.watch(authStatusProvider);
   final onboardingCompletionState = ref.watch(onboardingCompletionProvider);
 
   return GoRouter(
@@ -49,18 +51,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (_, state) {
-      final isLoading =
-          authState.isLoading || onboardingCompletionState.isLoading;
+      final isLoading = authStatus == AuthStatus.loading || onboardingCompletionState.isLoading;
       final path = state.matchedLocation;
       final isOnboardingComplete = onboardingCompletionState.value ?? false;
       final isOnboardingRoute = path.startsWith('/onboarding');
 
-      if (isLoading && path != '/splash') {
-        return '/splash';
+      debugPrint(
+        '[Router] redirect check: path=$path, isLoading=$isLoading, '
+        'onboardingComplete=$isOnboardingComplete, hasSession=${authState.value != null}, '
+        'authStatus=$authStatus',
+      );
+
+      // While bootstrapping auth/onboarding state, never leave splash.
+      if (isLoading) {
+        return path == '/splash' ? null : '/splash';
       }
 
-      if (!isLoading && path == '/splash') {
-        return isOnboardingComplete ? '/home' : '/onboarding/dob';
+      if (path == '/splash') {
+        if (authStatus == AuthStatus.authenticated && isOnboardingComplete) {
+          return '/home';
+        }
+        return '/onboarding/dob';
       }
 
       if (!isLoading && isOnboardingComplete && isOnboardingRoute) {

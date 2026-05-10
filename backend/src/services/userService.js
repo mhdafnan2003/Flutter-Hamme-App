@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
+const buildDefaultAvatarUrl = require('../utils/defaultAvatar');
 
 async function getMe(userId) {
   const user = await User.findById(userId);
@@ -11,10 +12,36 @@ async function getMe(userId) {
 }
 
 async function updateMe(userId, updates) {
+  const normalizedUsername =
+    typeof updates.username === 'string'
+      ? updates.username.trim().toLowerCase().replace(/^@+/, '')
+      : undefined;
+  if (
+    normalizedUsername !== undefined &&
+    normalizedUsername.length > 0 &&
+    !/^[a-z0-9._]+$/.test(normalizedUsername)
+  ) {
+    throw new ApiError(
+      400,
+      'Username can only contain lowercase letters, numbers, dot and underscore.'
+    );
+  }
+
+  if (normalizedUsername) {
+    const conflict = await User.exists({
+      _id: { $ne: userId },
+      $or: [{ username: normalizedUsername }, { shareCode: normalizedUsername }],
+    });
+    if (conflict) {
+      throw new ApiError(409, 'Username is not available.');
+    }
+  }
+
   const allowedUpdates = {
     name: updates.name,
     instagramId: updates.instagramId,
     profileImageUrl: updates.profileImageUrl,
+    username: normalizedUsername || updates.username,
   };
 
   const user = await User.findByIdAndUpdate(userId, allowedUpdates, {
@@ -29,13 +56,28 @@ async function updateMe(userId, updates) {
   return user;
 }
 
-async function getPublicProfile(shareCode) {
-  const user = await User.findOne({ shareCode });
-  if (!user) {
+async function getPublicProfile(identifier) {
+  const rawValue = (identifier || '').trim();
+  const normalizedValue = rawValue.toLowerCase();
+  if (!rawValue) {
     throw new ApiError(404, 'Profile not found.');
   }
 
-  return user;
+  let user = await User.findOne({ username: normalizedValue });
+  if (user) {
+    return { user, matchedBy: 'username' };
+  }
+
+  user = await User.findOne({ shareCode: { $in: [rawValue, normalizedValue] } });
+  if (user) {
+    if (!user.profileImageUrl) {
+      user.profileImageUrl = buildDefaultAvatarUrl(user.name);
+      await user.save();
+    }
+    return { user, matchedBy: 'shareCode' };
+  }
+
+  throw new ApiError(404, 'Profile not found.');
 }
 
 module.exports = {

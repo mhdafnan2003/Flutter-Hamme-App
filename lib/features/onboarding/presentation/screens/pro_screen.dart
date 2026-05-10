@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
+import 'package:hamme_app/providers/api_providers.dart';
+import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -11,17 +14,97 @@ import '../widgets/footer_link.dart';
 import '../widgets/header_curve_clipper.dart';
 import '../widgets/pro_feature.dart';
 
-class ProScreen extends ConsumerWidget {
+class ProScreen extends ConsumerStatefulWidget {
   const ProScreen({super.key});
 
-  Future<void> _continueToHome(BuildContext context, WidgetRef ref) async {
-    await ref.read(onboardingCompletionProvider.notifier).markComplete();
-    if (!context.mounted) return;
-    context.go('/home');
+  @override
+  ConsumerState<ProScreen> createState() => _ProScreenState();
+}
+
+class _ProScreenState extends ConsumerState<ProScreen> {
+  bool _isSubmitting = false;
+  String? _errorText;
+
+  Future<void> _continueToHome() async {
+    if (_isSubmitting) return;
+    setState(() {
+      _isSubmitting = true;
+      _errorText = null;
+    });
+
+    final draft = ref.read(onboardingDraftProvider).value;
+    if (draft == null) {
+      setState(() {
+        _isSubmitting = false;
+        _errorText = 'Onboarding data missing. Please try again.';
+      });
+      return;
+    }
+
+    try {
+      final session = ref.read(authControllerProvider).value;
+      if (session == null) {
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final age =
+            draft.birthday == null
+                ? 18
+                : (DateTime.now().difference(draft.birthday!).inDays / 365.25).floor();
+        debugPrint('[Onboarding] guest register begin');
+        await ref.read(authControllerProvider.notifier).guestRegister(
+          age: age.clamp(13, 100),
+          displayName: (draft.name ?? 'Guest').trim(),
+          username: (draft.username ?? 'user$now').trim(),
+          instagramId:
+              draft.socialPlatform?.toLowerCase().contains('instagram') == true
+                  ? draft.username?.trim()
+                  : null,
+          snapchatId:
+              draft.socialPlatform?.toLowerCase().contains('snapchat') == true
+                  ? draft.username?.trim()
+                  : null,
+          avatarUrl: draft.profileImageUrl,
+          deviceId: 'mobile-$now',
+        );
+        if (!mounted) return;
+        final authState = ref.read(authControllerProvider);
+        if (authState.hasError || authState.value == null) {
+          throw authState.error ?? Exception('Guest registration failed');
+        }
+        debugPrint(
+          '[Onboarding] guest register success: user=${authState.value?.user.id}',
+        );
+      } else {
+        final dataSource = ProfileRemoteDataSource(ref.read(apiServiceProvider));
+        await dataSource.updateMe(
+          name: draft.name?.trim(),
+          instagramId: draft.username?.trim(),
+          username: draft.username?.trim(),
+          profileImageUrl: draft.profileImageUrl,
+        );
+        if (!mounted) return;
+        debugPrint('[Onboarding] existing session profile sync success');
+      }
+
+      debugPrint('[Onboarding] onboarding completion handled by auth flow');
+      if (!mounted) return;
+      context.go('/home');
+    } catch (e) {
+      debugPrint('Onboarding completion failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _errorText = 'Could not complete setup. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: TColors.white,
       body: SafeArea(
@@ -109,7 +192,7 @@ class ProScreen extends ConsumerWidget {
                     top: 78,
                     right: 28,
                     child: GestureDetector(
-                      onTap: () => _continueToHome(context, ref),
+                      onTap: _continueToHome,
                       child: const Icon(
                         Icons.close_rounded,
                         color: TColors.white,
@@ -198,8 +281,24 @@ class ProScreen extends ConsumerWidget {
                     const SizedBox(height: 18),
                     GradientButton(
                       label: 'Continue',
-                      onTap: () => _continueToHome(context, ref),
+                      onTap: _isSubmitting ? () {} : _continueToHome,
                     ),
+                    if (_isSubmitting) ...[
+                      const SizedBox(height: 10),
+                      const CircularProgressIndicator(strokeWidth: 2),
+                    ],
+                    if (_errorText != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        _errorText!,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     const Text(
                       'pro renews for \$6.99/wk',

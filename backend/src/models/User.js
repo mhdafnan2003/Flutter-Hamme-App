@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const usernamePattern = /^[a-z0-9._]+$/;
 
 const userSchema = new mongoose.Schema(
   {
@@ -21,9 +22,27 @@ const userSchema = new mongoose.Schema(
     },
     instagramId: {
       type: String,
-      required: true,
+      required: false,
+      default: '',
       trim: true,
       maxlength: 100,
+    },
+    snapchatId: {
+      type: String,
+      required: false,
+      default: '',
+      trim: true,
+      maxlength: 100,
+    },
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+      minlength: 2,
+      maxlength: 32,
+      match: usernamePattern,
     },
     passwordHash: {
       type: String,
@@ -34,6 +53,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
       trim: true,
+    },
+    birthday: {
+      type: Date,
+      default: null,
+    },
+    deviceId: {
+      type: String,
+      default: null,
+      trim: true,
+      index: true,
+    },
+    isGuestUser: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     shareCode: {
       type: String,
@@ -61,5 +95,8 @@ const userSchema = new mongoose.Schema(
     },
   }
 );
+
+userSchema.index({ username: 1 }, { unique: true, sparse: true });
+userSchema.index({ shareCode: 1 }, { unique: true });
 
 module.exports = mongoose.model('User', userSchema);

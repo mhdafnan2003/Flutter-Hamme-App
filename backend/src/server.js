@@ -15,8 +15,8 @@ async function startServer() {
     initializeSocket(server);
   }
 
-  server.listen(env.port, () => {
-    logger.info(`API listening on port ${env.port}`);
+  server.listen(env.port, '0.0.0.0', () => {
+    logger.info(`API listening on 0.0.0.0:${env.port}`);
   });
 }
 

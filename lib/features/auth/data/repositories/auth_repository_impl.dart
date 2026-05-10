@@ -2,6 +2,7 @@ import '../../../../core/services/secure_storage_service.dart';
 import '../../../../models/auth_session.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../../domain/repositories/auth_repository.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({
@@ -72,6 +73,33 @@ class AuthRepositoryImpl implements AuthRepository {
       profileImageUrl: profileImageUrl,
     );
     await _persistSession(session);
+    return session;
+  }
+
+  @override
+  Future<AuthSession> guestRegister({
+    required int age,
+    required String displayName,
+    required String username,
+    String? instagramId,
+    String? snapchatId,
+    String? avatarUrl,
+    String? deviceId,
+  }) async {
+    debugPrint('[AuthRepo] guestRegister remote call start');
+    final session = await _remoteDataSource.guestRegister(
+      age: age,
+      displayName: displayName,
+      username: username,
+      instagramId: instagramId,
+      snapchatId: snapchatId,
+      avatarUrl: avatarUrl,
+      deviceId: deviceId,
+    );
+    debugPrint('[AuthRepo] guestRegister remote call success user=${session.user.id}');
+    debugPrint('[AuthRepo] token persist start');
+    await _persistSession(session);
+    debugPrint('[AuthRepo] token persist success');
     return session;
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 
 import '../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../features/auth/data/repositories/auth_repository_impl.dart';
@@ -31,6 +32,16 @@ final signUpUseCaseProvider = Provider<SignUpUseCase>((ref) {
 final authControllerProvider =
     AsyncNotifierProvider<AuthController, AuthSession?>(AuthController.new);
 
+enum AuthStatus { loading, authenticated, unauthenticated }
+
+final authStatusProvider = Provider<AuthStatus>((ref) {
+  final authState = ref.watch(authControllerProvider);
+  if (authState.isLoading) return AuthStatus.loading;
+  return authState.value == null
+      ? AuthStatus.unauthenticated
+      : AuthStatus.authenticated;
+});
+
 class AuthController extends AsyncNotifier<AuthSession?> {
   AuthRepository get _repository => ref.read(authRepositoryProvider);
 
@@ -41,7 +52,12 @@ class AuthController extends AsyncNotifier<AuthSession?> {
       _repository.restoreSession(),
       Future.delayed(const Duration(seconds: 2)),
     ]);
-    return results[0] as AuthSession?;
+    final restored = results[0] as AuthSession?;
+    debugPrint(
+      '[Auth] restoreSession complete: hasSession=${restored != null}, '
+      'user=${restored?.user.id}',
+    );
+    return restored;
   }
 
   Future<void> login({required String email, required String password}) async {
@@ -75,5 +91,42 @@ class AuthController extends AsyncNotifier<AuthSession?> {
         profileImageUrl: profileImageUrl,
       ),
     );
+  }
+
+  Future<void> guestRegister({
+    required int age,
+    required String displayName,
+    required String username,
+    String? instagramId,
+    String? snapchatId,
+    String? avatarUrl,
+    String? deviceId,
+  }) async {
+    debugPrint(
+      '[Auth] guestRegister start: username=$username, displayName=$displayName, '
+      'deviceId=$deviceId',
+    );
+    state = const AsyncLoading();
+    try {
+      final session = await _repository.guestRegister(
+        age: age,
+        displayName: displayName,
+        username: username,
+        instagramId: instagramId,
+        snapchatId: snapchatId,
+        avatarUrl: avatarUrl,
+        deviceId: deviceId,
+      );
+      debugPrint('[Auth] guestRegister success: token received and saved');
+      debugPrint('[Auth] onboardingComplete save trigger');
+      await ref.read(onboardingCompletionProvider.notifier).markComplete();
+      ref.invalidate(onboardingCompletionProvider);
+      debugPrint('[Auth] onboardingComplete provider invalidated');
+      state = AsyncData(session);
+    } catch (e, st) {
+      debugPrint('[Auth] guestRegister failed: $e');
+      debugPrint('[Auth] guestRegister stacktrace: $st');
+      state = AsyncError(e, st);
+    }
   }
 }
