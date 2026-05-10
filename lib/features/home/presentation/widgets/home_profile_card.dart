@@ -130,42 +130,33 @@ class HomeProfileCard extends ConsumerWidget {
               ),
         if (draft.socialPlatform != null && draft.socialPlatform!.isNotEmpty)
           Positioned(
-            bottom: 4,
+            bottom: 0,
             right: 0,
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: draft.socialPlatform == TTexts.socialSnapchat
-                        ? TColors.snapchatYellow
-                        : null,
-                    gradient: draft.socialPlatform == TTexts.socialInstagram
-                        ? const LinearGradient(
-                          colors: TColors.instagramGradient,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                        : null,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(5.0),
-                    child: Image.asset(
-                      draft.socialPlatform == TTexts.socialInstagram
-                          ? TImages.instagramWhite
-                          : TImages.snapchatBlack,
-                      fit: BoxFit.contain,
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Image.asset(
+                draft.socialPlatform == TTexts.socialInstagram
+                    ? TImages.instagramIcon
+                    : TImages.snapchatIcon,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: draft.socialPlatform == TTexts.socialSnapchat
+                          ? TColors.snapchatYellow
+                          : TColors.hammePrimary,
+                      shape: BoxShape.circle,
                     ),
-                  ),
-                ),
+                    child: Icon(
+                      draft.socialPlatform == TTexts.socialInstagram
+                          ? CupertinoIcons.camera_fill
+                          : CupertinoIcons.chat_bubble_fill,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  );
+                },
               ),
             ),
           ),

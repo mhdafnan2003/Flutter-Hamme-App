@@ -113,3 +113,30 @@ class OnboardingCompletionNotifier extends AsyncNotifier<bool> {
     state = const AsyncData(false);
   }
 }
+
+class ShareTutorialCompletionNotifier extends AsyncNotifier<bool> {
+  static const _shareTutorialCompleteKey = 'share_tutorial_complete';
+
+  @override
+  Future<bool> build() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_shareTutorialCompleteKey) ?? false;
+  }
+
+  Future<void> markComplete() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_shareTutorialCompleteKey, true);
+    state = const AsyncData(true);
+  }
+
+  Future<void> reset() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_shareTutorialCompleteKey, false);
+    state = const AsyncData(false);
+  }
+}
+
+final shareTutorialCompletionProvider =
+    AsyncNotifierProvider<ShareTutorialCompletionNotifier, bool>(
+      ShareTutorialCompletionNotifier.new,
+    );

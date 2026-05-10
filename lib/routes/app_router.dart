@@ -42,7 +42,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/share', builder: (_, _) => const SharePreviewScreen()),
       GoRoute(
         path: '/share/playing',
-        builder: (_, _) => const SharePlayingScreen(),
+        builder: (context, state) {
+          final autoShare = state.uri.queryParameters['autoShare'] == 'true';
+          return SharePlayingScreen(autoShare: autoShare);
+        },
       ),
     ],
     redirect: (_, state) {

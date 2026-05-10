@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
@@ -12,6 +13,7 @@ import '../../../shared/presentation/widgets/hamme_bottom_nav_bar.dart';
 import '../../../shared/presentation/widgets/hamme_top_bar.dart';
 import '../widgets/home_profile_card.dart';
 import '../widgets/home_step_card.dart';
+import 'share_playing_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -49,36 +51,49 @@ class HomeScreen extends ConsumerWidget {
                       title: TTexts.homeStepOneTitle,
                       subtitle: shareLink,
                       padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Container(
-                        width: 150,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: TColors.hammePrimaryDark,
-                            width: 2,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(
-                              CupertinoIcons.link,
+                      child: GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: shareLink));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Link copied to clipboard!'),
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: TColors.hammePrimaryDark,
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 150,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
                               color: TColors.hammePrimaryDark,
-                              size: 18,
+                              width: 2,
                             ),
-                            SizedBox(width: 6),
-                            Text(
-                              TTexts.homeCopyLink,
-                              style: TextStyle(
-                                fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                CupertinoIcons.link,
                                 color: TColors.hammePrimaryDark,
+                                size: 18,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 6),
+                              Text(
+                                TTexts.homeCopyLink,
+                                style: TextStyle(
+                                  fontFamily: TFonts.nunito,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  color: TColors.hammePrimaryDark,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -91,8 +106,29 @@ class HomeScreen extends ConsumerWidget {
                         width: 250,
                         child: GradientButton(
                           label: TTexts.homeShareAction,
-                          onTap: () {
-                            context.push('/share');
+                          onTap: () async {
+                            final hasSeenTutorial =
+                                ref.read(shareTutorialCompletionProvider).value ??
+                                false;
+                            if (hasSeenTutorial) {
+                              // Silent sharing from home screen
+                              showCupertinoDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: CupertinoActivityIndicator(
+                                    color: Colors.white,
+                                    radius: 15,
+                                  ),
+                                ),
+                              );
+                              await SharePlayingScreen.shareStory(context, ref);
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            } else {
+                              context.push('/share');
+                            }
                           },
                         ),
                       ),

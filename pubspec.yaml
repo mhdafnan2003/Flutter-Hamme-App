@@ -69,6 +69,9 @@ dependencies:
   carousel_slider: ^5.0.0
   flutter_rating_bar: ^4.0.1
   capped_progress_indicator: ^0.0.2
+  share_plus: ^11.0.0
+  path_provider: ^2.1.5
+  screenshot: ^3.0.0
 
   # Firebase (disabled on Windows — Firebase C++ SDK has linker issues with newer MSVC)
   # Uncomment when targeting Android / iOS:
@@ -107,6 +110,8 @@ flutter:
     - .env
     - assets/images/
     - assets/icons/
+    - assets/icons/instagram-ic.png
+    - assets/icons/snap-ic.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

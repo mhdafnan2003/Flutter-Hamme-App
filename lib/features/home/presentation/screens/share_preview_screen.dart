@@ -1,6 +1,8 @@
-﻿import 'package:flutter/cupertino.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/features/home/domain/models/share_instruction_data.dart';
 import 'package:hamme_app/features/home/presentation/widgets/platform_pill.dart';
 import 'package:hamme_app/features/home/presentation/widgets/share_action_button.dart';
@@ -8,14 +10,14 @@ import 'package:hamme_app/features/home/presentation/widgets/share_instruction_c
 import 'package:hamme_app/features/home/presentation/widgets/share_instruction_preview.dart';
 import 'package:hamme_app/features/home/presentation/widgets/share_instruction_title.dart';
 
-class SharePreviewScreen extends StatefulWidget {
+class SharePreviewScreen extends ConsumerStatefulWidget {
   const SharePreviewScreen({super.key});
 
   @override
-  State<SharePreviewScreen> createState() => _SharePreviewScreenState();
+  ConsumerState<SharePreviewScreen> createState() => _SharePreviewScreenState();
 }
 
-class _SharePreviewScreenState extends State<SharePreviewScreen> {
+class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
   int _step = 1;
   bool _isInstagram = true;
 
@@ -99,12 +101,15 @@ class _SharePreviewScreenState extends State<SharePreviewScreen> {
                           totalSteps: 4,
                           instructionTitle: ShareInstructionTitle(data: data),
                           image: ShareInstructionPreview(step: _step),
-                          action: ShareActionButton(
+                            action: ShareActionButton(
                             label: _step == 4 ? 'Share' : 'Next Step',
                             showInstagram: _step == 4,
                             onTap:
                                 _step == 4
-                                    ? () => context.go('/share/playing')
+                                    ? () {
+                                        ref.read(shareTutorialCompletionProvider.notifier).markComplete();
+                                        context.go('/share/playing?autoShare=true');
+                                      }
                                     : _nextStep,
                           ),
                         ),
