@@ -6,7 +6,10 @@ import '../core/services/api_service.dart';
 import '../core/services/secure_storage_service.dart';
 
 final flutterSecureStorageProvider = Provider<FlutterSecureStorage>((ref) {
-  return const FlutterSecureStorage();
+  return const FlutterSecureStorage(
+    aOptions: AndroidOptions(),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
 });
 
 final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {

@@ -6,9 +6,10 @@ import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
 
 class InboxReactionCard extends StatelessWidget {
-  const InboxReactionCard({required this.variation, super.key});
+  const InboxReactionCard({required this.variation, required this.count, super.key});
 
   final InboxVariation variation;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +39,11 @@ class InboxReactionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(36),
               ),
               child: Column(
-                children: const [
-                  SizedBox(height: 60),
+                children: [
+                  const SizedBox(height: 60),
                   Text(
-                    TTexts.inboxEmptyCount,
-                    style: TextStyle(
+                    count.toString(),
+                    style: const TextStyle(
                       fontFamily: TFonts.nunito,
                       fontWeight: FontWeight.w900,
                       fontSize: 48,
@@ -56,13 +57,17 @@ class InboxReactionCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      TTexts.inboxHint,
+                      count == 0
+                          ? TTexts.inboxHint
+                          : count == 1
+                              ? 'New ${variation.emoji} reaction'
+                              : 'New ${variation.emoji} reactions',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: TFonts.nunito,
                         fontWeight: FontWeight.w800,
                         fontSize: 15,

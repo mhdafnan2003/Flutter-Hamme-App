@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$InteractionRecord {
 
- String get id; String get fromUser; String get toUser; InteractionType get type; DateTime get createdAt;
+ String get id; String? get fromUser; String get toUser; InteractionType get type; DateTime get createdAt;
 /// Create a copy of InteractionRecord
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $InteractionRecordCopyWith<$Res>  {
   factory $InteractionRecordCopyWith(InteractionRecord value, $Res Function(InteractionRecord) _then) = _$InteractionRecordCopyWithImpl;
 @useResult
 $Res call({
- String id, String fromUser, String toUser, InteractionType type, DateTime createdAt
+ String id, String? fromUser, String toUser, InteractionType type, DateTime createdAt
 });
 
 
@@ -65,11 +65,11 @@ class _$InteractionRecordCopyWithImpl<$Res>
 
 /// Create a copy of InteractionRecord
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? fromUser = null,Object? toUser = null,Object? type = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? fromUser = freezed,Object? toUser = null,Object? type = null,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,fromUser: null == fromUser ? _self.fromUser : fromUser // ignore: cast_nullable_to_non_nullable
-as String,toUser: null == toUser ? _self.toUser : toUser // ignore: cast_nullable_to_non_nullable
+as String,fromUser: freezed == fromUser ? _self.fromUser : fromUser // ignore: cast_nullable_to_non_nullable
+as String?,toUser: null == toUser ? _self.toUser : toUser // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as InteractionType,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,
@@ -157,7 +157,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String fromUser,  String toUser,  InteractionType type,  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? fromUser,  String toUser,  InteractionType type,  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _InteractionRecord() when $default != null:
 return $default(_that.id,_that.fromUser,_that.toUser,_that.type,_that.createdAt);case _:
@@ -178,7 +178,7 @@ return $default(_that.id,_that.fromUser,_that.toUser,_that.type,_that.createdAt)
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String fromUser,  String toUser,  InteractionType type,  DateTime createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? fromUser,  String toUser,  InteractionType type,  DateTime createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _InteractionRecord():
 return $default(_that.id,_that.fromUser,_that.toUser,_that.type,_that.createdAt);case _:
@@ -198,7 +198,7 @@ return $default(_that.id,_that.fromUser,_that.toUser,_that.type,_that.createdAt)
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String fromUser,  String toUser,  InteractionType type,  DateTime createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? fromUser,  String toUser,  InteractionType type,  DateTime createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _InteractionRecord() when $default != null:
 return $default(_that.id,_that.fromUser,_that.toUser,_that.type,_that.createdAt);case _:
@@ -213,11 +213,11 @@ return $default(_that.id,_that.fromUser,_that.toUser,_that.type,_that.createdAt)
 @JsonSerializable()
 
 class _InteractionRecord implements InteractionRecord {
-  const _InteractionRecord({required this.id, required this.fromUser, required this.toUser, required this.type, required this.createdAt});
+  const _InteractionRecord({required this.id, this.fromUser, required this.toUser, required this.type, required this.createdAt});
   factory _InteractionRecord.fromJson(Map<String, dynamic> json) => _$InteractionRecordFromJson(json);
 
 @override final  String id;
-@override final  String fromUser;
+@override final  String? fromUser;
 @override final  String toUser;
 @override final  InteractionType type;
 @override final  DateTime createdAt;
@@ -255,7 +255,7 @@ abstract mixin class _$InteractionRecordCopyWith<$Res> implements $InteractionRe
   factory _$InteractionRecordCopyWith(_InteractionRecord value, $Res Function(_InteractionRecord) _then) = __$InteractionRecordCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String fromUser, String toUser, InteractionType type, DateTime createdAt
+ String id, String? fromUser, String toUser, InteractionType type, DateTime createdAt
 });
 
 
@@ -272,11 +272,11 @@ class __$InteractionRecordCopyWithImpl<$Res>
 
 /// Create a copy of InteractionRecord
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? fromUser = null,Object? toUser = null,Object? type = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? fromUser = freezed,Object? toUser = null,Object? type = null,Object? createdAt = null,}) {
   return _then(_InteractionRecord(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,fromUser: null == fromUser ? _self.fromUser : fromUser // ignore: cast_nullable_to_non_nullable
-as String,toUser: null == toUser ? _self.toUser : toUser // ignore: cast_nullable_to_non_nullable
+as String,fromUser: freezed == fromUser ? _self.fromUser : fromUser // ignore: cast_nullable_to_non_nullable
+as String?,toUser: null == toUser ? _self.toUser : toUser // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as InteractionType,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,

@@ -3,6 +3,7 @@ import '../../../../models/auth_session.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'package:flutter/foundation.dart';
+import '../../../../core/utils/app_exception.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({
@@ -40,19 +41,26 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<AuthSession?> restoreSession() async {
     final accessToken = await _secureStorageService.readAccessToken();
     if (accessToken == null || accessToken.isEmpty) {
+      debugPrint('[AuthRepo] restoreSession: no access token');
       return null;
     }
 
     try {
       final refreshToken = await _secureStorageService.readRefreshToken();
       final user = await _remoteDataSource.getCurrentUser();
+      debugPrint('[AuthRepo] restoreSession success: user=${user.id}');
       return AuthSession(
         user: user,
         accessToken: accessToken,
         refreshToken: refreshToken,
       );
-    } catch (_) {
-      await _secureStorageService.clearTokens();
+    } catch (error) {
+      if (error is AppException && (error.statusCode == 401 || error.statusCode == 403)) {
+        debugPrint('[AuthRepo] restoreSession: auth invalid, clearing tokens');
+        await _secureStorageService.clearTokens();
+      } else {
+        debugPrint('[AuthRepo] restoreSession: transient error: $error');
+      }
       return null;
     }
   }
@@ -104,6 +112,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   Future<void> _persistSession(AuthSession session) {
+    debugPrint(
+      '[AuthRepo] persistSession access=${session.accessToken.length} refresh=${session.refreshToken?.length ?? 0}',
+    );
     return _secureStorageService.storeTokens(
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,

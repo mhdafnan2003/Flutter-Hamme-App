@@ -63,7 +63,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                   ? draft.username?.trim()
                   : null,
           avatarUrl: draft.profileImageUrl,
-          deviceId: 'mobile-$now',
+          deviceId: 'hamme-dev-device-stable',
         );
         if (!mounted) return;
         final authState = ref.read(authControllerProvider);

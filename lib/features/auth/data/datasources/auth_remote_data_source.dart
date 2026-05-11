@@ -76,14 +76,21 @@ class AuthRemoteDataSource {
       'hasRefreshToken=${response['refreshToken'] != null} '
       'hasUser=${response['user'] != null}',
     );
+    final rawToken = response['accessToken'];
+    debugPrint('[AuthDS] raw guestRegister response (partial): keys=${response.keys.join(',')}');
+    debugPrint('[AuthDS] extracted token type: ${rawToken.runtimeType}');
+    debugPrint('[AuthDS] token length: ${rawToken?.toString().length}');
+    
     return AuthSession.fromJson(response);
   }
 
   Future<AppUser> getCurrentUser() async {
+    debugPrint('[AuthDS] getCurrentUser start');
     final response =
         await _apiService.get('/auth/me', authenticated: true)
             as Map<String, dynamic>;
 
+    debugPrint('[AuthDS] getCurrentUser success');
     return AppUser.fromJson(response['user'] as Map<String, dynamic>);
   }
 

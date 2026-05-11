@@ -71,6 +71,7 @@ dependencies:
   capped_progress_indicator: ^0.0.2
   share_plus: ^11.0.0
   appinio_social_share: ^0.3.2
+  app_links: ^6.3.3
   path_provider: ^2.1.5
   screenshot: ^3.0.0
 

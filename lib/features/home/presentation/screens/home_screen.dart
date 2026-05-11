@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hamme_app/core/constants/app_constants.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
+import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -28,6 +29,10 @@ class HomeScreen extends ConsumerWidget {
     final shareLink = AppConstants.buildUserShareLink(
       (shareCode != null && shareCode.isNotEmpty) ? shareCode : draftUsername,
     );
+    final matches = ref.watch(matchesProvider);
+    final received = ref.watch(receivedInteractionsProvider);
+    final matchCount = matches.maybeWhen(data: (items) => items.length, orElse: () => null);
+    final receivedCount = received.maybeWhen(data: (items) => items.length, orElse: () => null);
 
     return Scaffold(
       backgroundColor: TColors.white,
@@ -43,6 +48,20 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     const SizedBox(height: 60),
                     const HomeProfileCard(),
+
+                    if (matchCount != null || receivedCount != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          'Matches: ${matchCount ?? '-'} • Reactions: ${receivedCount ?? '-'}',
+                          style: const TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: TColors.darkGrey,
+                          ),
+                        ),
+                      ),
 
                     const SizedBox(height: 24),
 

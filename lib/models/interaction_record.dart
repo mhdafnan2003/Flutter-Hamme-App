@@ -9,7 +9,7 @@ part 'interaction_record.g.dart';
 abstract class InteractionRecord with _$InteractionRecord {
   const factory InteractionRecord({
     required String id,
-    required String fromUser,
+    String? fromUser,
     required String toUser,
     required InteractionType type,
     required DateTime createdAt,

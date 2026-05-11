@@ -14,7 +14,7 @@ const matchSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['crush', 'friend', 'ameny'],
+      enum: ['crush', 'friend', 'frenemy', 'ameny'],
       required: true,
     },
     triggeredBy: {

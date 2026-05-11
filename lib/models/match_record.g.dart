@@ -24,5 +24,6 @@ Map<String, dynamic> _$MatchRecordToJson(_MatchRecord instance) =>
 const _$InteractionTypeEnumMap = {
   InteractionType.crush: 'crush',
   InteractionType.friend: 'friend',
+  InteractionType.frenemy: 'frenemy',
   InteractionType.ameny: 'ameny',
 };

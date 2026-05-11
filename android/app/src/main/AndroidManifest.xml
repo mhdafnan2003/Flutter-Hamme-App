@@ -41,6 +41,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="app.hamme.link" />
                 <data android:scheme="hamme" android:host="open" />
+                <data android:scheme="hamme" android:host="reveal" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

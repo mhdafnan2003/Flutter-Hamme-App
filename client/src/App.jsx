@@ -22,6 +22,7 @@ function App() {
   const [profileError, setProfileError] = useState('');
   const [submittingType, setSubmittingType] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [interactionResult, setInteractionResult] = useState(null);
   const isExpired = secondsLeft === 0;
   const shareCode = readShareCodeFromPath();
 
@@ -75,11 +76,16 @@ function App() {
     setSubmittingType(type);
     setSubmitError('');
     try {
-      const response = await fetch(`${apiBaseUrl}/anonymous-response`, {
+      if (!profile?.id) {
+        throw new Error('Missing target profile id');
+      }
+
+      // Use pending interaction for the reveal flow
+      const response = await fetch(`${apiBaseUrl}/interactions/pending`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          identifier: shareCode,
+          targetUserId: profile.id,
           type,
           source: 'web_local',
         }),
@@ -87,6 +93,8 @@ function App() {
       if (!response.ok) {
         throw new Error(`Failed with status ${response.status}`);
       }
+      const data = await response.json();
+      setInteractionResult(data); // contains pendingToken
       setIsSent(true);
       setSecondsLeft(60);
     } catch (_) {
@@ -123,7 +131,14 @@ function App() {
     <main className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
       <section className={`mx-auto flex min-h-screen w-full max-w-[360px] flex-col items-center px-4 pb-8 text-center ${isSent ? 'pt-[82px]' : 'pt-[132px]'}`}>
         {isSent ? (
-          <RevealScreen secondsLeft={secondsLeft} isExpired={isExpired} profileName={profileName} profileImage={profileImage} />
+          <RevealScreen
+            secondsLeft={secondsLeft}
+            isExpired={isExpired}
+            profileName={profileName}
+            profileImage={profileImage}
+            isMatch={interactionResult?.matched}
+            pendingToken={interactionResult?.pendingToken}
+          />
         ) : (
           <QuestionScreen
             onAnswer={handleAnswer}
@@ -183,7 +198,38 @@ function QuestionScreen({ onAnswer, profileImage, submittingType, submitError })
   );
 }
 
-function RevealScreen({ secondsLeft, isExpired, profileName, profileImage }) {
+function RevealScreen({ secondsLeft, isExpired, profileName, profileImage, isMatch, pendingToken }) {
+  const handleReveal = () => {
+    if (isExpired || !pendingToken) return;
+
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const isAndroid = /android/i.test(userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+
+    // Custom URI scheme for deep linking
+    const deepLink = `hamme://reveal/${pendingToken}`;
+    
+    // Fallback store links (using Local LAN for now to avoid SSL/Config issues)
+    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.hamme.app';
+    const appStoreUrl = 'https://apps.apple.com/app/hamme-play-games/id123456789';
+    const fallbackUrl = 'http://192.168.1.36:5173'; // Point back to web app locally
+
+    window.location.href = deepLink;
+
+    // Redirect to store if app not installed (after a short delay)
+    setTimeout(() => {
+      if (document.visibilityState === 'visible') {
+        if (isAndroid) {
+          window.location.href = playStoreUrl;
+        } else if (isIOS) {
+          window.location.href = appStoreUrl;
+        } else {
+          window.location.href = fallbackUrl;
+        }
+      }
+    }, 2500);
+  };
+
   return (
     <div className="w-full">
       <div className="mx-auto flex h-[25px] w-[96px] items-center justify-center rounded-full border border-white/80 bg-white/10 text-[18px] font-extrabold">
@@ -191,7 +237,10 @@ function RevealScreen({ secondsLeft, isExpired, profileName, profileImage }) {
         Sent!
       </div>
 
-      <div className="mt-[85px] text-[15px] font-medium text-white/70">Now the question is -</div>
+      <div className="mt-[40px] text-[15px] font-medium text-white/70">
+        {isMatch ? "It's a match!" : 'Your response was sent anonymously'}
+      </div>
+      <div className="mt-2 text-[15px] font-medium text-white/70">Now the question is -</div>
       <h1 className="mx-auto mt-2 max-w-[285px] text-[31px] font-black leading-[1.38] tracking-[-0.02em]">
         What does
         <span className="mx-[8px] inline-flex h-[38px] w-[38px] translate-y-[7px] overflow-hidden rounded-full border-2 border-white bg-[#d8b09f] align-baseline">
@@ -216,12 +265,20 @@ function RevealScreen({ secondsLeft, isExpired, profileName, profileImage }) {
       </div>
 
       <button
+        onClick={handleReveal}
         disabled={isExpired}
         className={`mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] px-8 text-[20px] font-black shadow-[0_7px_0_rgba(0,0,0,0.10)] transition ${isExpired ? 'bg-white/35 text-[#9647df]' : 'bg-white text-[#c000df] active:translate-y-1'}`}
       >
         <span className="flex-1">👀 Reveal</span>
         <span className="text-[27px] font-light">→</span>
       </button>
+
+      <a
+        href="http://192.168.1.36:5173"
+        className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white"
+      >
+        Open Hamme App
+      </a>
     </div>
   );
 }
