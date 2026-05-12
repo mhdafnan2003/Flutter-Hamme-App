@@ -1,25 +1,41 @@
-const crypto = require('crypto');
-const fs = require('fs/promises');
-const path = require('path');
 const sharp = require('sharp');
+const { v2: cloudinary } = require('cloudinary');
 
 const env = require('../config/env');
 const ApiError = require('../utils/ApiError');
 
-const uploadRoot = path.join(__dirname, '..', '..', 'uploads');
-const profileUploadDir = path.join(uploadRoot, 'profile');
+const cloudinaryEnabled =
+  Boolean(env.cloudinaryCloudName) &&
+  Boolean(env.cloudinaryApiKey) &&
+  Boolean(env.cloudinaryApiSecret);
 
-function buildPublicUrl(req, relativePath) {
-  const baseUrl = (env.publicBaseUrl || '').trim();
-  if (baseUrl) {
-    return `${baseUrl.replace(/\/$/, '')}${relativePath}`;
-  }
+if (cloudinaryEnabled) {
+  cloudinary.config({
+    cloud_name: env.cloudinaryCloudName,
+    api_key: env.cloudinaryApiKey,
+    api_secret: env.cloudinaryApiSecret,
+  });
+}
 
-  const forwardedHost = req.get('x-forwarded-host');
-  const forwardedProto = req.get('x-forwarded-proto');
-  const host = forwardedHost || req.get('host');
-  const protocol = forwardedProto || req.protocol;
-  return `${protocol}://${host}${relativePath}`;
+function uploadToCloudinary(buffer) {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: env.cloudinaryFolder,
+        resource_type: 'image',
+        format: 'jpg',
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(result);
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
 }
 
 async function uploadProfileImage(req, res) {
@@ -27,23 +43,18 @@ async function uploadProfileImage(req, res) {
     throw new ApiError(400, 'Profile image file is required.');
   }
 
-  await fs.mkdir(profileUploadDir, { recursive: true });
+  if (!cloudinaryEnabled) {
+    throw new ApiError(500, 'Cloudinary is not configured.');
+  }
 
-  const uniqueId =
-    typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : crypto.randomBytes(16).toString('hex');
-  const fileName = `profile-${Date.now()}-${uniqueId}.jpg`;
-  const targetPath = path.join(profileUploadDir, fileName);
-
-  await sharp(req.file.buffer)
+  const processedBuffer = await sharp(req.file.buffer)
     .rotate()
     .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
     .jpeg({ quality: 80 })
-    .toFile(targetPath);
+    .toBuffer();
 
-  const imageUrl = buildPublicUrl(req, `/uploads/profile/${fileName}`);
-  return res.status(201).json({ imageUrl });
+  const uploadResult = await uploadToCloudinary(processedBuffer);
+  return res.status(201).json({ imageUrl: uploadResult.secure_url });
 }
 
 module.exports = {
