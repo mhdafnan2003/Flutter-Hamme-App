@@ -4,8 +4,7 @@ const players = ['S', 'K', 'R', 'N', 'A'];
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
 const playerColors = ['#ff4f97', '#35d678', '#42b6ff', '#ffd230', '#ff5c5c'];
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
-const flutterWebBaseUrl =
-  import.meta.env.VITE_FLUTTER_WEB_URL ?? 'http://localhost:62674';
+const flutterWebBaseUrl = import.meta.env.VITE_FLUTTER_WEB_URL ?? '';
 const sessionStorageKey = 'hamme_web_session_id';
 const pendingTtlMs = 60 * 1000;
 
@@ -264,6 +263,10 @@ function RevealScreen({
   };
 
   const buildFlutterWebFallbackUrl = () => {
+    if (!flutterWebBaseUrl) {
+      return '';
+    }
+
     const params = new URLSearchParams();
     if (shareCode) params.set('code', shareCode);
     if (selectedType) params.set('type', selectedType);
@@ -316,7 +319,7 @@ function RevealScreen({
           window.location.href = playStoreUrl;
         } else if (isIOS) {
           window.location.href = appStoreUrl;
-        } else {
+        } else if (fallbackUrl) {
           window.location.href = fallbackUrl;
         }
       }
@@ -377,12 +380,14 @@ function RevealScreen({
         <p className="mt-2 text-[12px] font-bold text-white/75">{copyStatus}</p>
       ) : null}
 
-      <a
-        href={buildFlutterWebFallbackUrl()}
-        className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white"
-      >
-        Continue In Web App
-      </a>
+      {flutterWebBaseUrl ? (
+        <a
+          href={buildFlutterWebFallbackUrl()}
+          className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white"
+        >
+          Continue In Web App
+        </a>
+      ) : null}
     </div>
   );
 }

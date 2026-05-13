@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/providers/deferred_interaction_provider.dart';
+import 'package:hamme_app/core/constants/app_constants.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 
@@ -77,6 +78,13 @@ class _DeepLinkScreenState extends ConsumerState<DeepLinkScreen> {
       }
 
       if (uri.scheme == 'https' && uri.host == 'app.hamme.link') {
+        final segments = uri.pathSegments;
+        if (segments.length >= 2 && segments[0] == 'u') {
+          return (shareCode: segments[1], type: null, token: null);
+        }
+      }
+
+      if (uri.scheme == 'https' && uri.host == AppConstants.appHost) {
         final segments = uri.pathSegments;
         if (segments.length >= 2 && segments[0] == 'u') {
           return (shareCode: segments[1], type: null, token: null);

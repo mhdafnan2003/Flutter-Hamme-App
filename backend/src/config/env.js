@@ -25,5 +25,6 @@ module.exports = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'change-me-refresh-secret',
   jwtAccessTtl: process.env.JWT_ACCESS_TTL || '15m',
   jwtRefreshTtl: process.env.JWT_REFRESH_TTL || '30d',
-  enableSockets: process.env.ENABLE_SOCKETS === 'true',
+  enableSockets:
+    process.env.ENABLE_SOCKETS === 'true' && !process.env.VERCEL,
 };

@@ -10,10 +10,15 @@ const errorHandler = require('./middleware/errorHandler');
 const notFound = require('./middleware/notFound');
 
 const app = express();
+const isVercel = Boolean(process.env.VERCEL);
 const isPrivateNetworkDevOrigin = (origin) =>
   /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(
     origin
   );
+
+if (isVercel) {
+  app.set('trust proxy', 1);
+}
 
 app.use(
   helmet({
@@ -51,9 +56,16 @@ app.use(
     limit: 200,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: {
+      forwardedHeader: false,
+    },
   })
 );
 app.use(express.json({ limit: '1mb' }));
+
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });

@@ -4,15 +4,15 @@ import 'dart:io' show Platform;
 
 final class AppConstants {
   static String get apiBaseUrl {
+    final prod = dotenv.env['API_BASE_URL_PROD'];
     final explicit = dotenv.env['API_BASE_URL'];
+    if (kReleaseMode && prod != null && prod.isNotEmpty) return prod;
     if (explicit != null && explicit.isNotEmpty) return explicit;
 
     final emulator = dotenv.env['API_BASE_URL_EMULATOR'];
     final device = dotenv.env['API_BASE_URL_DEVICE'];
     final web = dotenv.env['API_BASE_URL_WEB'];
-    final prod = dotenv.env['API_BASE_URL_PROD'];
 
-    if (kReleaseMode && prod != null && prod.isNotEmpty) return prod;
     if (kIsWeb && web != null && web.isNotEmpty) return web;
     if (!kIsWeb && Platform.isAndroid) {
       // Real devices should use LAN IP; emulator URL is only fallback.

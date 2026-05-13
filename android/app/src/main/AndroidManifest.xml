@@ -39,7 +39,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="app.hamme.link" />
+                <data android:scheme="https" android:host="client-sigma-beryl-15.vercel.app" />
                 <data android:scheme="hamme" android:host="open" />
                 <data android:scheme="hamme" android:host="reveal" />
             </intent-filter>
