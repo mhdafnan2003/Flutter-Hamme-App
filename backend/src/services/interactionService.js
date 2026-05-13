@@ -7,7 +7,11 @@ const crypto = require('crypto');
 const { emitMatchFound } = require('../socket');
 
 const allowedTypes = new Set(['friend', 'crush', 'frenemy', 'ameny']);
-const PENDING_TTL_MS = 60 * 1000;
+const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 300);
+const pendingTtlSeconds = Number.isFinite(pendingTtlSecondsRaw)
+  ? Math.max(30, pendingTtlSecondsRaw)
+  : 300;
+const PENDING_TTL_MS = pendingTtlSeconds * 1000;
 
 function buildCanonicalPair(firstUserId, secondUserId) {
   const [userA, userB] = [firstUserId.toString(), secondUserId.toString()].sort();
@@ -262,11 +266,66 @@ async function createAnonymousInteraction({ targetUserId, type, source = 'web' }
 
 async function getReceivedInteractions(userId) {
   const interactions = await Interaction.find({ toUser: userId })
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .populate('fromUser', 'name username instagramId profileImageUrl shareCode');
+
+  const voterIds = [
+    ...new Set(
+      interactions
+        .map((interaction) => interaction.fromUser?._id?.toString())
+        .filter(Boolean)
+    ),
+  ];
+
+  const outgoing = voterIds.length
+    ? await Interaction.find({
+        fromUser: userId,
+        toUser: { $in: voterIds },
+      }).select('toUser type')
+    : [];
+
+  const outgoingUserIds = new Set(
+    outgoing.map((interaction) => interaction.toUser.toString())
+  );
+
+  const pairIds = voterIds.map((voterId) => buildCanonicalPair(userId, voterId));
+  const matches = pairIds.length
+    ? await Match.find({
+        $or: pairIds.map((pair) => ({ userA: pair.userA, userB: pair.userB })),
+      }).select('userA userB type')
+    : [];
+
+  const matchKeys = new Set(
+    matches.map((match) => {
+      const otherUserId =
+        match.userA.toString() === userId.toString()
+          ? match.userB.toString()
+          : match.userA.toString();
+      return `${otherUserId}:${match.type}`;
+    })
+  );
 
   return interactions.map((interaction) => {
-    const payload = interaction.toJSON();
-    return { ...payload, fromUser: payload.fromUser || '' };
+    const fromUser = interaction.fromUser;
+    const fromUserId = fromUser?._id?.toString() || null;
+    const respondedByCurrentUser = Boolean(fromUserId) && outgoingUserIds.has(fromUserId);
+    const matched =
+      Boolean(fromUserId) && matchKeys.has(`${fromUserId}:${interaction.type}`);
+
+    return {
+      id: interaction.id,
+      fromUser: fromUserId || '',
+      fromUserName: fromUser?.name || null,
+      fromUserUsername: fromUser?.username || null,
+      fromUserProfileImageUrl: fromUser?.profileImageUrl || null,
+      fromUserShareCode: fromUser?.shareCode || null,
+      toUser: interaction.toUser.toString(),
+      type: interaction.type,
+      metadata: interaction.metadata || null,
+      respondedByCurrentUser,
+      matched,
+      createdAt: interaction.createdAt,
+    };
   });
 }
 

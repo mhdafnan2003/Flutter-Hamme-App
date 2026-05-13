@@ -24,6 +24,21 @@ class InteractionRemoteDataSource {
     return InteractionResult.fromJson(response);
   }
 
+  Future<InteractionResult> respondToUser({
+    required String targetUserId,
+    required InteractionType type,
+  }) async {
+    final response =
+        await _apiService.post(
+              '/interactions/respond',
+              authenticated: true,
+              body: {'targetUserId': targetUserId, 'type': type.name},
+            )
+            as Map<String, dynamic>;
+
+    return InteractionResult.fromJson(response);
+  }
+
   Future<List<MatchRecord>> getMatches() async {
     final response =
         await _apiService.get('/interactions/matches', authenticated: true)

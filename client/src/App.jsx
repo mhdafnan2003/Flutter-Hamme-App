@@ -4,6 +4,8 @@ const players = ['S', 'K', 'R', 'N', 'A'];
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
 const playerColors = ['#ff4f97', '#35d678', '#42b6ff', '#ffd230', '#ff5c5c'];
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+const flutterWebBaseUrl =
+  import.meta.env.VITE_FLUTTER_WEB_URL ?? 'http://localhost:62674';
 const sessionStorageKey = 'hamme_web_session_id';
 const pendingTtlMs = 60 * 1000;
 
@@ -138,7 +140,7 @@ function App() {
         setSecondsLeft(Math.ceil(pendingTtlMs / 1000));
       }
       console.info('[Web] option selected', { shareCode, type });
-    } catch (_) {
+    } catch {
       setSubmitError('Could not submit response. Please try again.');
     } finally {
       setSubmittingType('');
@@ -251,6 +253,44 @@ function RevealScreen({
   shareCode,
   selectedType,
 }) {
+  const [copyStatus, setCopyStatus] = useState('');
+
+  const buildDeepLink = () => {
+    const params = new URLSearchParams();
+    if (shareCode) params.set('code', shareCode);
+    if (selectedType) params.set('type', selectedType);
+    if (pendingToken) params.set('token', pendingToken);
+    return `hamme://open?${params.toString()}`;
+  };
+
+  const buildFlutterWebFallbackUrl = () => {
+    const params = new URLSearchParams();
+    if (shareCode) params.set('code', shareCode);
+    if (selectedType) params.set('type', selectedType);
+    if (pendingToken) params.set('token', pendingToken);
+
+    const base = flutterWebBaseUrl.replace(/\/+$/, '');
+    return `${base}/#/onboarding/deeplink?${params.toString()}`;
+  };
+
+  const handleCopyDeepLink = async () => {
+    const deepLink = buildDeepLink();
+    try {
+      await navigator.clipboard.writeText(deepLink);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = deepLink;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopyStatus('Copied deeplink');
+  };
+
   const handleReveal = () => {
     if (isExpired || (!pendingToken && !shareCode)) return;
 
@@ -258,17 +298,12 @@ function RevealScreen({
     const isAndroid = /android/i.test(userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
 
-    // Custom URI scheme for deep linking
-    const params = new URLSearchParams();
-    if (shareCode) params.set('code', shareCode);
-    if (selectedType) params.set('type', selectedType);
-    if (pendingToken) params.set('token', pendingToken);
-    const deepLink = `hamme://open?${params.toString()}`;
+    const deepLink = buildDeepLink();
     
     // Fallback store links (using Local LAN for now to avoid SSL/Config issues)
     const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.hamme.app';
     const appStoreUrl = 'https://apps.apple.com/app/hamme-play-games/id123456789';
-    const fallbackUrl = window.location.origin;
+    const fallbackUrl = buildFlutterWebFallbackUrl();
 
     window.location.href = deepLink;
 
@@ -331,11 +366,22 @@ function RevealScreen({
         <span className="text-[27px] font-light">→</span>
       </button>
 
+      <button
+        onClick={handleCopyDeepLink}
+        disabled={isExpired || !pendingToken}
+        className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white disabled:opacity-45"
+      >
+        Copy Deeplink
+      </button>
+      {copyStatus ? (
+        <p className="mt-2 text-[12px] font-bold text-white/75">{copyStatus}</p>
+      ) : null}
+
       <a
-        href="http://192.168.1.36:5173"
+        href={buildFlutterWebFallbackUrl()}
         className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white"
       >
-        Open Hamme App
+        Continue In Web App
       </a>
     </div>
   );

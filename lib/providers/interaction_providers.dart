@@ -67,6 +67,18 @@ final receivedInteractionsProvider = FutureProvider<List<InteractionRecord>>((re
   return items;
 });
 
+final pendingPlayInteractionsProvider = FutureProvider<List<InteractionRecord>>((ref) async {
+  final items = await ref.watch(receivedInteractionsProvider.future);
+  return items
+      .where(
+        (item) =>
+            item.fromUser != null &&
+            item.fromUser!.isNotEmpty &&
+            !item.respondedByCurrentUser,
+      )
+      .toList();
+});
+
 final interactionControllerProvider =
     AsyncNotifierProvider<InteractionController, void>(
       InteractionController.new,
@@ -139,12 +151,34 @@ class InteractionController extends AsyncNotifier<void> {
     }
   }
 
+  Future<InteractionResult> respondToUser({
+    required String targetUserId,
+    required InteractionType type,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final result = await _repository.respondToUser(
+        targetUserId: targetUserId,
+        type: type,
+      );
+      ref.invalidate(matchesProvider);
+      ref.invalidate(receivedInteractionsProvider);
+      ref.invalidate(pendingPlayInteractionsProvider);
+      state = const AsyncData(null);
+      return result;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
   Future<InteractionResult> finalizeInteraction(String token) async {
     state = const AsyncLoading();
     try {
       final result = await _repository.finalizeInteraction(token);
       ref.invalidate(matchesProvider);
       ref.invalidate(receivedInteractionsProvider);
+      ref.invalidate(pendingPlayInteractionsProvider);
       state = const AsyncData(null);
       return result;
     } catch (error, stackTrace) {

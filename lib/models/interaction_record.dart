@@ -10,8 +10,15 @@ abstract class InteractionRecord with _$InteractionRecord {
   const factory InteractionRecord({
     required String id,
     String? fromUser,
+    String? fromUserName,
+    String? fromUserUsername,
+    String? fromUserProfileImageUrl,
+    String? fromUserShareCode,
     required String toUser,
     required InteractionType type,
+    Map<String, dynamic>? metadata,
+    @Default(false) bool respondedByCurrentUser,
+    @Default(false) bool matched,
     required DateTime createdAt,
   }) = _InteractionRecord;
 

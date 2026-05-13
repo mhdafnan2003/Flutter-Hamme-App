@@ -41,9 +41,7 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
 
       final session = ref.read(authControllerProvider).value;
       final shareCode = session?.user.shareCode;
-      final shareLink = AppConstants.buildUserShareLink(
-        (shareCode != null && shareCode.isNotEmpty) ? shareCode : draft.username,
-      );
+      final shareLink = AppConstants.buildUserShareLink(shareCode);
 
       final socialShare = AppinioSocialShare();
       try {

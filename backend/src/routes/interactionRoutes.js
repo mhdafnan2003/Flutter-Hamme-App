@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.post(
   '/respond',
-  optionalAuthMiddleware,
+  authMiddleware,
   [
     body('targetUserId').trim().notEmpty(),
     body('type').isIn(['crush', 'friend', 'frenemy', 'ameny']),

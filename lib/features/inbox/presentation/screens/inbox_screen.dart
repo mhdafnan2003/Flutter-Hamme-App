@@ -66,6 +66,12 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pendingPlay = ref.watch(pendingPlayInteractionsProvider);
+    final playCount = pendingPlay.maybeWhen(
+      data: (items) => items.length,
+      orElse: () => null,
+    );
+
     return Scaffold(
       backgroundColor: TColors.white,
       body: SafeArea(
@@ -192,6 +198,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       ),
       bottomNavigationBar: HammeBottomNavBar(
         currentIndex: 2,
+        playBadgeCount: playCount,
         onTap: (index) {
           if (index == 0) {
             context.go('/home');

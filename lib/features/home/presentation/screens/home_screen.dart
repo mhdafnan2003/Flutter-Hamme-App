@@ -25,14 +25,13 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).value;
     final shareCode = session?.user.shareCode;
-    final draftUsername = ref.watch(onboardingDraftProvider).value?.username?.trim();
-    final shareLink = AppConstants.buildUserShareLink(
-      (shareCode != null && shareCode.isNotEmpty) ? shareCode : draftUsername,
-    );
+    final shareLink = AppConstants.buildUserShareLink(shareCode);
     final matches = ref.watch(matchesProvider);
     final received = ref.watch(receivedInteractionsProvider);
+    final pendingPlay = ref.watch(pendingPlayInteractionsProvider);
     final matchCount = matches.maybeWhen(data: (items) => items.length, orElse: () => null);
     final receivedCount = received.maybeWhen(data: (items) => items.length, orElse: () => null);
+    final playCount = pendingPlay.maybeWhen(data: (items) => items.length, orElse: () => null);
 
     return Scaffold(
       backgroundColor: TColors.white,
@@ -196,6 +195,7 @@ class HomeScreen extends ConsumerWidget {
       ),
       bottomNavigationBar: HammeBottomNavBar(
         currentIndex: 0,
+        playBadgeCount: playCount,
         onTap: (index) {
           if (index == 1) {
             context.go('/play');

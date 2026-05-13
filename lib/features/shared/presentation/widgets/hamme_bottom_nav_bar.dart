@@ -8,11 +8,13 @@ class HammeBottomNavBar extends StatelessWidget {
   const HammeBottomNavBar({
     required this.currentIndex,
     required this.onTap,
+    this.playBadgeCount,
     super.key,
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final int? playBadgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +61,38 @@ class HammeBottomNavBar extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: Opacity(
-                opacity: currentIndex == 1 ? 1 : 0.4,
-                child: const Icon(CupertinoIcons.flame_fill, size: 24),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Opacity(
+                    opacity: currentIndex == 1 ? 1 : 0.4,
+                    child: const Icon(CupertinoIcons.flame_fill, size: 24),
+                  ),
+                  if ((playBadgeCount ?? 0) > 0)
+                    Positioned(
+                      right: -12,
+                      top: -8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF3B30),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(
+                          playBadgeCount! > 99 ? '99+' : '$playBadgeCount',
+                          style: const TextStyle(
+                            color: TColors.white,
+                            fontFamily: TFonts.nunito,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             label: TTexts.navPlay,
