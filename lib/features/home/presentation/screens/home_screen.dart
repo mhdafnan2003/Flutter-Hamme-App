@@ -7,6 +7,7 @@ import 'package:hamme_app/core/constants/app_constants.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/providers/premium_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
@@ -32,13 +33,15 @@ class HomeScreen extends ConsumerWidget {
     final matchCount = matches.maybeWhen(data: (items) => items.length, orElse: () => null);
     final receivedCount = received.maybeWhen(data: (items) => items.length, orElse: () => null);
     final playCount = pendingPlay.maybeWhen(data: (items) => items.length, orElse: () => null);
+    final premium = ref.watch(premiumControllerProvider).value;
+    final isPro = premium?.isPro ?? false;
 
     return Scaffold(
       backgroundColor: TColors.white,
       body: SafeArea(
         child: Column(
           children: [
-            HammeTopBar(onLeftTap: () => context.push('/matches')),
+            HammeTopBar(onLeftTap: () => context.push('/matches'), isPro: isPro),
 
             Expanded(
               child: SingleChildScrollView(

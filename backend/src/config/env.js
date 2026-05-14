@@ -27,4 +27,10 @@ module.exports = {
   jwtRefreshTtl: process.env.JWT_REFRESH_TTL || '30d',
   enableSockets:
     process.env.ENABLE_SOCKETS === 'true' && !process.env.VERCEL,
+  googlePlayPackageName: process.env.GOOGLE_PLAY_PACKAGE_NAME || '',
+  googlePlayServiceAccountEmail:
+    process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL || '',
+  googlePlayServiceAccountPrivateKey:
+    process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY || '',
+  billingMockMode: process.env.BILLING_MOCK_MODE === 'true',
 };

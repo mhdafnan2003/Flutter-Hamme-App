@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_
 import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/providers/premium_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 
@@ -24,6 +26,13 @@ class ProScreen extends ConsumerStatefulWidget {
 class _ProScreenState extends ConsumerState<ProScreen> {
   bool _isSubmitting = false;
   String? _errorText;
+  final TextEditingController _manualController = TextEditingController();
+
+  @override
+  void dispose() {
+    _manualController.dispose();
+    super.dispose();
+  }
 
   Future<void> _continueToHome() async {
     if (_isSubmitting) return;
@@ -104,6 +113,14 @@ class _ProScreenState extends ConsumerState<ProScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final premiumState = ref.watch(premiumControllerProvider).value;
+    final isPro = premiumState?.isPro ?? false;
+    final isBusy = premiumState?.isBusy ?? false;
+    final message = premiumState?.message;
+    final products = premiumState?.productDetails ?? const [];
+    final productLabel =
+        products.isNotEmpty ? '${products.first.price} / ${products.first.title}' : null;
+
     return Scaffold(
       backgroundColor: TColors.white,
       body: SafeArea(
@@ -209,7 +226,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                   children: [
                     const SizedBox(height: 34),
                     const Text(
-                      'Unlock Unlimited\nAccess 🔒',
+                      'Unlock Unlimited\nAccess',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: TFonts.nunito,
@@ -234,21 +251,21 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                       child: const Column(
                         children: [
                           ProFeature(
-                            icon: '∞',
+                            icon: 'UNL',
                             title: 'Unlimited Play',
                             subtitle:
                                 'No waiting, Play every profile,\nanytime.',
                           ),
                           SizedBox(height: 28),
                           ProFeature(
-                            icon: '↩',
+                            icon: 'REV',
                             title: 'Unlimited Rewinds',
                             subtitle:
                                 'Picked wrong? Go back and change\nyour pick.',
                           ),
                           SizedBox(height: 28),
                           ProFeature(
-                            icon: '⚡',
+                            icon: 'VIP',
                             title: 'Priority Profile',
                             subtitle:
                                 'Appear first in queues of people you\nreacted to.',
@@ -278,6 +295,207 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                       ],
                     ),
                     const SizedBox(height: 18),
+                    if (isPro)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDFF5E8),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF2D9A59)),
+                        ),
+                        child: const Text(
+                          'PRO is active on this device/account.',
+                          style: TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A6C3D),
+                          ),
+                        ),
+                      ),
+                    if (productLabel != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          productLabel,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: TColors.darkGrey,
+                          ),
+                        ),
+                      ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed:
+                            isBusy
+                                ? null
+                                : () => ref
+                                    .read(premiumControllerProvider.notifier)
+                                    .purchasePro(),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: TColors.hammePrimaryDark,
+                            width: 2,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text(
+                          'Subscribe via Google Play',
+                          style: TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w800,
+                            color: TColors.hammePrimaryDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed:
+                            isBusy
+                                ? null
+                                : () => ref
+                                    .read(premiumControllerProvider.notifier)
+                                    .restorePurchases(),
+                        child: const Text(
+                          'Restore Purchases',
+                          style: TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w800,
+                            color: TColors.hammePrimaryDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (message != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: TColors.darkGrey,
+                        ),
+                      ),
+                    ],
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F7F7),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFDDDDDD)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Debug Premium Override',
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w800,
+                                color: TColors.hammePrimaryDark,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _manualController,
+                              decoration: const InputDecoration(
+                                hintText: 'Type true, false, or clear',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () {
+                                      final text =
+                                          _manualController.text.trim().toLowerCase();
+                                      if (text == 'true') {
+                                        ref
+                                            .read(
+                                              premiumControllerProvider.notifier,
+                                            )
+                                            .setManualOverride(true);
+                                      } else if (text == 'false') {
+                                        ref
+                                            .read(
+                                              premiumControllerProvider.notifier,
+                                            )
+                                            .setManualOverride(false);
+                                      } else {
+                                        ref
+                                            .read(
+                                              premiumControllerProvider.notifier,
+                                            )
+                                            .setManualOverride(null);
+                                      }
+                                    },
+                                    child: const Text('Apply'),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed:
+                                        () => ref
+                                            .read(
+                                              premiumControllerProvider.notifier,
+                                            )
+                                            .setManualOverride(null),
+                                    child: const Text('Clear Override'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed:
+                                        () => ref
+                                            .read(
+                                              premiumControllerProvider.notifier,
+                                            )
+                                            .debugVerifyMockPurchase(active: true),
+                                    child: const Text('Mock Backend PRO'),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed:
+                                        () => ref
+                                            .read(
+                                              premiumControllerProvider.notifier,
+                                            )
+                                            .debugVerifyMockPurchase(active: false),
+                                    child: const Text('Mock Backend OFF'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
                     GradientButton(
                       label: 'Continue',
                       onTap: _isSubmitting ? () {} : _continueToHome,
@@ -309,12 +527,18 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                       ),
                     ),
                     const SizedBox(height: 22),
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        FooterLink(label: 'Privacy'),
-                        FooterLink(label: 'Restore'),
-                        FooterLink(label: 'Terms'),
+                        const FooterLink(label: 'Privacy'),
+                        GestureDetector(
+                          onTap:
+                              () => ref
+                                  .read(premiumControllerProvider.notifier)
+                                  .restorePurchases(),
+                          child: const FooterLink(label: 'Restore'),
+                        ),
+                        const FooterLink(label: 'Terms'),
                       ],
                     ),
                     const SizedBox(height: 16),

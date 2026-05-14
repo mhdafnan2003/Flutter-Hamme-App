@@ -74,6 +74,7 @@ dependencies:
   app_links: ^6.3.3
   path_provider: ^2.1.5
   screenshot: ^3.0.0
+  in_app_purchase: ^3.2.0
 
   # Firebase (disabled on Windows — Firebase C++ SDK has linker issues with newer MSVC)
   # Uncomment when targeting Android / iOS:
