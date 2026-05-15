@@ -27,16 +27,6 @@ async function updateMe(userId, updates) {
     );
   }
 
-  if (normalizedUsername) {
-    const conflict = await User.exists({
-      _id: { $ne: userId },
-      $or: [{ username: normalizedUsername }, { shareCode: normalizedUsername }],
-    });
-    if (conflict) {
-      throw new ApiError(409, 'Username is not available.');
-    }
-  }
-
   const allowedUpdates = {
     name: updates.name,
     instagramId: updates.instagramId,
@@ -63,12 +53,7 @@ async function getPublicProfile(identifier) {
     throw new ApiError(404, 'Profile not found.');
   }
 
-  let user = await User.findOne({ username: normalizedValue });
-  if (user) {
-    return { user, matchedBy: 'username' };
-  }
-
-  user = await User.findOne({ shareCode: { $in: [rawValue, normalizedValue] } });
+  const user = await User.findOne({ shareCode: { $in: [rawValue, normalizedValue] } });
   if (user) {
     if (!user.profileImageUrl) {
       user.profileImageUrl = buildDefaultAvatarUrl(user.name);

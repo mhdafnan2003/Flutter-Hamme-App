@@ -57,14 +57,6 @@ async function signup({ name, email, password, instagramId, profileImageUrl, use
 
   const shareCode = await createUniqueShareCode(name);
   const normalizedUsername = normalizeUsername(username || instagramId);
-  if (normalizedUsername) {
-    const usernameConflict = await User.exists({
-      $or: [{ username: normalizedUsername }, { shareCode: normalizedUsername }],
-    });
-    if (usernameConflict) {
-      throw new ApiError(409, 'Username is not available.');
-    }
-  }
   const passwordHash = await bcrypt.hash(password, 12);
 
   const user = await User.create({
@@ -178,13 +170,6 @@ async function guestRegister({
       });
       return tokens;
     }
-  }
-
-  const usernameConflict = await User.exists({
-    $or: [{ username: normalizedUsername }, { shareCode: normalizedUsername }],
-  });
-  if (usernameConflict) {
-    throw new ApiError(409, 'Username is not available.');
   }
 
   const shareCode = await createUniqueShareCode(displayName);

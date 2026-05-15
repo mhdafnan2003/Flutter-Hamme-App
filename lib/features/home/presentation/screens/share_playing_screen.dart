@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hamme_app/core/constants/app_constants.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
@@ -154,19 +155,60 @@ Future<Uint8List> _captureStoryFromHiddenOverlay(
   }
 }
 
-class _SharePlayingScreenState extends ConsumerState<SharePlayingScreen> {
+class _SharePlayingScreenState extends ConsumerState<SharePlayingScreen>
+    with WidgetsBindingObserver {
+  bool _didEnterBackground = false;
+  bool _shareLaunchFinished = false;
+  bool _didExitLoader = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Start sharing automatically. Do not navigate away immediately because
     // it can interrupt share intents on some Android devices.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SharePlayingScreen.shareStory(context, ref);
+      _startShareFlow();
     });
   }
 
+  Future<void> _startShareFlow() async {
+    await SharePlayingScreen.shareStory(context, ref);
+    _shareLaunchFinished = true;
 
+    // If we never left app (share sheet canceled/not opened), exit now.
+    if (!_didEnterBackground) {
+      _exitLoader();
+    }
+  }
 
+  void _exitLoader() {
+    if (_didExitLoader || !mounted) return;
+    _didExitLoader = true;
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _didEnterBackground = true;
+    }
+    if (state == AppLifecycleState.resumed && _shareLaunchFinished) {
+      _exitLoader();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     // Show a minimal loader while capturing silently
