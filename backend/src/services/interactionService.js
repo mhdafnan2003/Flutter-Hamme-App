@@ -165,6 +165,18 @@ async function createAnonymousResponse({
     shareCode: targetUser.shareCode,
   });
 
+  await Interaction.create({
+    fromUser: null,
+    toUser: targetUser.id,
+    type: normalizedType,
+    metadata: {
+      source,
+      anonymous: true,
+      pendingToken: pending.pendingToken,
+      pendingReveal: true,
+    },
+  });
+
   console.info('[AnonymousResponse] created', {
     shareCode: targetUser.shareCode,
     type: normalizedType,
@@ -355,7 +367,7 @@ async function createPendingInteraction({
     expiresAt,
   });
 
-  // Auto-expire and convert to anonymous after 60s
+  // Auto-expire pending reveal token after TTL.
   setTimeout(async () => {
     const fs = require('fs');
     const logFile = require('path').join(process.cwd(), 'debug_expiry.log');
@@ -365,17 +377,9 @@ async function createPendingInteraction({
     try {
       const p = await PendingInteraction.findById(pending.id);
       if (p && p.status === 'pending') {
-        log(`Token ${deepLinkToken} expired. Converting to anonymous.`);
+        log(`Token ${deepLinkToken} expired.`);
         p.status = 'expired';
         await p.save();
-        
-        const created = await Interaction.create({
-          fromUser: null,
-          toUser: targetUser.id,
-          type: normalizedType,
-          metadata: { source, anonymous: true, expiredPending: true },
-        });
-        log(`Anonymous interaction created: ${created.id} for user ${targetUser.id}`);
       } else {
         log(`Token ${deepLinkToken} already ${p ? p.status : 'not found'}.`);
       }
@@ -418,12 +422,62 @@ async function finalizePendingInteraction({ token, currentUserId }) {
   pending.status = 'finalized';
   await pending.save();
 
-  // Convert to actual interaction
-  const result = await createInteractionByTargetId({
-    fromUserId: currentUserId,
-    targetUserId: pending.targetUserId,
+  const existingAnonymous = await Interaction.findOne({
+    toUser: pending.targetUserId,
     type: pending.type,
-  });
+    fromUser: null,
+    'metadata.pendingToken': token,
+  }).sort({ createdAt: -1 });
+
+  let result;
+  if (existingAnonymous) {
+    existingAnonymous.fromUser = currentUserId;
+    existingAnonymous.metadata = {
+      ...(existingAnonymous.metadata || {}),
+      anonymous: false,
+      pendingReveal: false,
+      finalizedFromPending: true,
+    };
+    await existingAnonymous.save();
+
+    const reciprocal = await Interaction.findOne({
+      fromUser: pending.targetUserId,
+      toUser: currentUserId,
+      type: pending.type,
+    });
+
+    let match = null;
+    if (reciprocal) {
+      const pair = buildCanonicalPair(currentUserId, pending.targetUserId);
+      match = await Match.findOneAndUpdate(
+        { userA: pair.userA, userB: pair.userB, type: pending.type },
+        {
+          userA: pair.userA,
+          userB: pair.userB,
+          type: pending.type,
+          triggeredBy: currentUserId,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      ).populate('userA userB');
+
+      const payload = serializeMatch(match, currentUserId);
+      emitMatchFound([currentUserId, pending.targetUserId], payload);
+    }
+
+    result = {
+      interaction: existingAnonymous.toJSON(),
+      matched: Boolean(match),
+      match: match ? serializeMatch(match, currentUserId) : null,
+      notification: match ? { type: 'match', matchId: match.id } : null,
+    };
+  } else {
+    // Backward compatibility for records created before pendingToken metadata existed.
+    result = await createInteractionByTargetId({
+      fromUserId: currentUserId,
+      targetUserId: pending.targetUserId,
+      type: pending.type,
+    });
+  }
 
   return result;
 }

@@ -96,7 +96,9 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
       });
     }
 
-    if (shareCode != null && interactionType != null) {
+    // Only use share-code flow when there is no reveal token.
+    // Deep links can include both token and code/type; token is authoritative.
+    if (token == null && shareCode != null && interactionType != null) {
       debugPrint('[DeferredInteraction] Auto-sending shareCode: $shareCode type=${interactionType.name}');
       Future.microtask(() async {
         try {
