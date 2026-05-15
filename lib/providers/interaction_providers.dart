@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 
@@ -41,14 +40,6 @@ final receivedInteractionsProvider = FutureProvider<List<InteractionRecord>>((re
     debugPrint('[Inbox] skipped fetch: no auth token');
     throw const AppException('You need to sign in to view interactions.');
   }
-
-  // Live polling every 3 seconds only if authenticated
-  final timer = Timer(const Duration(seconds: 3), () {
-    ref.invalidateSelf();
-  });
-  ref.onDispose(() {
-    timer.cancel();
-  });
 
   final items = await ref.watch(interactionRepositoryProvider).getReceivedInteractions();
   debugPrint('[Inbox] API success');

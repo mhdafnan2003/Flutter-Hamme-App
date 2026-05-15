@@ -263,7 +263,11 @@ class ApiService {
   }
 
   dynamic _decodeResponse(http.Response response) {
-    debugPrint('[Api] raw response (${response.statusCode}): ${response.body}');
+    if (kDebugMode) {
+      final body = response.body;
+      final preview = body.length > 500 ? '${body.substring(0, 500)}...(truncated)' : body;
+      debugPrint('[Api] raw response (${response.statusCode}): $preview');
+    }
     final hasBody = response.body.trim().isNotEmpty;
     final decodedBody = hasBody ? jsonDecode(response.body) : null;
 

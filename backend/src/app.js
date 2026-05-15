@@ -11,12 +11,17 @@ const notFound = require('./middleware/notFound');
 
 const app = express();
 const isVercel = Boolean(process.env.VERCEL);
+const trustProxyEnv = process.env.TRUST_PROXY;
 const isPrivateNetworkDevOrigin = (origin) =>
   /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(
     origin
   );
 
-if (isVercel) {
+if (trustProxyEnv === 'true') {
+  app.set('trust proxy', 1);
+} else if (trustProxyEnv === 'false') {
+  app.set('trust proxy', false);
+} else if (isVercel || env.nodeEnv !== 'production') {
   app.set('trust proxy', 1);
 }
 
@@ -57,6 +62,7 @@ app.use(
     standardHeaders: true,
     legacyHeaders: false,
     validate: {
+      xForwardedForHeader: false,
       forwardedHeader: false,
     },
   })
