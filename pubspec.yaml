@@ -112,8 +112,11 @@ flutter:
     - .env
     - assets/images/
     - assets/icons/
-    - assets/icons/instagram-ic.png
-    - assets/icons/snap-ic.png
+    - assets/icons/icon_filled/
+    - assets/icons/icon_line/
+    # - assets/icons/instagram-ic.png
+    # - assets/icons/snap-ic.png
+    # - assets/icons/Outbox Tray.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

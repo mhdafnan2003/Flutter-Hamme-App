@@ -9,7 +9,7 @@ class SkeletonMatchCard extends StatelessWidget {
     return Container(
       height: 56,
       decoration: BoxDecoration(
-        color: TColors.grey.withValues(alpha: 0.65),
+        color: const Color(0xFFEEEEEE),
         borderRadius: BorderRadius.circular(14),
       ),
     );

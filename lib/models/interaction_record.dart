@@ -14,6 +14,8 @@ abstract class InteractionRecord with _$InteractionRecord {
     String? fromUserUsername,
     String? fromUserProfileImageUrl,
     String? fromUserShareCode,
+    String? fromUserInstagramId,
+    String? fromUserSnapchatId,
     required String toUser,
     required InteractionType type,
     Map<String, dynamic>? metadata,

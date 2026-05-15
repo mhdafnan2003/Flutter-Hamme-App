@@ -145,16 +145,16 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                 children: [
                   Positioned(
                     top: 10,
-                    right: 20,
+                    left: 50,
                     child: Transform.rotate(
-                      angle: -0.05,
+                      angle: 0.0,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: TColors.hammePrimary,
+                          color: const Color(0xFFAC7AFF),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
@@ -170,9 +170,10 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                               TTexts.onboardingRecentPhoto,
                               style: TextStyle(
                                 fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w900,
                                 fontSize: 13,
                                 color: Colors.white,
+                                letterSpacing: -0.2,
                               ),
                             ),
                           ],
@@ -182,17 +183,17 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                   ),
 
                   Positioned(
-                    top: 50,
+                    top: 45,
                     left: 20,
                     child: Transform.rotate(
-                      angle: -0.05,
+                      angle: -0.07,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: TColors.hammePrimary,
+                          color: const Color(0xFFAC7AFF),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
@@ -208,9 +209,10 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                               TTexts.onboardingShowFace,
                               style: TextStyle(
                                 fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w900,
                                 fontSize: 13,
                                 color: Colors.white,
+                                letterSpacing: -0.2,
                               ),
                             ),
                           ],
@@ -220,11 +222,11 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                   ),
 
                   Positioned(
-                    top: 85,
+                    top: 80,
                     left: 140,
                     child: CustomPaint(
                       size: const Size(20, 15),
-                      painter: TrianglePainter(color: TColors.hammePrimary),
+                      painter: TrianglePainter(color: const Color(0xFFAC7AFF)),
                     ),
                   ),
 
@@ -278,16 +280,18 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                             bottom: 0,
                             right: 0,
                             child: Container(
-                              width: 42,
-                              height: 42,
+                              width: 46,
+                              height: 46,
                               decoration: const BoxDecoration(
-                                color: TColors.hammePrimary,
+                                color: Color(0xFF9E57FF),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
-                                CupertinoIcons.add,
-                                color: Colors.white,
-                                size: 24,
+                              child: Padding(
+                                padding: const EdgeInsets.all(10.0),
+                                child: Image.asset(
+                                  'assets/icons/icon_line/Plus.png',
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),

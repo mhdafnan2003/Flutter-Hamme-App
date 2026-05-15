@@ -125,28 +125,31 @@ class HomeProfileCard extends ConsumerWidget {
             child: SizedBox(
               width: 38,
               height: 38,
-              child: Image.asset(
-                draft.socialPlatform == TTexts.socialInstagram
-                    ? TImages.instagramIcon
-                    : TImages.snapchatIcon,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: draft.socialPlatform == TTexts.socialSnapchat
-                          ? TColors.snapchatYellow
-                          : TColors.hammePrimary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      draft.socialPlatform == TTexts.socialInstagram
-                          ? CupertinoIcons.camera_fill
-                          : CupertinoIcons.chat_bubble_fill,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  );
-                },
+              child: Padding(
+                padding: const EdgeInsets.all(6.0),
+                child: Image.asset(
+                  draft.socialPlatform == TTexts.socialInstagram
+                      ? TImages.instagramIcon
+                      : TImages.snapchatIcon,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: draft.socialPlatform == TTexts.socialSnapchat
+                            ? TColors.snapchatYellow
+                            : TColors.hammePrimary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        draft.socialPlatform == TTexts.socialInstagram
+                            ? CupertinoIcons.camera_fill
+                            : CupertinoIcons.chat_bubble_fill,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),

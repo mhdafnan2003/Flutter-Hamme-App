@@ -4,12 +4,12 @@ class PlatformPill extends StatelessWidget {
   const PlatformPill({
     super.key,
     required this.selected,
-    required this.icon,
+    required this.iconPath,
     required this.onTap,
   });
 
   final bool selected;
-  final IconData icon;
+  final String iconPath;
   final VoidCallback onTap;
 
   @override
@@ -17,16 +17,17 @@ class PlatformPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 116,
-        height: 40,
+        width: 100,
+        height: 34,
         decoration: BoxDecoration(
           color: selected ? Colors.white : const Color(0xFF606060),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(17),
         ),
-        child: Icon(
-          icon,
+        child: Image.asset(
+          iconPath,
+          width: 20,
+          height: 20,
           color: selected ? Colors.black : Colors.white,
-          size: 24,
         ),
       ),
     );

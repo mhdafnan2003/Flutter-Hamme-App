@@ -12,7 +12,9 @@ class TImages {
   static const String google = "assets/logos/google-icon.png";
   static const String facebook = "assets/logos/facebook-icon.png";
   static const String instagramIcon = "assets/icons/instagram-ic.png";
+  static const String instaOutline = "assets/icons/insta-outline.png";
   static const String snapchatIcon = "assets/icons/snap-ic.png";
+  static const String snapFill = "assets/icons/snap-fill.png";
 
   // -- Category Icons
   static const String sportIcon =

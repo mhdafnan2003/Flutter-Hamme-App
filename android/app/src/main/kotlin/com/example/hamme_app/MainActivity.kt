@@ -32,73 +32,74 @@ class MainActivity : FlutterActivity() {
                         result.error("INVALID_PATH", "imagePath is required", null)
                         return@setMethodCallHandler
                     }
-                    shareToInstagramStory(path, link, result)
+                    shareToSocialStory(path, link, "com.instagram.android", "com.instagram.share.ADD_TO_STORY", "content_url", result)
+                }
+                "shareToSnapchatStory" -> {
+                    val path = call.argument<String>("imagePath")
+                    val link = call.argument<String>("attributionUrl")
+                    if (path.isNullOrBlank()) {
+                        result.error("INVALID_PATH", "imagePath is required", null)
+                        return@setMethodCallHandler
+                    }
+                    shareToSocialStory(path, link, "com.snapchat.android", "com.snapchat.android.intent.action.ADD_STORY_CONTENT", "attachmentUrl", result)
                 }
                 "isInstagramInstalled" -> {
-                    val installed = isInstagramInstalled()
-                    Log.d(TAG, "Instagram installed: $installed")
-                    result.success(installed)
+                    result.success(isPackageInstalled("com.instagram.android"))
+                }
+                "isSnapchatInstalled" -> {
+                    result.success(isPackageInstalled("com.snapchat.android"))
                 }
                 else -> result.notImplemented()
             }
         }
     }
 
-    private fun isInstagramInstalled(): Boolean {
+    private fun isPackageInstalled(packageName: String): Boolean {
         return try {
-            packageManager.getPackageInfo(INSTAGRAM_PACKAGE, 0)
+            packageManager.getPackageInfo(packageName, 0)
             true
         } catch (_: Exception) {
             false
         }
     }
 
-    private fun shareToInstagramStory(imagePath: String, attributionUrl: String?, result: MethodChannel.Result) {
+    private fun shareToSocialStory(imagePath: String, attributionUrl: String?, packageName: String, action: String, urlKey: String, result: MethodChannel.Result) {
         try {
-            Log.d(TAG, "shareToInstagramStory called")
-            Log.d(TAG, "Generated file path: $imagePath")
+            Log.d(TAG, "shareToSocialStory called for $packageName")
             val imageFile = File(imagePath)
-            val exists = imageFile.exists()
-            Log.d(TAG, "File exists: $exists")
-            if (!exists) {
+            if (!imageFile.exists()) {
                 result.error("FILE_NOT_FOUND", "PNG file does not exist at path: $imagePath", null)
                 return
             }
 
             val authority = "${applicationContext.packageName}.fileprovider"
             val contentUri: Uri = FileProvider.getUriForFile(applicationContext, authority, imageFile)
-            Log.d(TAG, "Generated content URI: $contentUri")
-            Log.d(TAG, "Using FileProvider authority: $authority")
 
-            val intent = Intent("com.instagram.share.ADD_TO_STORY").apply {
+            val intent = Intent(action).apply {
                 setDataAndType(contentUri, "image/png")
                 flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                setPackage(INSTAGRAM_PACKAGE)
+                setPackage(packageName)
                 if (!attributionUrl.isNullOrBlank()) {
-                    putExtra("content_url", attributionUrl)
+                    putExtra(urlKey, attributionUrl)
                 }
             }
-            Log.d(TAG, "Intent created with action=com.instagram.share.ADD_TO_STORY type=image/png package=$INSTAGRAM_PACKAGE")
 
             val canHandle = intent.resolveActivity(packageManager) != null
-            Log.d(TAG, "resolveActivity(packageManager) != null: $canHandle")
             if (!canHandle) {
-                result.success("INSTAGRAM_INTENT_NOT_RESOLVED")
+                result.success("${packageName.uppercase()}_INTENT_NOT_RESOLVED")
                 return
             }
 
             grantUriPermission(
-                INSTAGRAM_PACKAGE,
+                packageName,
                 contentUri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
-            Log.d(TAG, "Granted URI read permission to $INSTAGRAM_PACKAGE")
 
             startActivity(intent)
-            Log.d(TAG, "Instagram Story activity launched")
             result.success("SUCCESS")
         } catch (e: Exception) {
-            Log.e(TAG, "Exception while launching Instagram Story", e)
+            Log.e(TAG, "Exception while launching social story share", e)
             result.error("LAUNCH_FAILED", e.message, e.stackTraceToString())
         }
     }

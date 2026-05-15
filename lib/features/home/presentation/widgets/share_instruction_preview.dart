@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 
 class ShareInstructionPreview extends StatelessWidget {
-  const ShareInstructionPreview({super.key, required this.step});
+  const ShareInstructionPreview({
+    super.key,
+    required this.step,
+    required this.isInstagram,
+  });
 
   final int step;
+  final bool isInstagram;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(17),
       child: Container(
-        width: 280,
-        height: 224,
+        width: 240,
+        height: 180,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFF111111), Color(0xFF9A5B36), Color(0xFF52210E)],

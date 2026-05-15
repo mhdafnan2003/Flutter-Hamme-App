@@ -6,12 +6,12 @@ class ShareActionButton extends StatelessWidget {
   const ShareActionButton({
     super.key,
     required this.label,
-    required this.showInstagram,
+    this.iconPath,
     required this.onTap,
   });
 
   final String label;
-  final bool showInstagram;
+  final String? iconPath;
   final VoidCallback onTap;
 
   @override
@@ -20,27 +20,27 @@ class ShareActionButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        height: 56,
+        height: 50,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF9150FF), Color(0xFF8848F4)],
           ),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(25),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (showInstagram) ...[
-              const Icon(CupertinoIcons.camera, color: Colors.white, size: 22),
-              const SizedBox(width: 4),
+            if (iconPath != null) ...[
+              Image.asset(iconPath!, width: 22, height: 22),
+              const SizedBox(width: 8),
             ],
             Text(
               label,
               style: const TextStyle(
                 fontFamily: TFonts.nunito,
                 fontWeight: FontWeight.w800,
-                fontSize: 21,
+                fontSize: 19,
                 color: Colors.white,
               ),
             ),

@@ -106,224 +106,233 @@ class _ProScreenState extends ConsumerState<ProScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: TColors.white,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            SizedBox(
-              height: 160,
-              child: Stack(
-                children: [
-                  ClipPath(
-                    clipper: HeaderCurveClipper(),
-                    child: Container(
-                      height: 160,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            TColors.hammePrimary,
-                            TColors.hammePrimaryDark,
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 78,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Hamme',
-                          style: TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: TColors.white,
-                            shadows: [
-                              Shadow(
-                                offset: Offset(2, 2),
-                                color: TColors.black,
-                              ),
-                              Shadow(
-                                offset: Offset(-2, 2),
-                                color: TColors.black,
-                              ),
-                              Shadow(
-                                offset: Offset(2, -2),
-                                color: TColors.black,
-                              ),
-                              Shadow(
-                                offset: Offset(-2, -2),
-                                color: TColors.black,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: TColors.white,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Text(
-                            'PRO',
-                            style: TextStyle(
-                              fontFamily: TFonts.nunito,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              color: TColors.hammePrimaryDark,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    top: 78,
-                    right: 28,
-                    child: GestureDetector(
-                      onTap: _continueToHome,
-                      child: const Icon(
-                        Icons.close_rounded,
-                        color: TColors.white,
-                        size: 30,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 34),
-                    const Text(
-                      'Unlock Unlimited\nAccess 🔒',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontSize: 28,
-                        height: 1.25,
-                        fontWeight: FontWeight.w900,
-                        color: TColors.hammePrimaryDark,
-                      ),
-                    ),
-                    const SizedBox(height: 34),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 24,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEDEBFA),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: TColors.hammePrimaryDark),
-                      ),
-                      child: const Column(
-                        children: [
-                          ProFeature(
-                            icon: '∞',
-                            title: 'Unlimited Play',
-                            subtitle:
-                                'No waiting, Play every profile,\nanytime.',
-                          ),
-                          SizedBox(height: 28),
-                          ProFeature(
-                            icon: '↩',
-                            title: 'Unlimited Rewinds',
-                            subtitle:
-                                'Picked wrong? Go back and change\nyour pick.',
-                          ),
-                          SizedBox(height: 28),
-                          ProFeature(
-                            icon: '⚡',
-                            title: 'Priority Profile',
-                            subtitle:
-                                'Appear first in queues of people you\nreacted to.',
-                          ),
+      body: Column(
+        children: [
+          SizedBox(
+            height: 140,
+            child: Stack(
+              children: [
+                ClipPath(
+                  clipper: HeaderCurveClipper(),
+                  child: Container(
+                    height: 140,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFF9E57FF),
+                          Color(0xFF8840FF),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 36),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        AvatarBubble(label: 'N', color: Color(0xFFFA3F8F)),
-                        AvatarBubble(label: 'K', color: Color(0xFF1BD66B)),
-                        AvatarBubble(label: 'A', color: Color(0xFF3FA7FF)),
-                        AvatarBubble(label: 'S', color: Color(0xFFFFCB36)),
-                        AvatarBubble(label: 'R', color: Color(0xFFFF5252)),
-                        SizedBox(width: 10),
-                        Text(
-                          '1000+ went PRO today',
-                          style: TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: TColors.darkGrey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    GradientButton(
-                      label: 'Continue',
-                      onTap: _isSubmitting ? () {} : _continueToHome,
-                    ),
-                    if (_isSubmitting) ...[
-                      const SizedBox(height: 10),
-                      const CircularProgressIndicator(strokeWidth: 2),
-                    ],
-                    if (_errorText != null) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        _errorText!,
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    const Text(
-                      'pro renews for \$6.99/wk',
-                      style: TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: TColors.darkGrey,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        FooterLink(label: 'Privacy'),
-                        FooterLink(label: 'Restore'),
-                        FooterLink(label: 'Terms'),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                  ),
                 ),
+                Positioned(
+                  top: 50,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/Hammepro logo.png',
+                        height: 38,
+                        fit: BoxFit.contain,
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 46,
+                  right: 24,
+                  child: GestureDetector(
+                    onTap: _continueToHome,
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: TColors.white,
+                      size: 26,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  const Spacer(flex: 2),
+                  const Text(
+                    'Unlock Unlimited\nAccess 🔒',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontSize: 28,
+                      height: 1.1,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFFCE00E6),
+                    ),
+                  ),
+                  const Spacer(flex: 2),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F0FD),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFFE2DBFF),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Column(
+                      children: [
+                        ProFeature(
+                          icon: Image(
+                            image: AssetImage('assets/icons/Infinity.png'),
+                            width: 28,
+                            height: 28,
+                          ),
+                          title: 'Unlimited Play',
+                          subtitle:
+                              'No waiting, Play every profile,\nanytime.',
+                        ),
+                        SizedBox(height: 12),
+                        ProFeature(
+                          icon: Image(
+                            image: AssetImage(
+                              'assets/icons/Right Arrow Curving Left.png',
+                            ),
+                            width: 28,
+                            height: 28,
+                          ),
+                          title: 'Unlimited Rewinds',
+                          subtitle:
+                              'Picked wrong? Go back and change\nyour pick.',
+                        ),
+                        SizedBox(height: 12),
+                        ProFeature(
+                          icon: Image(
+                            image: AssetImage('assets/icons/High Voltage.png'),
+                            width: 28,
+                            height: 28,
+                          ),
+                          title: 'Priority Profile',
+                          subtitle:
+                              'Appear first in queues of people you\nreacted to.',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(flex: 3),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AvatarBubble(label: 'N', color: Color(0xFFFA3F8F)),
+                      AvatarBubble(label: 'K', color: Color(0xFF1BD66B)),
+                      AvatarBubble(label: 'A', color: Color(0xFF3FA7FF)),
+                      AvatarBubble(label: 'S', color: Color(0xFFFFCB36)),
+                      AvatarBubble(label: 'R', color: Color(0xFFFF5252)),
+                      SizedBox(width: 12),
+                      Text(
+                        '1000+ went PRO today',
+                        style: TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: TColors.darkGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(flex: 1),
+                  Container(
+                    width: double.infinity,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(29),
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF9E57FF),
+                          Color(0xFF8B44FF),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF9E57FF).withValues(alpha: 0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? () {} : _continueToHome,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(29),
+                        ),
+                      ),
+                      child: const Text(
+                        'Continue',
+                        style: TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_isSubmitting) ...[
+                    const SizedBox(height: 6),
+                    const CircularProgressIndicator(strokeWidth: 2),
+                  ],
+                  if (_errorText != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _errorText!,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontFamily: TFonts.nunito,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  const Spacer(flex: 1),
+                  const Text(
+                    'pro renews for \$6.99/wk',
+                    style: TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: TColors.darkGrey,
+                    ),
+                  ),
+                  const Spacer(flex: 1),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      FooterLink(label: 'Privacy'),
+                      FooterLink(label: 'Restore'),
+                      FooterLink(label: 'Terms'),
+                    ],
+                  ),
+                  const Spacer(flex: 2),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

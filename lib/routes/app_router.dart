@@ -42,7 +42,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/onboarding/social_media',
         builder: (_, _) => const SocialMediaScreen(),
       ),
-      GoRoute(path: '/onboarding/pro', builder: (_, _) => const ProScreen()),
+      GoRoute(path: '/pro', builder: (_, _) => const ProScreen()),
       GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
       GoRoute(path: '/matches', builder: (_, _) => const MatchesScreen()),
       GoRoute(path: '/inbox', builder: (_, _) => const InboxScreen()),
@@ -52,7 +52,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/share/playing',
         builder: (context, state) {
           final autoShare = state.uri.queryParameters['autoShare'] == 'true';
-          return SharePlayingScreen(autoShare: autoShare);
+          final platform = state.uri.queryParameters['platform'];
+          return SharePlayingScreen(autoShare: autoShare, platform: platform);
         },
       ),
     ],

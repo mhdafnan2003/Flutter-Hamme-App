@@ -26,11 +26,7 @@ class HomeScreen extends ConsumerWidget {
     final session = ref.watch(authControllerProvider).value;
     final shareCode = session?.user.shareCode;
     final shareLink = AppConstants.buildUserShareLink(shareCode);
-    final matches = ref.watch(matchesProvider);
-    final received = ref.watch(receivedInteractionsProvider);
     final pendingPlay = ref.watch(pendingPlayInteractionsProvider);
-    final matchCount = matches.maybeWhen(data: (items) => items.length, orElse: () => null);
-    final receivedCount = received.maybeWhen(data: (items) => items.length, orElse: () => null);
     final playCount = pendingPlay.maybeWhen(data: (items) => items.length, orElse: () => null);
 
     return Scaffold(
@@ -47,20 +43,6 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     const SizedBox(height: 60),
                     const HomeProfileCard(),
-
-                    if (matchCount != null || receivedCount != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(
-                          'Matches: ${matchCount ?? '-'} • Reactions: ${receivedCount ?? '-'}',
-                          style: const TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            color: TColors.darkGrey,
-                          ),
-                        ),
-                      ),
 
                     const SizedBox(height: 24),
 
@@ -93,11 +75,12 @@ class HomeScreen extends ConsumerWidget {
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(
-                                CupertinoIcons.link,
+                            children: [
+                              Image.asset(
+                                'assets/icons/link.png',
+                                width: 18,
+                                height: 18,
                                 color: TColors.hammePrimaryDark,
-                                size: 18,
                               ),
                               SizedBox(width: 6),
                               Text(

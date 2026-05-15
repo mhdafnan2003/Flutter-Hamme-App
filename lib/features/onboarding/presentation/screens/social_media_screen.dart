@@ -114,7 +114,9 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               TTexts.socialSnapchat,
                               style: TextStyle(
                                 fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: !_isInstagramSelected
+                                    ? FontWeight.w900
+                                    : FontWeight.w700,
                                 fontSize: 16,
                                 color:
                                     !_isInstagramSelected
@@ -135,7 +137,9 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               TTexts.socialInstagram,
                               style: TextStyle(
                                 fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: _isInstagramSelected
+                                    ? FontWeight.w900
+                                    : FontWeight.w700,
                                 fontSize: 16,
                                 color:
                                     _isInstagramSelected

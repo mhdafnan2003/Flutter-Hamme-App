@@ -267,7 +267,7 @@ async function createAnonymousInteraction({ targetUserId, type, source = 'web' }
 async function getReceivedInteractions(userId) {
   const interactions = await Interaction.find({ toUser: userId })
     .sort({ createdAt: -1 })
-    .populate('fromUser', 'name username instagramId profileImageUrl shareCode');
+    .populate('fromUser', 'name username instagramId snapchatId profileImageUrl shareCode');
 
   const voterIds = [
     ...new Set(
@@ -319,6 +319,8 @@ async function getReceivedInteractions(userId) {
       fromUserUsername: fromUser?.username || null,
       fromUserProfileImageUrl: fromUser?.profileImageUrl || null,
       fromUserShareCode: fromUser?.shareCode || null,
+      fromUserInstagramId: fromUser?.instagramId || null,
+      fromUserSnapchatId: fromUser?.snapchatId || null,
       toUser: interaction.toUser.toString(),
       type: interaction.type,
       metadata: interaction.metadata || null,

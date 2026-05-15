@@ -29,7 +29,7 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final data = ShareInstructionData.forStep(_step);
+    final data = ShareInstructionData.forStep(_step, isInstagram: _isInstagram);
 
     return Scaffold(
       backgroundColor: const Color(0xFF5F5F5F),
@@ -39,11 +39,11 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
         decoration: BoxDecoration(
           gradient: RadialGradient(
             center: Alignment.topCenter,
-            radius: 1.25,
+            radius: 1.5,
             colors: [
-              Colors.white.withValues(alpha: 0.18),
-              const Color(0xFF3D3545).withValues(alpha: 0.84),
-              const Color(0xFF777777),
+              const Color(0xFF4A4A4A),
+              const Color(0xFF2C2C2C),
+              const Color(0xFF1A1A1A),
             ],
           ),
         ),
@@ -73,23 +73,24 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 393),
-                  child: SingleChildScrollView(
+                  child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 88),
+                        const Spacer(flex: 1),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             PlatformPill(
                               selected: _isInstagram,
-                              icon: CupertinoIcons.camera,
+                              iconPath: 'assets/icons/insta-outline.png',
                               onTap: () => setState(() => _isInstagram = true),
                             ),
                             const SizedBox(width: 28),
                             PlatformPill(
                               selected: !_isInstagram,
-                              icon: Icons.snapchat,
+                              iconPath: 'assets/icons/snap-fill.png',
                               onTap: () => setState(() => _isInstagram = false),
                             ),
                           ],
@@ -100,20 +101,34 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                           activeStep: _step,
                           totalSteps: 4,
                           instructionTitle: ShareInstructionTitle(data: data),
-                          image: ShareInstructionPreview(step: _step),
-                            action: ShareActionButton(
+                          image: ShareInstructionPreview(
+                            step: _step,
+                            isInstagram: _isInstagram,
+                          ),
+                          action: ShareActionButton(
                             label: _step == 4 ? 'Share' : 'Next Step',
-                            showInstagram: _step == 4,
+                            iconPath: _step == 4
+                                ? (_isInstagram
+                                    ? 'assets/icons/insta-outline.png'
+                                    : 'assets/icons/snap-fill.png')
+                                : null,
                             onTap:
                                 _step == 4
                                     ? () {
-                                        ref.read(shareTutorialCompletionProvider.notifier).markComplete();
-                                        context.go('/share/playing?autoShare=true');
+                                        ref
+                                            .read(
+                                              shareTutorialCompletionProvider
+                                                  .notifier,
+                                            )
+                                            .markComplete();
+                                        context.go(
+                                          '/share/playing?autoShare=true&platform=${_isInstagram ? 'instagram' : 'snapchat'}',
+                                        );
                                       }
                                     : _nextStep,
                           ),
                         ),
-                        const SizedBox(height: 108),
+                        const Spacer(flex: 1),
                       ],
                     ),
                   ),
