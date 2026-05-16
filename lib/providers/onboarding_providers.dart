@@ -81,6 +81,16 @@ class OnboardingDraftNotifier extends AsyncNotifier<OnboardingDraft> {
     await prefs.setString(_profileImageKey, url);
     state = AsyncData(state.value!.copyWith(profileImageUrl: url));
   }
+
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_nameKey);
+    await prefs.remove(_birthdayKey);
+    await prefs.remove(_socialPlatformKey);
+    await prefs.remove(_usernameKey);
+    await prefs.remove(_profileImageKey);
+    state = const AsyncData(OnboardingDraft());
+  }
 }
 
 final onboardingDraftProvider =

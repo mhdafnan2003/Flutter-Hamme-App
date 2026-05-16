@@ -16,12 +16,10 @@ import '../features/onboarding/presentation/screens/pro_screen.dart';
 import '../features/onboarding/presentation/screens/social_media_screen.dart';
 import '../features/onboarding/presentation/screens/splash_screen.dart';
 import '../providers/auth_providers.dart';
-import '../providers/onboarding_providers.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
   final authStatus = ref.watch(authStatusProvider);
-  final onboardingCompletionState = ref.watch(onboardingCompletionProvider);
 
   return GoRouter(
     initialLocation: '/splash',
@@ -57,14 +55,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (_, state) {
-      final isLoading = authStatus == AuthStatus.loading || onboardingCompletionState.isLoading;
+      final isLoading = authStatus == AuthStatus.loading;
       final path = state.matchedLocation;
-      final isOnboardingComplete = onboardingCompletionState.value ?? false;
       final isOnboardingRoute = path.startsWith('/onboarding');
+      final isAuthenticated = authStatus == AuthStatus.authenticated;
 
       debugPrint(
         '[Router] redirect check: path=$path, isLoading=$isLoading, '
-        'onboardingComplete=$isOnboardingComplete, hasSession=${authState.value != null}, '
+        'hasSession=${authState.value != null}, '
         'authStatus=$authStatus',
       );
 
@@ -74,14 +72,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (path == '/splash') {
-        if (authStatus == AuthStatus.authenticated && isOnboardingComplete) {
-          return '/home';
-        }
-        return '/onboarding/deeplink';
+        return isAuthenticated ? '/home' : '/onboarding/deeplink';
       }
 
-      if (!isLoading && isOnboardingComplete && isOnboardingRoute) {
+      if (!isLoading && isAuthenticated && isOnboardingRoute) {
         return '/home';
+      }
+
+      if (!isLoading && !isAuthenticated && !isOnboardingRoute) {
+        return '/onboarding/deeplink';
       }
 
       return null;

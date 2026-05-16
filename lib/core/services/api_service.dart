@@ -275,10 +275,23 @@ class ApiService {
       return decodedBody;
     }
 
-    final message =
-        decodedBody is Map<String, dynamic>
-            ? decodedBody['message'] as String? ?? 'Unexpected request failure.'
-            : 'Unexpected request failure.';
+    String message = 'Unexpected request failure.';
+    if (decodedBody is Map<String, dynamic>) {
+      message = decodedBody['message'] as String? ?? message;
+      final details = decodedBody['details'];
+      if (details is List && details.isNotEmpty) {
+        final first = details.first;
+        if (first is Map<String, dynamic>) {
+          final detailMsg = first['msg']?.toString();
+          final detailField = first['path']?.toString();
+          if (detailMsg != null && detailMsg.isNotEmpty) {
+            message = detailField != null && detailField.isNotEmpty
+                ? '$detailField: $detailMsg'
+                : detailMsg;
+          }
+        }
+      }
+    }
 
     throw AppException(message, statusCode: response.statusCode);
   }

@@ -75,6 +75,11 @@ final interactionControllerProvider =
       InteractionController.new,
     );
 
+final Set<String> _deferredFinalizeInFlight = <String>{};
+final Set<String> _deferredFinalizeProcessed = <String>{};
+final Set<String> _deferredShareInFlight = <String>{};
+final Set<String> _deferredShareProcessed = <String>{};
+
 // Provider that listens for auth and deferred token to trigger finalize automatically
 final deferredInteractionFinalizerProvider = Provider<void>((ref) {
   final authStatus = ref.watch(authStatusProvider);
@@ -85,13 +90,21 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
 
   if (authStatus == AuthStatus.authenticated && onboardingComplete) {
     if (token != null) {
+      if (_deferredFinalizeInFlight.contains(token) ||
+          _deferredFinalizeProcessed.contains(token)) {
+        return;
+      }
+      _deferredFinalizeInFlight.add(token);
       debugPrint('[DeferredInteraction] Auto-finalizing token: $token');
       Future.microtask(() async {
         try {
           await ref.read(interactionControllerProvider.notifier).finalizeInteraction(token);
+          _deferredFinalizeProcessed.add(token);
           ref.read(deferredInteractionTokenProvider.notifier).state = null;
         } catch (e) {
           debugPrint('[DeferredInteraction] Finalize failed: $e');
+        } finally {
+          _deferredFinalizeInFlight.remove(token);
         }
       });
     }
@@ -99,16 +112,25 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
     // Only use share-code flow when there is no reveal token.
     // Deep links can include both token and code/type; token is authoritative.
     if (token == null && shareCode != null && interactionType != null) {
+      final dedupeKey = '${shareCode.toLowerCase()}::${interactionType.name}';
+      if (_deferredShareInFlight.contains(dedupeKey) ||
+          _deferredShareProcessed.contains(dedupeKey)) {
+        return;
+      }
+      _deferredShareInFlight.add(dedupeKey);
       debugPrint('[DeferredInteraction] Auto-sending shareCode: $shareCode type=${interactionType.name}');
       Future.microtask(() async {
         try {
           await ref
               .read(interactionControllerProvider.notifier)
               .sendInteraction(shareCode: shareCode, type: interactionType);
+          _deferredShareProcessed.add(dedupeKey);
           ref.read(deferredShareCodeProvider.notifier).state = null;
           ref.read(deferredInteractionTypeProvider.notifier).state = null;
         } catch (e) {
           debugPrint('[DeferredInteraction] ShareCode send failed: $e');
+        } finally {
+          _deferredShareInFlight.remove(dedupeKey);
         }
       });
     }

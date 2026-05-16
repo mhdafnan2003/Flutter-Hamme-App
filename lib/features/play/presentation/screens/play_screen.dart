@@ -10,11 +10,41 @@ import '../../../shared/presentation/widgets/hamme_bottom_nav_bar.dart';
 import '../../../shared/presentation/widgets/hamme_top_bar.dart';
 import '../widgets/play_empty_state.dart';
 
-class PlayScreen extends ConsumerWidget {
+class PlayScreen extends ConsumerStatefulWidget {
   const PlayScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlayScreen> createState() => _PlayScreenState();
+}
+
+class _PlayScreenState extends ConsumerState<PlayScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(receivedInteractionsProvider);
+      ref.invalidate(pendingPlayInteractionsProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(receivedInteractionsProvider);
+      ref.invalidate(pendingPlayInteractionsProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pending = ref.watch(pendingPlayInteractionsProvider);
     final controller = ref.watch(interactionControllerProvider);
 

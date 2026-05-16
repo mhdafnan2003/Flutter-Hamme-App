@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
+import 'package:hamme_app/core/utils/app_exception.dart';
 import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
@@ -91,7 +92,9 @@ class _ProScreenState extends ConsumerState<ProScreen> {
       debugPrint('Onboarding completion failed: $e');
       if (!mounted) return;
       setState(() {
-        _errorText = 'Could not complete setup. Please try again.';
+        _errorText = e is AppException
+            ? e.message
+            : 'Could not complete setup. Please try again.';
       });
     } finally {
       if (mounted) {

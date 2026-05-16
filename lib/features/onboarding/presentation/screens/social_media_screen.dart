@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
@@ -19,6 +20,7 @@ class SocialMediaScreen extends ConsumerStatefulWidget {
 class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
   final TextEditingController _usernameController = TextEditingController();
   bool _isInstagramSelected = true;
+  String? _usernameError;
 
   @override
   void initState() {
@@ -160,6 +162,22 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                 autofocus: true,
                 cursorColor: TColors.black,
                 textAlign: TextAlign.center,
+                textInputAction: TextInputAction.done,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9._]')),
+                ],
+                onChanged: (_) {
+                  final normalized = _usernameController.text.toLowerCase();
+                  if (_usernameController.text != normalized) {
+                    _usernameController.value = _usernameController.value.copyWith(
+                      text: normalized,
+                      selection: TextSelection.collapsed(offset: normalized.length),
+                    );
+                  }
+                  if (_usernameError != null) {
+                    setState(() => _usernameError = null);
+                  }
+                },
                 style: const TextStyle(
                   fontFamily: TFonts.nunito,
                   fontWeight: FontWeight.w600,
@@ -178,6 +196,19 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                 ),
               ),
             ),
+            if (_usernameError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _usernameError!,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontFamily: TFonts.nunito,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
 
             const Spacer(),
 
@@ -186,6 +217,21 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
               child: GradientButton(
                 label: TTexts.next,
                 onTap: () {
+                  final username = _usernameController.text.trim().toLowerCase();
+                  final usernameRegex = RegExp(r'^[a-z0-9._]+$');
+                  if (username.length < 2 || username.length > 30) {
+                    setState(() {
+                      _usernameError = 'Username must be 2 to 30 characters long.';
+                    });
+                    return;
+                  }
+                  if (!usernameRegex.hasMatch(username)) {
+                    setState(() {
+                      _usernameError =
+                          'Username can only contain lowercase letters, numbers, dots, and underscores.';
+                    });
+                    return;
+                  }
                   ref
                       .read(onboardingDraftProvider.notifier)
                       .setSocial(
@@ -193,7 +239,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                             _isInstagramSelected
                                 ? TTexts.socialInstagram
                                 : TTexts.socialSnapchat,
-                        username: _usernameController.text.trim(),
+                        username: username,
                       );
                   context.go('/onboarding/pro');
                 },

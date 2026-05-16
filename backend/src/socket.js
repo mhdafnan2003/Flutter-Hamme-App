@@ -3,9 +3,11 @@ const { Server } = require('socket.io');
 const env = require('./config/env');
 
 let ioInstance = null;
+const normalizeOrigin = (origin) =>
+  origin?.trim().replace(/\/+$/, '').toLowerCase();
 const isPrivateNetworkDevOrigin = (origin) =>
   /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(
-    origin
+    normalizeOrigin(origin) || ''
   );
 
 function initializeSocket(server) {
@@ -14,14 +16,22 @@ function initializeSocket(server) {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
         if (env.clientOrigin === '*') return callback(null, true);
+        const normalizedOrigin = normalizeOrigin(origin);
 
         const isExplicitlyAllowed =
-          Array.isArray(env.clientOrigin) && env.clientOrigin.includes(origin);
+          Array.isArray(env.clientOrigin) &&
+          env.clientOrigin.some(
+            (allowedOrigin) =>
+              normalizeOrigin(allowedOrigin) === normalizedOrigin
+          );
         const isLocalhostDevOrigin =
           env.nodeEnv !== 'production' &&
-          /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+          /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(
+            normalizedOrigin || ''
+          );
         const isLanDevOrigin =
-          env.nodeEnv !== 'production' && isPrivateNetworkDevOrigin(origin);
+          env.nodeEnv !== 'production' &&
+          isPrivateNetworkDevOrigin(normalizedOrigin);
 
         if (isExplicitlyAllowed || isLocalhostDevOrigin || isLanDevOrigin) {
           return callback(null, true);

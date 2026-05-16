@@ -18,6 +18,7 @@ class NameScreen extends ConsumerStatefulWidget {
 
 class _NameScreenState extends ConsumerState<NameScreen> {
   final TextEditingController _nameController = TextEditingController();
+  String? _nameError;
 
   @override
   void initState() {
@@ -65,6 +66,11 @@ class _NameScreenState extends ConsumerState<NameScreen> {
                 autofocus: true,
                 cursorColor: TColors.black,
                 textAlign: TextAlign.center,
+                onChanged: (_) {
+                  if (_nameError != null) {
+                    setState(() => _nameError = null);
+                  }
+                },
                 style: const TextStyle(
                   fontFamily: TFonts.nunito,
                   fontWeight: FontWeight.w600,
@@ -83,6 +89,18 @@ class _NameScreenState extends ConsumerState<NameScreen> {
                 ),
               ),
             ),
+            if (_nameError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _nameError!,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontFamily: TFonts.nunito,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
 
             const Spacer(),
 
@@ -102,9 +120,16 @@ class _NameScreenState extends ConsumerState<NameScreen> {
               child: GradientButton(
                 label: TTexts.next,
                 onTap: () {
+                  final name = _nameController.text.trim();
+                  if (name.length < 2 || name.length > 80) {
+                    setState(() {
+                      _nameError = 'Display name must be 2 to 80 characters long.';
+                    });
+                    return;
+                  }
                   ref
                       .read(onboardingDraftProvider.notifier)
-                      .setName(_nameController.text.trim());
+                      .setName(name);
                   context.go('/onboarding/profile_upload');
                 },
               ),
