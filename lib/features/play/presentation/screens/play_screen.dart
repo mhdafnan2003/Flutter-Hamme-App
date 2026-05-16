@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
 import 'package:hamme_app/models/interaction_record.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
@@ -19,18 +20,29 @@ class PlayScreen extends ConsumerStatefulWidget {
 
 class _PlayScreenState extends ConsumerState<PlayScreen>
     with WidgetsBindingObserver {
+  Timer? _refreshTimer;
+
+  void _refreshPlayData() {
+    ref.invalidate(receivedInteractionsProvider);
+    ref.invalidate(pendingPlayInteractionsProvider);
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(receivedInteractionsProvider);
-      ref.invalidate(pendingPlayInteractionsProvider);
+      _refreshPlayData();
+    });
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      _refreshPlayData();
     });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -38,8 +50,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.invalidate(receivedInteractionsProvider);
-      ref.invalidate(pendingPlayInteractionsProvider);
+      _refreshPlayData();
     }
   }
 
