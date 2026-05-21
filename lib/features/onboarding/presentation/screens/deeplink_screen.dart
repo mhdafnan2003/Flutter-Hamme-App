@@ -188,6 +188,17 @@ class _DeepLinkScreenState extends ConsumerState<DeepLinkScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to deferred values so hydration also works when link state arrives
+    // slightly after first frame (common on app open from deep link).
+    ref.watch(deferredInteractionTokenProvider);
+    ref.watch(deferredShareCodeProvider);
+    ref.watch(deferredInteractionTypeProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _hydrateFromDeferredLink();
+      }
+    });
+
     return Scaffold(
       backgroundColor: TColors.white,
       body: SafeArea(

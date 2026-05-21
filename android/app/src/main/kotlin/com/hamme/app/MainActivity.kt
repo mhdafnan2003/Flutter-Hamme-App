@@ -1,4 +1,4 @@
-package com.example.hamme_app
+package com.hamme.app
 
 import android.content.Intent
 import android.content.pm.PackageManager

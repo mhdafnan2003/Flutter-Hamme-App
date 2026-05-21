@@ -40,7 +40,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/onboarding/social_media',
         builder: (_, _) => const SocialMediaScreen(),
       ),
-      GoRoute(path: '/pro', builder: (_, _) => const ProScreen()),
+      GoRoute(path: '/onboarding/pro', builder: (_, _) => const ProScreen()),
       GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
       GoRoute(path: '/matches', builder: (_, _) => const MatchesScreen()),
       GoRoute(path: '/inbox', builder: (_, _) => const InboxScreen()),

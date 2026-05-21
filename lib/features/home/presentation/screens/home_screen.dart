@@ -176,7 +176,7 @@ class HomeScreen extends ConsumerWidget {
                         onPressed: () async {
                           await ref.read(authControllerProvider.notifier).logout();
                           if (!context.mounted) return;
-                          context.go('/onboarding/deeplink');
+                          context.go('/splash');
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.red, width: 2),
