@@ -93,10 +93,7 @@ class _DobScreenState extends ConsumerState<DobScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              DobTopBar(
-                onBack: () => context.go('/onboarding/deeplink'),
-                progress: 0.35,
-              ),
+              const DobTopBar(progress: 0.35),
               const SizedBox(height: 30),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24),

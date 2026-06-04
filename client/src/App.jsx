@@ -267,13 +267,8 @@ function RevealScreen({
       return '';
     }
 
-    const params = new URLSearchParams();
-    if (shareCode) params.set('code', shareCode);
-    if (selectedType) params.set('type', selectedType);
-    if (pendingToken) params.set('token', pendingToken);
-
     const base = flutterWebBaseUrl.replace(/\/+$/, '');
-    return `${base}/#/onboarding/deeplink?${params.toString()}`;
+    return `${base}/#/home`;
   };
 
   const handleCopyDeepLink = async () => {
@@ -295,7 +290,7 @@ function RevealScreen({
   };
 
   const handleReveal = () => {
-    if (isExpired || (!pendingToken && !shareCode)) return;
+    if (!pendingToken && !shareCode) return;
 
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const isAndroid = /android/i.test(userAgent);
@@ -366,8 +361,7 @@ function RevealScreen({
 
       <button
         onClick={handleReveal}
-        disabled={isExpired}
-        className={`mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] px-8 text-[20px] font-black shadow-[0_7px_0_rgba(0,0,0,0.10)] transition ${isExpired ? 'bg-white/35 text-[#9647df]' : 'bg-white text-[#c000df] active:translate-y-1'}`}
+        className="mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] bg-white px-8 text-[20px] font-black text-[#c000df] shadow-[0_7px_0_rgba(0,0,0,0.10)] transition active:translate-y-1"
       >
         <span className="flex-1">👀 Reveal</span>
         <span className="text-[27px] font-light">→</span>

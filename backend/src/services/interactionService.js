@@ -7,11 +7,12 @@ const crypto = require('crypto');
 const { emitMatchFound } = require('../socket');
 
 const allowedTypes = new Set(['friend', 'crush', 'frenemy', 'ameny']);
-const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 300);
+const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 60);
 const pendingTtlSeconds = Number.isFinite(pendingTtlSecondsRaw)
   ? Math.max(30, pendingTtlSecondsRaw)
-  : 300;
+  : 60;
 const PENDING_TTL_MS = pendingTtlSeconds * 1000;
+const VISIBLE_MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function buildCanonicalPair(firstUserId, secondUserId) {
   const [userA, userB] = [firstUserId.toString(), secondUserId.toString()].sort();
@@ -101,7 +102,9 @@ async function createInteraction({ fromUserId, shareCode, type }) {
 }
 
 async function getMatchesForUser(userId) {
+  const visibleSince = new Date(Date.now() - VISIBLE_MATCH_WINDOW_MS);
   const matches = await Match.find({
+    createdAt: { $gte: visibleSince },
     $or: [{ userA: userId }, { userB: userId }],
   })
     .sort({ createdAt: -1 })

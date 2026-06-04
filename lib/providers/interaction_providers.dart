@@ -103,6 +103,14 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
           ref.read(deferredInteractionTokenProvider.notifier).state = null;
         } catch (e) {
           debugPrint('[DeferredInteraction] Finalize failed: $e');
+          ref.read(deferredInteractionErrorProvider.notifier).state =
+              _friendlyDeferredError(e);
+          if (e is AppException &&
+              e.statusCode != null &&
+              e.statusCode! >= 400 &&
+              e.statusCode! < 500) {
+            ref.read(deferredInteractionTokenProvider.notifier).state = null;
+          }
         } finally {
           _deferredFinalizeInFlight.remove(token);
         }
@@ -129,6 +137,15 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
           ref.read(deferredInteractionTypeProvider.notifier).state = null;
         } catch (e) {
           debugPrint('[DeferredInteraction] ShareCode send failed: $e');
+          ref.read(deferredInteractionErrorProvider.notifier).state =
+              _friendlyDeferredError(e);
+          if (e is AppException &&
+              e.statusCode != null &&
+              e.statusCode! >= 400 &&
+              e.statusCode! < 500) {
+            ref.read(deferredShareCodeProvider.notifier).state = null;
+            ref.read(deferredInteractionTypeProvider.notifier).state = null;
+          }
         } finally {
           _deferredShareInFlight.remove(dedupeKey);
         }
@@ -136,6 +153,26 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
     }
   }
 });
+
+String _friendlyDeferredError(Object error) {
+  final message = error is AppException ? error.message : error.toString();
+  if (message.contains('sent to yourself') ||
+      message.contains('own profile')) {
+    return "You can't reveal or respond to your own link.";
+  }
+  if (message.contains('expired')) {
+    return 'This reveal link has expired. Ask for a new one.';
+  }
+  if (message.contains('already been used')) {
+    return 'This reveal link has already been used.';
+  }
+  if (message.contains('already been sent')) {
+    return 'You already responded to this profile.';
+  }
+  return message.isEmpty
+      ? 'Could not open this reveal link. Please try again.'
+      : message;
+}
 
 class InteractionController extends AsyncNotifier<void> {
   InteractionRepository get _repository =>

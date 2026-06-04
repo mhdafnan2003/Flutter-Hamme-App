@@ -2,13 +2,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 
 class DobTopBar extends StatelessWidget {
-  final VoidCallback onBack;
+  final VoidCallback? onBack;
   final double progress;
   final Widget? trailing;
 
   const DobTopBar({
     super.key,
-    required this.onBack,
+    this.onBack,
     this.progress = 0.35,
     this.trailing,
   });
@@ -20,17 +20,18 @@ class DobTopBar extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: GestureDetector(
-              onTap: onBack,
-              child: const Icon(
-                CupertinoIcons.back,
-                size: 24,
-                color: TColors.darkGrey,
+          if (onBack != null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: onBack,
+                child: const Icon(
+                  CupertinoIcons.back,
+                  size: 24,
+                  color: TColors.darkGrey,
+                ),
               ),
             ),
-          ),
           SizedBox(
             width: 140,
             child: Stack(

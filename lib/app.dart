@@ -22,6 +22,8 @@ class _HammeAppState extends ConsumerState<HammeApp> {
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
   final InstallReferrerService _installReferrerService = InstallReferrerService();
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
   bool _referrerChecked = false;
 
   @override
@@ -135,10 +137,30 @@ class _HammeAppState extends ConsumerState<HammeApp> {
   Widget build(BuildContext context) {
     // Initialize the deferred interaction finalizer to listen for tokens
     ref.watch(deferredInteractionFinalizerProvider);
+    ref.listen<String?>(deferredInteractionErrorProvider, (_, message) {
+      if (message == null || message.isEmpty) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final messenger = _scaffoldMessengerKey.currentState;
+        if (messenger == null) return;
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(message),
+              action: SnackBarAction(
+                label: 'OK',
+                onPressed: () => messenger.hideCurrentSnackBar(),
+              ),
+            ),
+          );
+        ref.read(deferredInteractionErrorProvider.notifier).state = null;
+      });
+    });
 
     return MaterialApp.router(
       title: 'Hamme',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       theme: TAppTheme.lightTheme,
       darkTheme: TAppTheme.darkTheme,
       themeMode: ThemeMode.system,

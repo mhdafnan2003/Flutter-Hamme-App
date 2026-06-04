@@ -6,6 +6,7 @@ import '../models/interaction_type.dart';
 final deferredInteractionTokenProvider = StateProvider<String?>((ref) => null);
 final deferredShareCodeProvider = StateProvider<String?>((ref) => null);
 final deferredInteractionTypeProvider = StateProvider<InteractionType?>((ref) => null);
+final deferredInteractionErrorProvider = StateProvider<String?>((ref) => null);
 
 class DeferredInteractionController extends StateNotifier<String?> {
   DeferredInteractionController() : super(null);

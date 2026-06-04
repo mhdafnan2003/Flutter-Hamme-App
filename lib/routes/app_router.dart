@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/onboarding/presentation/screens/deeplink_screen.dart';
 import '../features/onboarding/presentation/screens/dob_screen.dart';
 import '../features/onboarding/presentation/screens/name_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
@@ -25,11 +24,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     overridePlatformDefaultLocation: true,
     routes: [
+      GoRoute(path: '/', redirect: (_, _) => '/home'),
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
-      GoRoute(
-        path: '/onboarding/deeplink',
-        builder: (_, _) => const DeepLinkScreen(),
-      ),
       GoRoute(path: '/onboarding/dob', builder: (_, _) => const DobScreen()),
       GoRoute(path: '/onboarding/name', builder: (_, _) => const NameScreen()),
       GoRoute(
@@ -55,6 +51,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
     ],
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'This link could not be opened.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                state.error?.toString() ?? 'The requested page was not found.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () => context.go('/home'),
+                child: const Text('Go home'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
     redirect: (_, state) {
       final isLoading = authStatus == AuthStatus.loading;
       final path = state.matchedLocation;
@@ -73,7 +96,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (path == '/splash') {
-        return isAuthenticated ? '/home' : '/onboarding/deeplink';
+        return isAuthenticated ? '/home' : '/onboarding/dob';
       }
 
       if (!isLoading && isAuthenticated && isOnboardingRoute) {
@@ -81,7 +104,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (!isLoading && !isAuthenticated && !isOnboardingRoute) {
-        return '/onboarding/deeplink';
+        return '/onboarding/dob';
       }
 
       return null;
