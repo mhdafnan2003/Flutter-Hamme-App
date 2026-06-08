@@ -69,8 +69,63 @@ async function getPublicProfile(identifier) {  const rawValue = (identifier || '
   throw new ApiError(404, 'Profile not found.');
 }
 
+async function listUsers({ search = '', page = 1, limit = 25 } = {}) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 100);
+  const safePage = Math.max(Number(page) || 1, 1);
+  const skip = (safePage - 1) * safeLimit;
+
+  const filter = {};
+  const term = (search || '').trim();
+  if (term) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
+    filter.$or = [
+      { name: regex },
+      { username: regex },
+      { email: regex },
+      { shareCode: regex },
+    ];
+  }
+
+  const [users, total] = await Promise.all([
+    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(safeLimit),
+    User.countDocuments(filter),
+  ]);
+
+  return {
+    users: users.map((user) => user.toJSON()),
+    total,
+    page: safePage,
+    limit: safeLimit,
+    pages: Math.ceil(total / safeLimit) || 1,
+  };
+}
+
+async function setProStatus(userId, isPro) {
+  const update = {
+    isPro: Boolean(isPro),
+    proUpdatedAt: new Date(),
+  };
+  if (!isPro) {
+    update.proProductId = null;
+    update.proPlatform = null;
+    update.proPurchaseToken = null;
+  } else {
+    update.proProductId = 'admin_grant';
+    update.proPlatform = 'admin';
+  }
+
+  const user = await User.findByIdAndUpdate(userId, update, { new: true });
+  if (!user) {
+    throw new ApiError(404, 'User not found.');
+  }
+  return user;
+}
+
 module.exports = {
   getMe,
   updateMe,
   getPublicProfile,
+  listUsers,
+  setProStatus,
 };

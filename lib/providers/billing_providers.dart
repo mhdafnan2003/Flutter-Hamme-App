@@ -93,22 +93,27 @@ final isProProvider = Provider<bool>(
 class BillingController extends Notifier<BillingState> {
   static const String _entitlementKey = 'pro_entitlement';
 
-  final InAppPurchase _iap = InAppPurchase.instance;
+  InAppPurchase? _iap;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
   @override
   BillingState build() {
-    _subscription = _iap.purchaseStream.listen(
-      _onPurchasesUpdated,
-      onError: (Object error) {
-        state = state.copyWith(
-          purchasePending: false,
-          restoring: false,
-          error: 'Purchase stream error: $error',
-        );
-      },
-    );
-    ref.onDispose(() => _subscription?.cancel());
+    // Only initialize IAP on supported platforms (iOS, Android)
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
+      _iap = InAppPurchase.instance;
+      _subscription = _iap!.purchaseStream.listen(
+        _onPurchasesUpdated,
+        onError: (Object error) {
+          state = state.copyWith(
+            purchasePending: false,
+            restoring: false,
+            error: 'Purchase stream error: $error',
+          );
+        },
+      );
+      ref.onDispose(() => _subscription?.cancel());
+    }
 
     // Reflect the server-side entitlement once the auth session resolves.
     ref.listen(authControllerProvider, (previous, next) {
@@ -138,21 +143,23 @@ class BillingController extends Notifier<BillingState> {
     }
 
     bool available = false;
-    try {
-      available = await _iap.isAvailable();
-    } catch (error) {
-      debugPrint('[Billing] isAvailable failed: $error');
+    if (_iap != null) {
+      try {
+        available = await _iap!.isAvailable();
+      } catch (error) {
+        debugPrint('[Billing] isAvailable failed: $error');
+      }
     }
 
     state = state.copyWith(isPro: entitlement, storeAvailable: available);
 
-    if (!available) {
+    if (!available || _iap == null) {
       debugPrint('[Billing] store not available on this device');
       return;
     }
 
     try {
-      final response = await _iap.queryProductDetails(ProProducts.ids);
+      final response = await _iap!.queryProductDetails(ProProducts.ids);
       if (response.error != null) {
         debugPrint('[Billing] queryProductDetails error: ${response.error}');
       }
@@ -170,8 +177,8 @@ class BillingController extends Notifier<BillingState> {
   Future<void> buyPro() async {
     if (state.busy) return;
 
-    if (!state.storeAvailable) {
-      state = state.copyWith(error: 'In-app purchases are not available.');
+    if (_iap == null || !state.storeAvailable) {
+      state = state.copyWith(error: 'In-app purchases are not available on this platform.');
       return;
     }
 
@@ -187,7 +194,7 @@ class BillingController extends Notifier<BillingState> {
     try {
       final purchaseParam = PurchaseParam(productDetails: product);
       // Subscriptions and non-consumables both use buyNonConsumable.
-      final started = await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      final started = await _iap!.buyNonConsumable(purchaseParam: purchaseParam);
       if (!started) {
         state = state.copyWith(
           purchasePending: false,
@@ -206,9 +213,13 @@ class BillingController extends Notifier<BillingState> {
   /// Restores previously purchased entitlements.
   Future<void> restorePurchases() async {
     if (state.busy) return;
+    if (_iap == null) {
+      state = state.copyWith(error: 'In-app purchases are not available on this platform.');
+      return;
+    }
     state = state.copyWith(restoring: true, error: null);
     try {
-      await _iap.restorePurchases();
+      await _iap!.restorePurchases();
     } catch (error) {
       debugPrint('[Billing] restorePurchases failed: $error');
       state = state.copyWith(
@@ -266,7 +277,7 @@ class BillingController extends Notifier<BillingState> {
 
       // Always complete the purchase so the store stops re-delivering it.
       if (purchase.pendingCompletePurchase) {
-        await _iap.completePurchase(purchase);
+        await _iap!.completePurchase(purchase);
       }
     }
   }

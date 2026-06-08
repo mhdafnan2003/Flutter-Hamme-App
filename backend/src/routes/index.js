@@ -6,6 +6,7 @@ const interactionRoutes = require('./interactionRoutes');
 const publicRoutes = require('./publicRoutes');
 const uploadRoutes = require('./uploadRoutes');
 const billingRoutes = require('./billingRoutes');
+const adminRoutes = require('./adminRoutes');
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ router.use('/profiles', profileRoutes);
 router.use('/interactions', interactionRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/billing', billingRoutes);
+router.use('/admin', adminRoutes);
 router.use('/', publicRoutes);
 
 module.exports = router;
