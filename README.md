@@ -71,9 +71,14 @@ Production-ready full-stack starter for a Flutter mobile app and an Express + Mo
 
 ### Backend
 
-- Copy `backend/.env.example` to `backend/.env` and replace the JWT secrets.
-- For Railway deployment, set all values from `backend/.env.example` as service variables.
-- For MongoDB Atlas, replace `MONGODB_URI` with your Atlas connection string.
+- Copy `backend/.env.example` to `backend/.env` and replace all placeholder values.
+- For Vercel, set all values from `backend/.env.example` in the backend project's environment variables.
+- `ENABLE_SOCKETS` should stay `false` on Vercel because the backend is deployed as serverless functions.
+
+### Client
+
+- Copy `client/.env.example` to `client/.env` and point `VITE_API_BASE_URL` at your deployed backend.
+- Set `VITE_FLUTTER_WEB_URL` only if you still use the Flutter web fallback from the React funnel.
 
 ## Local Development
 
@@ -88,12 +93,38 @@ cd backend
 npm run dev
 ```
 
-### 3. Run the Flutter app
+### 3. Start the React funnel
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+### 4. Run the Flutter app
 
 ```bash
 flutter pub get
 flutter run
 ```
+
+## Vercel Deployment
+
+Deploy `client` and `backend` as separate Vercel projects.
+
+### Backend project
+
+- Root directory: `backend`
+- Framework preset: `Other`
+- Entrypoint: `api/index.js` via `backend/vercel.json`
+- Required env vars: everything in `backend/.env.example`
+
+### Client project
+
+- Root directory: `client`
+- Framework preset: `Vite`
+- SPA rewrites are handled by `client/vercel.json`
+- Required env vars: everything in `client/.env.example`
 
 ## Code Generation
 

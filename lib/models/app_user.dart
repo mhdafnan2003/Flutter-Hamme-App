@@ -10,8 +10,9 @@ abstract class AppUser with _$AppUser {
     required String name,
     required String email,
     required String instagramId,
-    String? profileImageUrl,
+    String? avatarUrl,
     required String shareCode,
+    @Default(false) bool isPro,
   }) = _AppUser;
 
   factory AppUser.fromJson(Map<String, dynamic> json) =>

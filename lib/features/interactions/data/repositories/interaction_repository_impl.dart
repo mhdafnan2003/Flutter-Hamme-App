@@ -26,6 +26,17 @@ class InteractionRepositoryImpl implements InteractionRepository {
   }
 
   @override
+  Future<InteractionResult> respondToUser({
+    required String targetUserId,
+    required InteractionType type,
+  }) {
+    return _remoteDataSource.respondToUser(
+      targetUserId: targetUserId,
+      type: type,
+    );
+  }
+
+  @override
   Future<InteractionResult> finalizeInteraction(String token) {
     return _remoteDataSource.finalizeInteraction(token);
   }

@@ -35,6 +35,8 @@ migrate_working_dir/
 .env
 backend/.env
 backend/node_modules/
+**/.vercel/
+**/com.vercel.cli/
 
 # Symbolication related
 app.*.symbols

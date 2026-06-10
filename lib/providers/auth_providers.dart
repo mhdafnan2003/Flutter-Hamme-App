@@ -8,6 +8,7 @@ import '../features/auth/domain/usecases/login_use_case.dart';
 import '../features/auth/domain/usecases/sign_up_use_case.dart';
 import '../models/auth_session.dart';
 import 'api_providers.dart';
+import 'deferred_interaction_provider.dart';
 import 'onboarding_providers.dart';
 
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
@@ -70,7 +71,12 @@ class AuthController extends AsyncNotifier<AuthSession?> {
   Future<void> logout() async {
     state = const AsyncLoading();
     await _repository.logout();
+    await ref.read(onboardingDraftProvider.notifier).clear();
     await ref.read(onboardingCompletionProvider.notifier).reset();
+    await ref.read(shareTutorialCompletionProvider.notifier).reset();
+    ref.read(deferredInteractionTokenProvider.notifier).state = null;
+    ref.read(deferredShareCodeProvider.notifier).state = null;
+    ref.read(deferredInteractionTypeProvider.notifier).state = null;
     state = const AsyncData(null);
   }
 
@@ -79,7 +85,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     required String email,
     required String password,
     required String instagramId,
-    String? profileImageUrl,
+    String? avatarUrl,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
@@ -88,7 +94,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
         email: email,
         password: password,
         instagramId: instagramId,
-        profileImageUrl: profileImageUrl,
+        avatarUrl: avatarUrl,
       ),
     );
   }

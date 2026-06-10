@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AppUser {
 
- String get id; String get name; String get email; String get instagramId; String? get profileImageUrl; String get shareCode;
+ String get id; String get name; String get email; String get instagramId; String? get avatarUrl; String get shareCode; bool get isPro;
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $AppUserCopyWith<AppUser> get copyWith => _$AppUserCopyWithImpl<AppUser>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppUser&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.instagramId, instagramId) || other.instagramId == instagramId)&&(identical(other.profileImageUrl, profileImageUrl) || other.profileImageUrl == profileImageUrl)&&(identical(other.shareCode, shareCode) || other.shareCode == shareCode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppUser&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.instagramId, instagramId) || other.instagramId == instagramId)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.shareCode, shareCode) || other.shareCode == shareCode)&&(identical(other.isPro, isPro) || other.isPro == isPro));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,email,instagramId,profileImageUrl,shareCode);
+int get hashCode => Object.hash(runtimeType,id,name,email,instagramId,avatarUrl,shareCode,isPro);
 
 @override
 String toString() {
-  return 'AppUser(id: $id, name: $name, email: $email, instagramId: $instagramId, profileImageUrl: $profileImageUrl, shareCode: $shareCode)';
+  return 'AppUser(id: $id, name: $name, email: $email, instagramId: $instagramId, avatarUrl: $avatarUrl, shareCode: $shareCode, isPro: $isPro)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $AppUserCopyWith<$Res>  {
   factory $AppUserCopyWith(AppUser value, $Res Function(AppUser) _then) = _$AppUserCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String email, String instagramId, String? profileImageUrl, String shareCode
+ String id, String name, String email, String instagramId, String? avatarUrl, String shareCode, bool isPro
 });
 
 
@@ -65,15 +65,16 @@ class _$AppUserCopyWithImpl<$Res>
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? email = null,Object? instagramId = null,Object? profileImageUrl = freezed,Object? shareCode = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? email = null,Object? instagramId = null,Object? avatarUrl = freezed,Object? shareCode = null,Object? isPro = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,instagramId: null == instagramId ? _self.instagramId : instagramId // ignore: cast_nullable_to_non_nullable
-as String,profileImageUrl: freezed == profileImageUrl ? _self.profileImageUrl : profileImageUrl // ignore: cast_nullable_to_non_nullable
+as String,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,shareCode: null == shareCode ? _self.shareCode : shareCode // ignore: cast_nullable_to_non_nullable
-as String,
+as String,isPro: null == isPro ? _self.isPro : isPro // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -158,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String email,  String instagramId,  String? profileImageUrl,  String shareCode)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String email,  String instagramId,  String? avatarUrl,  String shareCode,  bool isPro)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AppUser() when $default != null:
-return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.profileImageUrl,_that.shareCode);case _:
+return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.avatarUrl,_that.shareCode,_that.isPro);case _:
   return orElse();
 
 }
@@ -179,10 +180,10 @@ return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.profileI
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String email,  String instagramId,  String? profileImageUrl,  String shareCode)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String email,  String instagramId,  String? avatarUrl,  String shareCode,  bool isPro)  $default,) {final _that = this;
 switch (_that) {
 case _AppUser():
-return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.profileImageUrl,_that.shareCode);case _:
+return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.avatarUrl,_that.shareCode,_that.isPro);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +200,10 @@ return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.profileI
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String email,  String instagramId,  String? profileImageUrl,  String shareCode)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String email,  String instagramId,  String? avatarUrl,  String shareCode,  bool isPro)?  $default,) {final _that = this;
 switch (_that) {
 case _AppUser() when $default != null:
-return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.profileImageUrl,_that.shareCode);case _:
+return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.avatarUrl,_that.shareCode,_that.isPro);case _:
   return null;
 
 }
@@ -214,15 +215,16 @@ return $default(_that.id,_that.name,_that.email,_that.instagramId,_that.profileI
 @JsonSerializable()
 
 class _AppUser implements AppUser {
-  const _AppUser({required this.id, required this.name, required this.email, required this.instagramId, this.profileImageUrl, required this.shareCode});
+  const _AppUser({required this.id, required this.name, required this.email, required this.instagramId, this.avatarUrl, required this.shareCode, this.isPro = false});
   factory _AppUser.fromJson(Map<String, dynamic> json) => _$AppUserFromJson(json);
 
 @override final  String id;
 @override final  String name;
 @override final  String email;
 @override final  String instagramId;
-@override final  String? profileImageUrl;
+@override final  String? avatarUrl;
 @override final  String shareCode;
+@override@JsonKey() final  bool isPro;
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
@@ -237,16 +239,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppUser&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.instagramId, instagramId) || other.instagramId == instagramId)&&(identical(other.profileImageUrl, profileImageUrl) || other.profileImageUrl == profileImageUrl)&&(identical(other.shareCode, shareCode) || other.shareCode == shareCode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppUser&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.instagramId, instagramId) || other.instagramId == instagramId)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.shareCode, shareCode) || other.shareCode == shareCode)&&(identical(other.isPro, isPro) || other.isPro == isPro));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,email,instagramId,profileImageUrl,shareCode);
+int get hashCode => Object.hash(runtimeType,id,name,email,instagramId,avatarUrl,shareCode,isPro);
 
 @override
 String toString() {
-  return 'AppUser(id: $id, name: $name, email: $email, instagramId: $instagramId, profileImageUrl: $profileImageUrl, shareCode: $shareCode)';
+  return 'AppUser(id: $id, name: $name, email: $email, instagramId: $instagramId, avatarUrl: $avatarUrl, shareCode: $shareCode, isPro: $isPro)';
 }
 
 
@@ -257,7 +259,7 @@ abstract mixin class _$AppUserCopyWith<$Res> implements $AppUserCopyWith<$Res> {
   factory _$AppUserCopyWith(_AppUser value, $Res Function(_AppUser) _then) = __$AppUserCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String email, String instagramId, String? profileImageUrl, String shareCode
+ String id, String name, String email, String instagramId, String? avatarUrl, String shareCode, bool isPro
 });
 
 
@@ -274,15 +276,16 @@ class __$AppUserCopyWithImpl<$Res>
 
 /// Create a copy of AppUser
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? email = null,Object? instagramId = null,Object? profileImageUrl = freezed,Object? shareCode = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? email = null,Object? instagramId = null,Object? avatarUrl = freezed,Object? shareCode = null,Object? isPro = null,}) {
   return _then(_AppUser(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,instagramId: null == instagramId ? _self.instagramId : instagramId // ignore: cast_nullable_to_non_nullable
-as String,profileImageUrl: freezed == profileImageUrl ? _self.profileImageUrl : profileImageUrl // ignore: cast_nullable_to_non_nullable
+as String,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,shareCode: null == shareCode ? _self.shareCode : shareCode // ignore: cast_nullable_to_non_nullable
-as String,
+as String,isPro: null == isPro ? _self.isPro : isPro // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

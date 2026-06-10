@@ -11,14 +11,14 @@ class SignUpUseCase {
     required String email,
     required String password,
     required String instagramId,
-    String? profileImageUrl,
+    String? avatarUrl,
   }) {
     return _repository.signUp(
       name: name,
       email: email,
       password: password,
       instagramId: instagramId,
-      profileImageUrl: profileImageUrl,
+      avatarUrl: avatarUrl,
     );
   }
 }

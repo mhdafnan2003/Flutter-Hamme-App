@@ -71,14 +71,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required String instagramId,
-    String? profileImageUrl,
+    String? avatarUrl,
   }) async {
     final session = await _remoteDataSource.signUp(
       name: name,
       email: email,
       password: password,
       instagramId: instagramId,
-      profileImageUrl: profileImageUrl,
+      avatarUrl: avatarUrl,
     );
     await _persistSession(session);
     return session;

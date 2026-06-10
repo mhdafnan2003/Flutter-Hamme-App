@@ -9,7 +9,7 @@ const pendingInteractionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['friend', 'crush', 'frenemy', 'ameny'],
+      enum: ['friend', 'crush', 'frenemy'],
       required: true,
     },
     source: {
@@ -55,5 +55,8 @@ const pendingInteractionSchema = new mongoose.Schema(
 );
 
 pendingInteractionSchema.index({ targetUserId: 1, sessionId: 1, type: 1, status: 1 });
+// TTL index: MongoDB removes pending docs once `expiresAt` passes. This replaces
+// the unreliable in-process setTimeout and stops the collection growing unbounded.
+pendingInteractionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('PendingInteraction', pendingInteractionSchema);

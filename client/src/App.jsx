@@ -4,6 +4,7 @@ const players = ['S', 'K', 'R', 'N', 'A'];
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
 const playerColors = ['#ff4f97', '#35d678', '#42b6ff', '#ffd230', '#ff5c5c'];
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
+const flutterWebBaseUrl = import.meta.env.VITE_FLUTTER_WEB_URL ?? '';
 const sessionStorageKey = 'hamme_web_session_id';
 const pendingTtlMs = 60 * 1000;
 
@@ -138,7 +139,7 @@ function App() {
         setSecondsLeft(Math.ceil(pendingTtlMs / 1000));
       }
       console.info('[Web] option selected', { shareCode, type });
-    } catch (_) {
+    } catch {
       setSubmitError('Could not submit response. Please try again.');
     } finally {
       setSubmittingType('');
@@ -157,8 +158,8 @@ function App() {
 
   if (profileError || !profile) {
     return (
-      <main className="min-h-screen bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
-        <section className="mx-auto flex min-h-screen w-full max-w-[360px] items-center justify-center px-4 text-center">
+      <main className="min-h-screen bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white" >
+        <section className="mx-auto flex min-h-screen w-full max-w-[360px] items-center justify-center px-4 text-center" >
           <p className="text-lg font-bold">{profileError || 'Profile unavailable.'}</p>
         </section>
       </main>
@@ -209,7 +210,7 @@ function App() {
 function QuestionScreen({ onAnswer, profileImage, submittingType, submitError }) {
   return (
     <>
-      <div className="w-full px-6">
+      <div className="flex w-full flex-col items-center px-6">
         <div className="relative z-10 h-[98px] w-[98px] overflow-hidden rounded-full border-[5px] border-white bg-[#d8b09f] shadow-[0_7px_14px_rgba(0,0,0,0.22)]">
           <img
             src={profileImage}
@@ -251,24 +252,60 @@ function RevealScreen({
   shareCode,
   selectedType,
 }) {
+  const [copyStatus, setCopyStatus] = useState('');
+
+  const buildDeepLink = () => {
+    const params = new URLSearchParams();
+    if (shareCode) params.set('code', shareCode);
+    if (selectedType) params.set('type', selectedType);
+    if (pendingToken) params.set('token', pendingToken);
+    return `hamme://open?${params.toString()}`;
+  };
+
+  const buildFlutterWebFallbackUrl = () => {
+    if (!flutterWebBaseUrl) {
+      return '';
+    }
+
+    const base = flutterWebBaseUrl.replace(/\/+$/, '');
+    return `${base}/#/home`;
+  };
+
+  const handleCopyDeepLink = async () => {
+    const deepLink = buildDeepLink();
+    try {
+      await navigator.clipboard.writeText(deepLink);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = deepLink;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopyStatus('Copied deeplink');
+  };
+
   const handleReveal = () => {
-    if (isExpired || (!pendingToken && !shareCode)) return;
+    if (!pendingToken && !shareCode) return;
 
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const isAndroid = /android/i.test(userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
 
-    // Custom URI scheme for deep linking
-    const params = new URLSearchParams();
-    if (shareCode) params.set('code', shareCode);
-    if (selectedType) params.set('type', selectedType);
-    if (pendingToken) params.set('token', pendingToken);
-    const deepLink = `hamme://open?${params.toString()}`;
+    const deepLink = buildDeepLink();
     
-    // Fallback store links (using Local LAN for now to avoid SSL/Config issues)
-    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.hamme.app';
+    const referrerParams = new URLSearchParams();
+    if (pendingToken) referrerParams.set('hamme_token', pendingToken);
+    if (shareCode) referrerParams.set('hamme_code', shareCode);
+    if (selectedType) referrerParams.set('hamme_type', selectedType);
+
+    const playStoreUrl = `https://play.google.com/store/apps/details?id=com.hamme.app&referrer=${encodeURIComponent(referrerParams.toString())}`;
     const appStoreUrl = 'https://apps.apple.com/app/hamme-play-games/id123456789';
-    const fallbackUrl = window.location.origin;
+    const fallbackUrl = buildFlutterWebFallbackUrl();
 
     window.location.href = deepLink;
 
@@ -281,7 +318,7 @@ function RevealScreen({
           window.location.href = playStoreUrl;
         } else if (isIOS) {
           window.location.href = appStoreUrl;
-        } else {
+        } else if (fallbackUrl) {
           window.location.href = fallbackUrl;
         }
       }
@@ -324,19 +361,31 @@ function RevealScreen({
 
       <button
         onClick={handleReveal}
-        disabled={isExpired}
-        className={`mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] px-8 text-[20px] font-black shadow-[0_7px_0_rgba(0,0,0,0.10)] transition ${isExpired ? 'bg-white/35 text-[#9647df]' : 'bg-white text-[#c000df] active:translate-y-1'}`}
+        className="mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] bg-white px-8 text-[20px] font-black text-[#c000df] shadow-[0_7px_0_rgba(0,0,0,0.10)] transition active:translate-y-1"
       >
         <span className="flex-1">👀 Reveal</span>
         <span className="text-[27px] font-light">→</span>
       </button>
 
-      <a
-        href="http://192.168.1.36:5173"
-        className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white"
+      {/* <button
+        onClick={handleCopyDeepLink}
+        disabled={isExpired || !pendingToken}
+        className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white disabled:opacity-45"
       >
-        Open Hamme App
-      </a>
+        Copy Deeplink
+      </button> */}
+      {copyStatus ? (
+        <p className="mt-2 text-[12px] font-bold text-white/75">{copyStatus}</p>
+      ) : null}
+
+      {flutterWebBaseUrl ? (
+        <a
+          href={buildFlutterWebFallbackUrl()}
+          className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white"
+        >
+          Continue In Web App
+        </a>
+      ) : null}
     </div>
   );
 }

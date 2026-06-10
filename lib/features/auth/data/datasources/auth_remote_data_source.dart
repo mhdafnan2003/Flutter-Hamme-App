@@ -27,7 +27,7 @@ class AuthRemoteDataSource {
     required String email,
     required String password,
     required String instagramId,
-    String? profileImageUrl,
+    String? avatarUrl,
   }) async {
     final response =
         await _apiService.post(
@@ -37,7 +37,7 @@ class AuthRemoteDataSource {
                 'email': email,
                 'password': password,
                 'instagramId': instagramId,
-                'profileImageUrl': profileImageUrl,
+                'avatarUrl': avatarUrl,
               },
             )
             as Map<String, dynamic>;

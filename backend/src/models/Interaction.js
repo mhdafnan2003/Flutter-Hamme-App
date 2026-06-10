@@ -17,7 +17,7 @@ const interactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['crush', 'friend', 'frenemy', 'ameny'],
+      enum: ['crush', 'friend', 'frenemy'],
       required: true,
     },
     metadata: {

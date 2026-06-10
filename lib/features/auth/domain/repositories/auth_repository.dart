@@ -8,7 +8,7 @@ abstract interface class AuthRepository {
     required String email,
     required String password,
     required String instagramId,
-    String? profileImageUrl,
+    String? avatarUrl,
   });
 
   Future<AuthSession> guestRegister({

@@ -4,7 +4,7 @@ import 'package:hamme_app/utils/constants/colors.dart';
 class TopBarCircleButton extends StatelessWidget {
   const TopBarCircleButton({super.key, required this.icon, this.onTap});
 
-  final IconData icon;
+  final Widget icon;
   final VoidCallback? onTap;
 
   @override
@@ -18,7 +18,9 @@ class TopBarCircleButton extends StatelessWidget {
           color: TColors.hammeSurface,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 20, color: TColors.black),
+        child: Center(
+          child: icon,
+        ),
       ),
     );
   }

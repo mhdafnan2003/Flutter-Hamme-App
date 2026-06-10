@@ -6,8 +6,13 @@ const ApiError = require('../utils/ApiError');
 const crypto = require('crypto');
 const { emitMatchFound } = require('../socket');
 
-const allowedTypes = new Set(['friend', 'crush', 'frenemy', 'ameny']);
-const PENDING_TTL_MS = 60 * 1000;
+const allowedTypes = new Set(['friend', 'crush', 'frenemy']);
+const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 60);
+const pendingTtlSeconds = Number.isFinite(pendingTtlSecondsRaw)
+  ? Math.max(30, pendingTtlSecondsRaw)
+  : 60;
+const PENDING_TTL_MS = pendingTtlSeconds * 1000;
+const VISIBLE_MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function buildCanonicalPair(firstUserId, secondUserId) {
   const [userA, userB] = [firstUserId.toString(), secondUserId.toString()].sort();
@@ -16,10 +21,12 @@ function buildCanonicalPair(firstUserId, secondUserId) {
 
 function normalizeType(type) {
   const normalized = (type || '').toString().trim().toLowerCase();
-  if (!allowedTypes.has(normalized)) {
+  // Legacy clients may still send 'ameny'; treat it as 'frenemy'.
+  const canonical = normalized === 'ameny' ? 'frenemy' : normalized;
+  if (!allowedTypes.has(canonical)) {
     throw new ApiError(400, 'Invalid interaction type.');
   }
-  return normalized === 'ameny' ? 'frenemy' : normalized;
+  return canonical;
 }
 
 function serializeMatch(match, currentUserId) {
@@ -97,7 +104,9 @@ async function createInteraction({ fromUserId, shareCode, type }) {
 }
 
 async function getMatchesForUser(userId) {
+  const visibleSince = new Date(Date.now() - VISIBLE_MATCH_WINDOW_MS);
   const matches = await Match.find({
+    createdAt: { $gte: visibleSince },
     $or: [{ userA: userId }, { userB: userId }],
   })
     .sort({ createdAt: -1 })
@@ -161,7 +170,12 @@ async function createAnonymousResponse({
     shareCode: targetUser.shareCode,
   });
 
-  console.info('[AnonymousResponse] created', {
+  // NOTE: we intentionally do NOT create an Interaction here. The reaction only
+  // becomes a real (play-visible) Interaction when the sender reveals/finalizes
+  // within the 60s window. If the reveal link expires, finalize is blocked and
+  // no Interaction is ever created, so no play card appears for the creator.
+
+  console.info('[AnonymousResponse] pending created', {
     shareCode: targetUser.shareCode,
     type: normalizedType,
     pendingToken: pending.pendingToken,
@@ -262,11 +276,68 @@ async function createAnonymousInteraction({ targetUserId, type, source = 'web' }
 
 async function getReceivedInteractions(userId) {
   const interactions = await Interaction.find({ toUser: userId })
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .populate('fromUser', 'name username instagramId snapchatId profileImageUrl shareCode');
+
+  const voterIds = [
+    ...new Set(
+      interactions
+        .map((interaction) => interaction.fromUser?._id?.toString())
+        .filter(Boolean)
+    ),
+  ];
+
+  const outgoing = voterIds.length
+    ? await Interaction.find({
+        fromUser: userId,
+        toUser: { $in: voterIds },
+      }).select('toUser type')
+    : [];
+
+  const outgoingUserIds = new Set(
+    outgoing.map((interaction) => interaction.toUser.toString())
+  );
+
+  const pairIds = voterIds.map((voterId) => buildCanonicalPair(userId, voterId));
+  const matches = pairIds.length
+    ? await Match.find({
+        $or: pairIds.map((pair) => ({ userA: pair.userA, userB: pair.userB })),
+      }).select('userA userB type')
+    : [];
+
+  const matchKeys = new Set(
+    matches.map((match) => {
+      const otherUserId =
+        match.userA.toString() === userId.toString()
+          ? match.userB.toString()
+          : match.userA.toString();
+      return `${otherUserId}:${match.type}`;
+    })
+  );
 
   return interactions.map((interaction) => {
-    const payload = interaction.toJSON();
-    return { ...payload, fromUser: payload.fromUser || '' };
+    const fromUser = interaction.fromUser;
+    const fromUserId = fromUser?._id?.toString() || null;
+    const respondedByCurrentUser = Boolean(fromUserId) && outgoingUserIds.has(fromUserId);
+    const matched =
+      Boolean(fromUserId) && matchKeys.has(`${fromUserId}:${interaction.type}`);
+
+    return {
+      id: interaction.id,
+      fromUser: fromUserId || '',
+      fromUserName: fromUser?.name || null,
+      fromUserUsername: fromUser?.username || null,
+      fromUserProfileImageUrl: fromUser?.profileImageUrl || null,
+      fromUserShareCode: fromUser?.shareCode || null,
+      fromUserInstagramId: fromUser?.instagramId || null,
+      fromUserSnapchatId: fromUser?.snapchatId || null,
+      toUser: interaction.toUser.toString(),
+      type: interaction.type,
+      metadata: interaction.metadata || null,
+      respondedByCurrentUser,
+      matched,
+      createdAt: interaction.createdAt,
+    };
   });
 }
 
@@ -296,39 +367,47 @@ async function createPendingInteraction({
     expiresAt,
   });
 
-  // Auto-expire and convert to anonymous after 60s
-  setTimeout(async () => {
-    const fs = require('fs');
-    const logFile = require('path').join(process.cwd(), 'debug_expiry.log');
-    const log = (msg) => fs.appendFileSync(logFile, `${new Date().toISOString()} ${msg}\n`);
-    
-    log(`Checking expiry for token: ${deepLinkToken}`);
-    try {
-      const p = await PendingInteraction.findById(pending.id);
-      if (p && p.status === 'pending') {
-        log(`Token ${deepLinkToken} expired. Converting to anonymous.`);
-        p.status = 'expired';
-        await p.save();
-        
-        const created = await Interaction.create({
-          fromUser: null,
-          toUser: targetUser.id,
-          type: normalizedType,
-          metadata: { source, anonymous: true, expiredPending: true },
-        });
-        log(`Anonymous interaction created: ${created.id} for user ${targetUser.id}`);
-      } else {
-        log(`Token ${deepLinkToken} already ${p ? p.status : 'not found'}.`);
-      }
-    } catch (e) {
-      log(`Expiry failed: ${e.message}\n${e.stack}`);
-      console.error('[PendingInteraction] Expiry failed:', e);
-    }
-  }, PENDING_TTL_MS);
+  // Expiry is handled by the TTL index on `expiresAt` (see PendingInteraction model)
+  // and by the expiry checks in finalize/get. No in-process timer is used because
+  // serverless functions freeze after responding and would never fire it.
 
   return {
     pendingToken: pending.deepLinkToken,
     expiresAt: pending.expiresAt,
+  };
+}
+
+async function detectMatchAndBuildResult({ fromUserId, targetUserId, type }) {
+  const interaction = await Interaction.findOne({
+    fromUser: fromUserId,
+    toUser: targetUserId,
+    type,
+  });
+
+  const reciprocal = await Interaction.findOne({
+    fromUser: targetUserId,
+    toUser: fromUserId,
+    type,
+  });
+
+  let match = null;
+  if (reciprocal) {
+    const pair = buildCanonicalPair(fromUserId, targetUserId);
+    match = await Match.findOneAndUpdate(
+      { userA: pair.userA, userB: pair.userB, type },
+      { userA: pair.userA, userB: pair.userB, type, triggeredBy: fromUserId },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).populate('userA userB');
+
+    const payload = serializeMatch(match, fromUserId);
+    emitMatchFound([fromUserId, targetUserId], payload);
+  }
+
+  return {
+    interaction: interaction ? interaction.toJSON() : null,
+    matched: Boolean(match),
+    match: match ? serializeMatch(match, fromUserId) : null,
+    notification: match ? { type: 'match', matchId: match.id } : null,
   };
 }
 
@@ -343,7 +422,7 @@ async function finalizePendingInteraction({ token, currentUserId }) {
   }
 
   if (pending.status === 'expired' || Date.now() > pending.expiresAt.getTime()) {
-    // If it was somehow not caught by setTimeout or already expired
+    // If it was somehow not caught yet, reject as expired.
     if (pending.status !== 'expired') {
       pending.status = 'expired';
       await pending.save();
@@ -355,16 +434,54 @@ async function finalizePendingInteraction({ token, currentUserId }) {
     throw new ApiError(400, 'You cannot reveal an interaction sent to yourself.');
   }
 
-  // Mark finalized
+  // Attribute the interaction FIRST and only mark the pending finalized once that
+  // succeeds. This prevents a failure (e.g. duplicate key) from permanently
+  // stranding the reveal link in a "used" state with no interaction recorded.
+  const existingAnonymous = await Interaction.findOne({
+    toUser: pending.targetUserId,
+    type: pending.type,
+    fromUser: null,
+    'metadata.pendingToken': token,
+  }).sort({ createdAt: -1 });
+
+  let result;
+  if (existingAnonymous) {
+    try {
+      existingAnonymous.fromUser = currentUserId;
+      existingAnonymous.metadata = {
+        ...(existingAnonymous.metadata || {}),
+        anonymous: false,
+        pendingReveal: false,
+        finalizedFromPending: true,
+      };
+      await existingAnonymous.save();
+    } catch (error) {
+      if (error && error.code === 11000) {
+        // The current user already has a real interaction of this type to the
+        // target. Drop the now-redundant anonymous record and continue with the
+        // existing one rather than failing the reveal.
+        await Interaction.deleteOne({ _id: existingAnonymous._id });
+      } else {
+        throw error;
+      }
+    }
+
+    result = await detectMatchAndBuildResult({
+      fromUserId: currentUserId,
+      targetUserId: pending.targetUserId,
+      type: pending.type,
+    });
+  } else {
+    // Backward compatibility for records created before pendingToken metadata existed.
+    result = await createInteractionByTargetId({
+      fromUserId: currentUserId,
+      targetUserId: pending.targetUserId,
+      type: pending.type,
+    });
+  }
+
   pending.status = 'finalized';
   await pending.save();
-
-  // Convert to actual interaction
-  const result = await createInteractionByTargetId({
-    fromUserId: currentUserId,
-    targetUserId: pending.targetUserId,
-    type: pending.type,
-  });
 
   return result;
 }
@@ -373,6 +490,12 @@ async function getPendingInteraction(token) {
   const pending = await PendingInteraction.findOne({ deepLinkToken: token }).populate('targetUserId', 'name profileImageUrl');
   if (!pending) {
     throw new ApiError(404, 'Interaction not found or expired.');
+  }
+  if (pending.status === 'finalized') {
+    throw new ApiError(400, 'This reveal link has already been used.');
+  }
+  if (pending.status === 'expired' || Date.now() > pending.expiresAt.getTime()) {
+    throw new ApiError(400, 'This reveal link has expired.');
   }
   return pending;
 }

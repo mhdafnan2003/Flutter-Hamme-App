@@ -23,7 +23,7 @@ router.patch(
     body('name').optional().trim().isLength({ min: 2, max: 80 }),
     body('instagramId').optional().trim().notEmpty(),
     body('username').optional({ values: 'falsy' }).trim().toLowerCase().matches(/^[a-z0-9._]+$/),
-    body('profileImageUrl').optional({ values: 'null' }).isURL(),
+    body('avatarUrl').optional({ values: 'null' }).isURL(),
   ],
   validateRequest,
   profileController.updateMe

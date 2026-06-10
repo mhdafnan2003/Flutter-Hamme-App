@@ -24,7 +24,7 @@ class ProfileRemoteDataSource {
     String? name,
     String? instagramId,
     String? username,
-    String? profileImageUrl,
+    String? avatarUrl,
   }) async {
     final body = <String, dynamic>{};
     if (name != null && name.isNotEmpty) body['name'] = name;
@@ -32,8 +32,8 @@ class ProfileRemoteDataSource {
       body['instagramId'] = instagramId;
     }
     if (username != null && username.isNotEmpty) body['username'] = username;
-    if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-      body['profileImageUrl'] = profileImageUrl;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      body['avatarUrl'] = avatarUrl;
     }
 
     final response =

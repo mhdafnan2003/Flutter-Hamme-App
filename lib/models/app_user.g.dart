@@ -11,8 +11,9 @@ _AppUser _$AppUserFromJson(Map<String, dynamic> json) => _AppUser(
   name: json['name'] as String,
   email: json['email'] as String,
   instagramId: json['instagramId'] as String,
-  profileImageUrl: json['profileImageUrl'] as String?,
+  avatarUrl: json['avatarUrl'] as String?,
   shareCode: json['shareCode'] as String,
+  isPro: json['isPro'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$AppUserToJson(_AppUser instance) => <String, dynamic>{
@@ -20,6 +21,7 @@ Map<String, dynamic> _$AppUserToJson(_AppUser instance) => <String, dynamic>{
   'name': instance.name,
   'email': instance.email,
   'instagramId': instance.instagramId,
-  'profileImageUrl': instance.profileImageUrl,
+  'avatarUrl': instance.avatarUrl,
   'shareCode': instance.shareCode,
+  'isPro': instance.isPro,
 };

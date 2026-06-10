@@ -10,7 +10,7 @@ class ProFeature extends StatelessWidget {
     required this.subtitle,
   });
 
-  final String icon;
+  final Widget icon;
   final String title;
   final String subtitle;
 
@@ -19,20 +19,21 @@ class ProFeature extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 58,
-          height: 58,
-          decoration: const BoxDecoration(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
             color: TColors.white,
             shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           alignment: Alignment.center,
-          child: Text(
-            icon,
-            style: const TextStyle(
-              fontSize: 32,
-              color: TColors.hammePrimaryDark,
-            ),
-          ),
+          child: icon,
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -43,20 +44,20 @@ class ProFeature extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   fontFamily: TFonts.nunito,
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w900,
                   color: TColors.black,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 subtitle,
                 style: const TextStyle(
                   fontFamily: TFonts.nunito,
-                  fontSize: 14,
-                  height: 1.25,
+                  fontSize: 13,
+                  height: 1.2,
                   fontWeight: FontWeight.w600,
-                  color: TColors.textSecondary,
+                  color: TColors.hammeMutedText,
                 ),
               ),
             ],

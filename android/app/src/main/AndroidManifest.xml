@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required for Google Play in-app billing (in_app_purchase). -->
+    <uses-permission android:name="com.android.vending.BILLING" />
 
     <application
         android:label="hamme_app"
@@ -39,7 +41,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="app.hamme.link" />
+                <data android:scheme="https" android:host="client-sigma-beryl-15.vercel.app" />
                 <data android:scheme="hamme" android:host="open" />
                 <data android:scheme="hamme" android:host="reveal" />
             </intent-filter>

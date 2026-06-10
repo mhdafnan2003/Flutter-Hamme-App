@@ -5,10 +5,9 @@ function toPublicProfile(user) {
     id: user.id,
     name: user.name,
     instagramId: user.instagramId,
-    profileImageUrl: user.profileImageUrl,
+    avatarUrl: user.profileImageUrl,
     username: user.username,
     shareCode: user.shareCode,
-    email: '',
   };
 }
 

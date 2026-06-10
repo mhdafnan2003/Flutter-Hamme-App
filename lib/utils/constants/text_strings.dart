@@ -100,7 +100,7 @@ class TTexts {
 
   static const String inboxEmptyCount = "0";
   static const String inboxHint =
-      "Numbers fill up the moment someone\ntaps on your story link. Go share 👇";
+      "Numbers fill up the moment someone\ntaps on your story link. Go share 👆";
 
   static const String playEmptyTitle = "No one here yet 🥺";
   static const String playEmptySubtitle =

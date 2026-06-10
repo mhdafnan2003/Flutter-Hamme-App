@@ -10,10 +10,10 @@ const router = express.Router();
 
 router.post(
   '/respond',
-  optionalAuthMiddleware,
+  authMiddleware,
   [
     body('targetUserId').trim().notEmpty(),
-    body('type').isIn(['crush', 'friend', 'frenemy', 'ameny']),
+    body('type').isIn(['crush', 'friend', 'frenemy']),
     body('senderUserId').optional({ values: 'falsy' }).trim(),
     body('source').optional({ values: 'falsy' }).trim(),
   ],
@@ -26,7 +26,7 @@ router.post(
   optionalAuthMiddleware,
   [
     body('targetUserId').trim().notEmpty(),
-    body('type').isIn(['crush', 'friend', 'frenemy', 'ameny']),
+    body('type').isIn(['crush', 'friend', 'frenemy']),
   ],
   validateRequest,
   interactionController.createPendingInteraction
@@ -40,7 +40,7 @@ router.post(
   '/',
   [
     body('shareCode').trim().notEmpty(),
-    body('type').isIn(['crush', 'friend', 'frenemy', 'ameny']),
+    body('type').isIn(['crush', 'friend', 'frenemy']),
   ],
   validateRequest,
   interactionController.createInteraction
