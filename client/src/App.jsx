@@ -306,7 +306,7 @@ function RevealScreen({
     if (shareCode) referrerParams.set('hamme_code', shareCode);
     if (selectedType) referrerParams.set('hamme_type', selectedType);
 
-    const playStoreUrl = `https://play.google.com/store/apps/details?id=com.hamme.app&referrer=${encodeURIComponent(referrerParams.toString())}`;
+    const playStoreUrl = `market://details?id=com.hamme.app&referrer=${encodeURIComponent(referrerParams.toString())}`;
     const appStoreUrl = 'https://apps.apple.com/app/hamme-play-games/id123456789';
     const fallbackUrl = buildFlutterWebFallbackUrl();
 
