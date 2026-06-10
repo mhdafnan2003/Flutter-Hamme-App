@@ -170,10 +170,22 @@ async function createAnonymousResponse({
     shareCode: targetUser.shareCode,
   });
 
-  // NOTE: we intentionally do NOT create an Interaction here. The reaction only
-  // becomes a real (play-visible) Interaction when the sender reveals/finalizes
-  // within the 60s window. If the reveal link expires, finalize is blocked and
-  // no Interaction is ever created, so no play card appears for the creator.
+  // Create an anonymous Interaction immediately so the play card shows and the
+  // poll counts regardless of whether the sender ever opens the app.
+  // finalize() will attribute it (set fromUser) and run the match check if the
+  // sender taps Reveal within the 60s window; otherwise it stays anonymous.
+  await Interaction.create({
+    fromUser: null,
+    toUser: targetUser.id,
+    type: normalizedType,
+    metadata: {
+      anonymous: true,
+      pendingReveal: true,
+      pendingToken: pending.pendingToken,
+      source,
+      sessionId: sessionId || null,
+    },
+  });
 
   console.info('[AnonymousResponse] pending created', {
     shareCode: targetUser.shareCode,
