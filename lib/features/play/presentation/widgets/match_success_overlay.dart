@@ -1,10 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
-import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MatchThemeConfig {

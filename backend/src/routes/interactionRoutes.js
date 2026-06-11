@@ -33,6 +33,7 @@ router.post(
 );
 
 router.get('/pending/:token', interactionController.getPendingInteraction);
+router.post('/pending/:token/touch', interactionController.touchPendingInteraction);
 
 router.use(authMiddleware);
 
@@ -46,6 +47,7 @@ router.post(
   interactionController.createInteraction
 );
 
+router.get('/limit-status', interactionController.getLimitStatus);
 router.get('/matches', interactionController.getMatches);
 router.get('/received', interactionController.getReceivedInteractions);
 router.post(

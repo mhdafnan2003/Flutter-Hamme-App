@@ -1,4 +1,5 @@
 const userService = require('../services/userService');
+const appConfigService = require('../services/appConfigService');
 
 async function listUsers(req, res) {
   const result = await userService.listUsers({
@@ -14,7 +15,20 @@ async function setPlan(req, res) {
   return res.status(200).json({ user: user.toJSON() });
 }
 
+async function getConfig(req, res) {
+  const config = await appConfigService.getConfig();
+  return res.status(200).json({ config });
+}
+
+async function updateConfig(req, res) {
+  const { freeUserCardLimit, cardCooldownMinutes } = req.body;
+  const config = await appConfigService.updateConfig({ freeUserCardLimit, cardCooldownMinutes });
+  return res.status(200).json({ config });
+}
+
 module.exports = {
   listUsers,
   setPlan,
+  getConfig,
+  updateConfig,
 };

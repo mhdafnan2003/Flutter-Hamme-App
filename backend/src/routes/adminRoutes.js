@@ -30,4 +30,17 @@ router.patch(
   adminController.setPlan
 );
 
+router.get('/config', adminMiddleware, adminController.getConfig);
+
+router.patch(
+  '/config',
+  adminMiddleware,
+  [
+    body('freeUserCardLimit').optional().isInt({ min: 1, max: 1000 }),
+    body('cardCooldownMinutes').optional().isInt({ min: 1, max: 1440 }),
+  ],
+  validateRequest,
+  adminController.updateConfig
+);
+
 module.exports = router;

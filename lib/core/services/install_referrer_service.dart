@@ -24,7 +24,7 @@ class InstallReferrerService {
     if (kIsWeb || !Platform.isAndroid) return null;
     try {
       final referrerDetails = await PlayInstallReferrer.installReferrer;
-      final raw = referrerDetails?.installReferrer ?? '';
+      final raw = referrerDetails.installReferrer ?? '';
       if (raw.isEmpty) return null;
 
       final params = Uri.splitQueryString(raw);

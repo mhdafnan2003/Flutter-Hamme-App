@@ -5,6 +5,7 @@ const PendingInteraction = require('../models/PendingInteraction');
 const ApiError = require('../utils/ApiError');
 const crypto = require('crypto');
 const { emitMatchFound } = require('../socket');
+const appConfigService = require('./appConfigService');
 
 const allowedTypes = new Set(['friend', 'crush', 'frenemy']);
 const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 60);
@@ -12,6 +13,7 @@ const pendingTtlSeconds = Number.isFinite(pendingTtlSecondsRaw)
   ? Math.max(30, pendingTtlSecondsRaw)
   : 60;
 const PENDING_TTL_MS = pendingTtlSeconds * 1000;
+const REVEAL_EXTEND_MS = 5 * 60 * 1000; // 5 min grace after user taps Reveal
 const VISIBLE_MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function buildCanonicalPair(firstUserId, secondUserId) {
@@ -154,7 +156,7 @@ async function createAnonymousResponse({
       targetUserId: targetUser.id,
       sessionId,
       type: normalizedType,
-      status: { $in: ['pending', 'finalized'] },
+      status: 'pending',
       createdAt: { $gte: new Date(now - PENDING_TTL_MS) },
     });
     if (duplicate) {
@@ -256,11 +258,19 @@ async function createInteractionByTargetId({ fromUserId, targetUserId, type }) {
     emitMatchFound([fromUserId, targetUser.id], payload);
   }
 
+  // Track card view for free users (non-blocking)
+  appConfigService.incrementCardView(fromUserId).catch((err) => {
+    console.error('[CardSession] Failed to increment card view:', err);
+  });
+
+  const cardLimitStatus = await appConfigService.getCardLimitStatus(fromUserId).catch(() => null);
+
   return {
     interaction: interaction.toJSON(),
     matched: Boolean(match),
     match: match ? serializeMatch(match, fromUserId) : null,
     notification: match ? { type: 'match', matchId: match.id } : null,
+    cardLimitStatus,
   };
 }
 
@@ -430,6 +440,22 @@ async function finalizePendingInteraction({ token, currentUserId }) {
   }
 
   if (pending.status === 'finalized') {
+    // If the same user re-finalizes (e.g. Android install referrer replays the
+    // old token after the user clears app data), return the existing result
+    // silently instead of erroring — the interaction was already recorded.
+    const alreadyAttributed = await Interaction.findOne({
+      toUser: pending.targetUserId,
+      type: pending.type,
+      fromUser: currentUserId,
+      'metadata.pendingToken': token,
+    });
+    if (alreadyAttributed) {
+      return await detectMatchAndBuildResult({
+        fromUserId: currentUserId,
+        targetUserId: pending.targetUserId,
+        type: pending.type,
+      });
+    }
     throw new ApiError(400, 'This reveal link has already been used.');
   }
 
@@ -498,6 +524,29 @@ async function finalizePendingInteraction({ token, currentUserId }) {
   return result;
 }
 
+async function touchPendingInteraction(token) {
+  const pending = await PendingInteraction.findOne({ deepLinkToken: token });
+  if (!pending) {
+    throw new ApiError(404, 'Interaction not found or expired.');
+  }
+  if (pending.status === 'finalized') {
+    // Already done — nothing to extend, treat as success.
+    return { expiresAt: pending.expiresAt };
+  }
+  if (pending.status === 'expired') {
+    throw new ApiError(400, 'This reveal link has already expired.');
+  }
+
+  const extended = new Date(Date.now() + REVEAL_EXTEND_MS);
+  // Only extend if it would push the deadline further out.
+  if (extended > pending.expiresAt) {
+    pending.expiresAt = extended;
+    await pending.save();
+  }
+
+  return { expiresAt: pending.expiresAt };
+}
+
 async function getPendingInteraction(token) {
   const pending = await PendingInteraction.findOne({ deepLinkToken: token }).populate('targetUserId', 'name profileImageUrl');
   if (!pending) {
@@ -520,6 +569,7 @@ module.exports = {
   getMatchesForUser,
   getReceivedInteractions,
   createPendingInteraction,
+  touchPendingInteraction,
   finalizePendingInteraction,
   getPendingInteraction,
 };

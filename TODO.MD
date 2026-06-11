@@ -1,3 +1,11 @@
+so if a user get so much play requests we need to limit it to a specific number. number can be defined from admin panel. and after that specific   
+  number of cards view user need to wait some  minutes to see next cards. this minute also need to set from admin panel. this project already has a  
+  admin panel. display a text upgrade to pro to see next cards without waiting in a beutiful ui. pro users have no limit to see cards. so wired it   
+  with pro. pro feature already in this project. then after poll the vote we check matching . show the result to the polled user in play page as     
+  matched or not matched.   
+  
+
+
 can i controll that  using that above variable ? if it true call directly to server , if it not then playstore. another issue is after upgrading to pro manually through admin panel some pro features are not available.
 
 

@@ -35,6 +35,12 @@ module.exports = `<!doctype html>
   #status { font-size:13px; min-height:18px; }
   .err { color:#d33; }
   .ok { color:#1a8f3c; }
+  .section-title { font-size:15px; font-weight:800; color:#1c1c28; margin:0 0 14px; }
+  .settings-row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+  .settings-row > div { flex:1; min-width:180px; }
+  .number-input { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:14px; }
+  .hint { font-size:11px; color:#9a9aae; margin-top:4px; }
+  #settingsStatus { font-size:13px; min-height:18px; margin-top:10px; }
 </style>
 </head>
 <body>
@@ -58,6 +64,26 @@ module.exports = `<!doctype html>
       </div>
     </div>
     <div id="status" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">⚙️ Play Settings</div>
+    <div class="settings-row">
+      <div>
+        <label>Free card limit per session</label>
+        <input id="cardLimit" class="number-input" type="number" min="1" max="1000" placeholder="10" />
+        <div class="hint">How many cards free users can view before cooldown.</div>
+      </div>
+      <div>
+        <label>Cooldown duration (minutes)</label>
+        <input id="cooldownMinutes" class="number-input" type="number" min="1" max="1440" placeholder="5" />
+        <div class="hint">How many minutes free users wait before seeing more cards.</div>
+      </div>
+      <div style="flex:0 0 auto;">
+        <button class="btn-primary" id="saveSettings">Save Settings</button>
+      </div>
+    </div>
+    <div id="settingsStatus"></div>
   </div>
 
   <div class="card">
@@ -172,6 +198,7 @@ module.exports = `<!doctype html>
     setKey($('adminKey').value.trim());
     state.page = 1;
     load();
+    loadSettings();
   });
 
   var searchTimer = null;
@@ -191,9 +218,44 @@ module.exports = `<!doctype html>
     if (state.page < state.pages) { state.page++; load(); }
   });
 
+  // ── Settings ──────────────────────────────────────────────────────────────
+  function setSettingsStatus(msg, kind) {
+    var el = $('settingsStatus');
+    el.textContent = msg || '';
+    el.className = kind || '';
+  }
+
+  async function loadSettings() {
+    if (!getKey()) return;
+    try {
+      var data = await api('/config');
+      if (data && data.config) {
+        $('cardLimit').value = data.config.freeUserCardLimit || 10;
+        $('cooldownMinutes').value = data.config.cardCooldownMinutes || 5;
+      }
+    } catch (e) {
+      // Non-fatal: leave placeholders
+    }
+  }
+
+  $('saveSettings').addEventListener('click', async function () {
+    if (!getKey()) { setSettingsStatus('Enter your admin key first.', 'err'); return; }
+    var cardLimit = parseInt($('cardLimit').value, 10);
+    var cooldown = parseInt($('cooldownMinutes').value, 10);
+    if (!cardLimit || cardLimit < 1) { setSettingsStatus('Card limit must be at least 1.', 'err'); return; }
+    if (!cooldown || cooldown < 1) { setSettingsStatus('Cooldown must be at least 1 minute.', 'err'); return; }
+    setSettingsStatus('Saving…');
+    try {
+      await api('/config', { method: 'PATCH', body: JSON.stringify({ freeUserCardLimit: cardLimit, cardCooldownMinutes: cooldown }) });
+      setSettingsStatus('Settings saved!', 'ok');
+    } catch (e) {
+      setSettingsStatus(e.message, 'err');
+    }
+  });
+
   // Restore saved key on open.
   $('adminKey').value = getKey();
-  if (getKey()) load();
+  if (getKey()) { load(); loadSettings(); }
 </script>
 </body>
 </html>`;

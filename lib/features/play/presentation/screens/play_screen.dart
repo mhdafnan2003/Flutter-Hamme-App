@@ -10,10 +10,12 @@ import 'package:go_router/go_router.dart';
 import 'package:hamme_app/models/interaction_record.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
+import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/billing_providers.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/providers/play_limit_provider.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
@@ -23,6 +25,8 @@ import '../../../shared/presentation/widgets/hamme_top_bar.dart';
 import '../widgets/play_empty_state.dart';
 import '../widgets/match_share_export_widget.dart';
 import '../widgets/match_success_overlay.dart';
+import '../widgets/play_cooldown_view.dart';
+import '../widgets/poll_match_overlay.dart';
 
 class PlayScreen extends ConsumerStatefulWidget {
   const PlayScreen({super.key});
@@ -38,9 +42,16 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   InteractionRecord? _rewoundItem;
   InteractionRecord? _lastVotedItem;
 
+  // Tracks which match IDs have already been shown as overlays this session
+  // so we don't re-show them on every 5-second refresh.
+  final Set<String> _shownMatchIds = {};
+  // Only show overlays for matches created after this screen was opened.
+  late final DateTime _sessionOpenedAt;
+
   void _refreshPlayData() {
     ref.invalidate(receivedInteractionsProvider);
     ref.invalidate(pendingPlayInteractionsProvider);
+    ref.invalidate(playLimitStatusProvider);
   }
 
   void _onDismiss() {
@@ -57,9 +68,45 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     });
   }
 
+  /// Called whenever matchesProvider refreshes — shows overlays for any
+  /// matches that arrived after this session opened (covers the poller side).
+  void _checkForNewMatchesFromPollerSide(List<MatchRecord> matches) {
+    for (final match in matches) {
+      if (_shownMatchIds.contains(match.id)) continue;
+      // Only show matches created after the screen was opened (new this session)
+      if (match.createdAt.toUtc().isBefore(_sessionOpenedAt)) {
+        _shownMatchIds.add(match.id); // mark old matches as seen silently
+        continue;
+      }
+      _shownMatchIds.add(match.id);
+      // Defer to avoid triggering navigation during a build phase.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showPollMatchOverlay(match);
+      });
+    }
+  }
+
+  Future<void> _showPollMatchOverlay(MatchRecord match) async {
+    final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
+    await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (ctx, _, __) => PollMatchOverlay(
+          match: match,
+          currentUserImageUrl: myImageUrl,
+          onDismiss: () => Navigator.of(ctx).pop(),
+        ),
+      ),
+    );
+  }
+
   /// Shows the full-screen match celebration on the root navigator so it
   /// covers the persistent bottom navigation bar.
   Future<void> _showMatchOverlay(InteractionResult result) async {
+    // Mark as seen so the matchesProvider listener doesn't re-show it.
+    if (result.match?.id != null) {
+      _shownMatchIds.add(result.match!.id);
+    }
     final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
@@ -76,9 +123,15 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   @override
   void initState() {
     super.initState();
+    _sessionOpenedAt = DateTime.now().toUtc();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPlayData();
+      // Pre-populate seen match IDs so existing matches don't re-trigger overlays.
+      final existing = ref.read(matchesProvider).value ?? [];
+      for (final m in existing) {
+        _shownMatchIds.add(m.id);
+      }
     });
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
@@ -105,6 +158,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   Widget build(BuildContext context) {
     final pending = ref.watch(pendingPlayInteractionsProvider);
     final controller = ref.watch(interactionControllerProvider);
+    final limitStatus = ref.watch(playLimitStatusProvider);
+
+    // Listen for new matches that the poller should see (arrived from the other side).
+    ref.listen<AsyncValue<List<MatchRecord>>>(matchesProvider, (_, next) {
+      next.whenData(_checkForNewMatchesFromPollerSide);
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
@@ -113,74 +172,159 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
           children: [
             const HammeTopBar(),
             Expanded(
-              child: _lastResult != null && !_lastResult!.matched
-                  ? _NotAMatchView(
-                      result: _lastResult!,
-                      remainingCount: (pending.value?.length ?? 0),
-                      onSeeNext: _onDismiss,
-                      onRewind: _triggerRewind,
-                    )
-                  : pending.when(
-                      data: (items) {
-                        final effectiveItem = _rewoundItem ?? (items.isEmpty ? null : items.first);
-                        if (effectiveItem == null) return const _CompletedQueueView();
-                        return _PlayQueue(
-                          item: effectiveItem,
-                          remainingCount: items.length,
-                          isSubmitting: controller.isLoading,
-                          onSelect: (type) async {
-                            final targetUserId = effectiveItem.fromUser;
-                            if (targetUserId == null || targetUserId.isEmpty) return;
-                            _lastVotedItem = effectiveItem;
-                            setState(() => _rewoundItem = null);
-                            try {
-                              final result = await ref
-                                  .read(interactionControllerProvider.notifier)
-                                  .respondToUser(
-                                    targetUserId: targetUserId,
-                                    type: type,
-                                  );
-                              if (!mounted) return;
-
-                              final mergedResult = result.copyWith(
-                                interaction: result.interaction.copyWith(
-                                  fromUserName: result.interaction.fromUserName ?? effectiveItem.fromUserName,
-                                  fromUserUsername: result.interaction.fromUserUsername ?? effectiveItem.fromUserUsername,
-                                  fromUserProfileImageUrl: result.interaction.fromUserProfileImageUrl ?? effectiveItem.fromUserProfileImageUrl,
-                                  fromUserInstagramId: result.interaction.fromUserInstagramId ?? effectiveItem.fromUserInstagramId,
-                                  fromUserSnapchatId: result.interaction.fromUserSnapchatId ?? effectiveItem.fromUserSnapchatId,
-                                ),
-                              );
-
-                              if (mergedResult.matched) {
-                                await _showMatchOverlay(mergedResult);
-                                if (!mounted) return;
-                                _refreshPlayData();
-                              } else {
-                                setState(() => _lastResult = mergedResult);
-                              }
-                            } catch (error) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Could not save response: $error'),
-                                  backgroundColor: TColors.error,
-                                ),
-                              );
-                            }
-                          },
-                        );
-                      },
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(color: TColors.hammePrimary),
+              child: limitStatus.when(
+                data: (status) {
+                  // Show cooldown wall for free users who hit the limit
+                  if (status.limited) {
+                    return SingleChildScrollView(
+                      child: PlayCooldownView(
+                        status: status,
+                        onCooldownEnd: _refreshPlayData,
                       ),
-                      error: (error, _) => Center(
-                        child: Text(
-                          'Could not load voters.\n$error',
-                          textAlign: TextAlign.center,
+                    );
+                  }
+
+                  return _lastResult != null && !_lastResult!.matched
+                      ? _NotAMatchView(
+                          result: _lastResult!,
+                          remainingCount: (pending.value?.length ?? 0),
+                          onSeeNext: _onDismiss,
+                          onRewind: _triggerRewind,
+                        )
+                      : pending.when(
+                          data: (items) {
+                            final effectiveItem = _rewoundItem ?? (items.isEmpty ? null : items.first);
+                            if (effectiveItem == null) return const _CompletedQueueView();
+                            return _PlayQueue(
+                              item: effectiveItem,
+                              remainingCount: items.length,
+                              isSubmitting: controller.isLoading,
+                              onSelect: (type) async {
+                                final targetUserId = effectiveItem.fromUser;
+                                if (targetUserId == null || targetUserId.isEmpty) return;
+                                _lastVotedItem = effectiveItem;
+                                setState(() => _rewoundItem = null);
+                                try {
+                                  final result = await ref
+                                      .read(interactionControllerProvider.notifier)
+                                      .respondToUser(
+                                        targetUserId: targetUserId,
+                                        type: type,
+                                      );
+                                  if (!mounted) return;
+                                  // Refresh limit status after each vote
+                                  ref.invalidate(playLimitStatusProvider);
+
+                                  final mergedResult = result.copyWith(
+                                    interaction: result.interaction.copyWith(
+                                      fromUserName: result.interaction.fromUserName ?? effectiveItem.fromUserName,
+                                      fromUserUsername: result.interaction.fromUserUsername ?? effectiveItem.fromUserUsername,
+                                      fromUserProfileImageUrl: result.interaction.fromUserProfileImageUrl ?? effectiveItem.fromUserProfileImageUrl,
+                                      fromUserInstagramId: result.interaction.fromUserInstagramId ?? effectiveItem.fromUserInstagramId,
+                                      fromUserSnapchatId: result.interaction.fromUserSnapchatId ?? effectiveItem.fromUserSnapchatId,
+                                    ),
+                                  );
+
+                                  if (mergedResult.matched) {
+                                    await _showMatchOverlay(mergedResult);
+                                    if (!mounted) return;
+                                    _refreshPlayData();
+                                  } else {
+                                    setState(() => _lastResult = mergedResult);
+                                  }
+                                } catch (error) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Could not save response: $error'),
+                                      backgroundColor: TColors.error,
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(color: TColors.hammePrimary),
+                          ),
+                          error: (error, _) => Center(
+                            child: Text(
+                              'Could not load voters.\n$error',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: TColors.hammePrimary),
+                ),
+                error: (_, __) => _lastResult != null && !_lastResult!.matched
+                    ? _NotAMatchView(
+                        result: _lastResult!,
+                        remainingCount: (pending.value?.length ?? 0),
+                        onSeeNext: _onDismiss,
+                        onRewind: _triggerRewind,
+                      )
+                    : pending.when(
+                        data: (items) {
+                          final effectiveItem = _rewoundItem ?? (items.isEmpty ? null : items.first);
+                          if (effectiveItem == null) return const _CompletedQueueView();
+                          return _PlayQueue(
+                            item: effectiveItem,
+                            remainingCount: items.length,
+                            isSubmitting: controller.isLoading,
+                            onSelect: (type) async {
+                              final targetUserId = effectiveItem.fromUser;
+                              if (targetUserId == null || targetUserId.isEmpty) return;
+                              _lastVotedItem = effectiveItem;
+                              setState(() => _rewoundItem = null);
+                              try {
+                                final result = await ref
+                                    .read(interactionControllerProvider.notifier)
+                                    .respondToUser(
+                                      targetUserId: targetUserId,
+                                      type: type,
+                                    );
+                                if (!mounted) return;
+                                final mergedResult = result.copyWith(
+                                  interaction: result.interaction.copyWith(
+                                    fromUserName: result.interaction.fromUserName ?? effectiveItem.fromUserName,
+                                    fromUserUsername: result.interaction.fromUserUsername ?? effectiveItem.fromUserUsername,
+                                    fromUserProfileImageUrl: result.interaction.fromUserProfileImageUrl ?? effectiveItem.fromUserProfileImageUrl,
+                                    fromUserInstagramId: result.interaction.fromUserInstagramId ?? effectiveItem.fromUserInstagramId,
+                                    fromUserSnapchatId: result.interaction.fromUserSnapchatId ?? effectiveItem.fromUserSnapchatId,
+                                  ),
+                                );
+                                if (mergedResult.matched) {
+                                  await _showMatchOverlay(mergedResult);
+                                  if (!mounted) return;
+                                  _refreshPlayData();
+                                } else {
+                                  setState(() => _lastResult = mergedResult);
+                                }
+                              } catch (error) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Could not save response: $error'),
+                                    backgroundColor: TColors.error,
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        },
+                        loading: () => const Center(
+                          child: CircularProgressIndicator(color: TColors.hammePrimary),
+                        ),
+                        error: (error, _) => Center(
+                          child: Text(
+                            'Could not load voters.\n$error',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                    ),
+              ),
             ),
           ],
         ),

@@ -119,13 +119,18 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
           e.statusCode != null &&
           e.statusCode! >= 400 &&
           e.statusCode! < 500) {
-        // Terminal failure (expired / already used / self). Mark it processed so
-        // it is never retried, and clear all deferred deep-link state so no other
-        // path acts on this expired link.
+        // Terminal failure — mark processed so it is never retried, and clear
+        // all deferred deep-link state so no other path acts on this link.
         _deferredFinalizeProcessed.add(token);
         ref.read(deferredInteractionTokenProvider.notifier).state = null;
         ref.read(deferredShareCodeProvider.notifier).state = null;
         ref.read(deferredInteractionTypeProvider.notifier).state = null;
+
+        // "Already used" means the install referrer replayed a stale token
+        // (e.g. same phone, data cleared, new account). No real user hits this
+        // in a legitimate flow — show nothing.
+        final msg = e.message ?? '';
+        if (msg.contains('already been used') || msg.contains('already been sent')) return;
       }
     } finally {
       _deferredFinalizeInFlight.remove(token);

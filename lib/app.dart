@@ -103,7 +103,14 @@ class _HammeAppState extends ConsumerState<HammeApp> {
     if (payload == null || !payload.hasUsefulData) return;
 
     if (payload.token != null && payload.token!.isNotEmpty) {
-      ref.read(deferredInteractionTokenProvider.notifier).state = payload.token;
+      // Only apply the install referrer token if no live deep-link token is
+      // already set. The Play Store caches the referrer permanently, so it
+      // would otherwise overwrite a fresh token delivered via deep link after
+      // the user clears app data and polls again.
+      final existingToken = ref.read(deferredInteractionTokenProvider);
+      if (existingToken == null) {
+        ref.read(deferredInteractionTokenProvider.notifier).state = payload.token;
+      }
     }
     if (payload.shareCode != null && payload.shareCode!.isNotEmpty) {
       ref.read(deferredShareCodeProvider.notifier).state = payload.shareCode;

@@ -292,15 +292,24 @@ function RevealScreen({
     setCopyStatus('Copied deeplink');
   };
 
-  const handleReveal = () => {
+  const handleReveal = async () => {
     if (!pendingToken && !shareCode) return;
+
+    // Extend the server-side expiry to give the user time to install/open the app.
+    if (pendingToken) {
+      try {
+        await fetch(`${apiBaseUrl}/interactions/pending/${pendingToken}/touch`, { method: 'POST' });
+      } catch {
+        // Non-fatal — proceed with the deep link regardless.
+      }
+    }
 
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const isAndroid = /android/i.test(userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
 
     const deepLink = buildDeepLink();
-    
+
     const referrerParams = new URLSearchParams();
     if (pendingToken) referrerParams.set('hamme_token', pendingToken);
     if (shareCode) referrerParams.set('hamme_code', shareCode);
