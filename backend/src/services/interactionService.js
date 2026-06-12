@@ -258,8 +258,10 @@ async function createInteractionByTargetId({ fromUserId, targetUserId, type }) {
     emitMatchFound([fromUserId, targetUser.id], payload);
   }
 
-  // Track card view for free users (non-blocking)
-  appConfigService.incrementCardView(fromUserId).catch((err) => {
+  // Must await so the DB write completes before the response is sent.
+  // On Vercel serverless, fire-and-forget work is frozen as soon as the
+  // response is returned, so a non-awaited increment would never persist.
+  await appConfigService.incrementCardView(fromUserId).catch((err) => {
     console.error('[CardSession] Failed to increment card view:', err);
   });
 

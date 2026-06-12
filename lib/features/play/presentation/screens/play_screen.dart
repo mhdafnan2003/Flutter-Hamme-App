@@ -27,6 +27,7 @@ import '../widgets/match_share_export_widget.dart';
 import '../widgets/match_success_overlay.dart';
 import '../widgets/play_cooldown_view.dart';
 import '../widgets/poll_match_overlay.dart';
+import '../widgets/poll_not_a_match_overlay.dart';
 
 class PlayScreen extends ConsumerStatefulWidget {
   const PlayScreen({super.key});
@@ -45,8 +46,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   // Tracks which match IDs have already been shown as overlays this session
   // so we don't re-show them on every 5-second refresh.
   final Set<String> _shownMatchIds = {};
-  // Only show overlays for matches created after this screen was opened.
-  late final DateTime _sessionOpenedAt;
+  // Tracks interaction IDs already shown as poller-side "not a match" overlays.
+  final Set<String> _shownPollerResultIds = {};
 
   void _refreshPlayData() {
     ref.invalidate(receivedInteractionsProvider);
@@ -69,13 +70,14 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   }
 
   /// Called whenever matchesProvider refreshes — shows overlays for any
-  /// matches that arrived after this session opened (covers the poller side).
+  /// recent matches not yet seen this session (covers the poller side).
   void _checkForNewMatchesFromPollerSide(List<MatchRecord> matches) {
+    final cutoff = DateTime.now().toUtc().subtract(const Duration(hours: 24));
     for (final match in matches) {
       if (_shownMatchIds.contains(match.id)) continue;
-      // Only show matches created after the screen was opened (new this session)
-      if (match.createdAt.toUtc().isBefore(_sessionOpenedAt)) {
-        _shownMatchIds.add(match.id); // mark old matches as seen silently
+      // Skip matches older than 24 h — user can see them in the Matches tab.
+      if (match.createdAt.toUtc().isBefore(cutoff)) {
+        _shownMatchIds.add(match.id);
         continue;
       }
       _shownMatchIds.add(match.id);
@@ -93,6 +95,53 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
         opaque: true,
         pageBuilder: (ctx, _, __) => PollMatchOverlay(
           match: match,
+          currentUserImageUrl: myImageUrl,
+          onDismiss: () => Navigator.of(ctx).pop(),
+        ),
+      ),
+    );
+  }
+
+  /// Called when receivedInteractionsProvider refreshes — shows a "not a match"
+  /// overlay for the poller (the person who voted via share link) when the
+  /// creator voted back but it wasn't a match.
+  void _checkForNotMatchFromPollerSide(List<InteractionRecord> interactions) {
+    for (final interaction in interactions) {
+      if (_shownPollerResultIds.contains(interaction.id)) continue;
+
+      // We only care about cards where:
+      // – the current user already voted for the other person (respondedByCurrentUser)
+      // – the other person voted back (fromUser is known)
+      // – it is NOT a match (matched: true is handled by matchesProvider)
+      if (!interaction.respondedByCurrentUser ||
+          interaction.matched ||
+          interaction.fromUser == null ||
+          interaction.fromUser!.isEmpty) {
+        _shownPollerResultIds.add(interaction.id);
+        continue;
+      }
+
+      // Only surface results from the last 24 h — older ones stay in the Matches tab.
+      final cutoff = DateTime.now().toUtc().subtract(const Duration(hours: 24));
+      if (interaction.createdAt.toUtc().isBefore(cutoff)) {
+        _shownPollerResultIds.add(interaction.id);
+        continue;
+      }
+
+      _shownPollerResultIds.add(interaction.id);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showPollNotAMatchOverlay(interaction);
+      });
+    }
+  }
+
+  Future<void> _showPollNotAMatchOverlay(InteractionRecord interaction) async {
+    final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
+    await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (ctx, _, __) => PollNotAMatchOverlay(
+          interaction: interaction,
           currentUserImageUrl: myImageUrl,
           onDismiss: () => Navigator.of(ctx).pop(),
         ),
@@ -123,15 +172,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   @override
   void initState() {
     super.initState();
-    _sessionOpenedAt = DateTime.now().toUtc();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPlayData();
-      // Pre-populate seen match IDs so existing matches don't re-trigger overlays.
-      final existing = ref.read(matchesProvider).value ?? [];
-      for (final m in existing) {
-        _shownMatchIds.add(m.id);
-      }
     });
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
@@ -163,6 +206,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     // Listen for new matches that the poller should see (arrived from the other side).
     ref.listen<AsyncValue<List<MatchRecord>>>(matchesProvider, (_, next) {
       next.whenData(_checkForNewMatchesFromPollerSide);
+    });
+
+    // Listen for "not a match" results the poller should see when the creator
+    // voted back but it wasn't a match.
+    ref.listen<AsyncValue<List<InteractionRecord>>>(receivedInteractionsProvider, (_, next) {
+      next.whenData(_checkForNotMatchFromPollerSide);
     });
 
     return Scaffold(
