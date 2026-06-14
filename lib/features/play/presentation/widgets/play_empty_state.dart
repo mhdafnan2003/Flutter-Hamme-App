@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
@@ -77,8 +78,8 @@ class PlayEmptyState extends StatelessWidget {
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Text(
+                        children: [
+                          const Text(
                             'No one here yet',
                             style: TextStyle(
                               fontFamily: TFonts.nunito,
@@ -87,11 +88,8 @@ class PlayEmptyState extends StatelessWidget {
                               color: Color(0xFFFF00FF),
                             ),
                           ),
-                          SizedBox(width: 8),
-                          Text(
-                            '🥺',
-                            style: TextStyle(fontSize: 26),
-                          ),
+                          const SizedBox(width: 8),
+                          const EmojiImage(emoji: '🥺', size: 26),
                         ],
                       ),
                     ),

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
@@ -12,6 +13,7 @@ import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
 import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
 
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import '../../../../../core/widgets/gradient_button.dart';
 import '../widgets/dob_top_bar.dart';
 import '../widgets/triangle_painter.dart';
@@ -133,7 +135,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text('📸', style: TextStyle(fontSize: 28)),
+            const EmojiImage(emoji: '📸', size: 28),
 
             const Spacer(),
 
@@ -198,14 +200,18 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
-                              CupertinoIcons.person_crop_rectangle_fill,
-                              color: Colors.white,
-                              size: 16,
+                          children: [
+                            SvgPicture.asset(
+                              'assets/icons/user_3.svg',
+                              width: 16,
+                              height: 16,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
                             ),
-                            SizedBox(width: 6),
-                            Text(
+                            const SizedBox(width: 6),
+                            const Text(
                               TTexts.onboardingShowFace,
                               style: TextStyle(
                                 fontFamily: TFonts.nunito,

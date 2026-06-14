@@ -252,6 +252,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                     ),
                     child: const Column(
                       children: [
+                        SizedBox(height: 30),
                         ProFeature(
                           icon: Image(
                             image: AssetImage('assets/icons/Infinity.png'),
@@ -262,7 +263,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                           subtitle:
                               'No waiting, Play every profile,\nanytime.',
                         ),
-                        SizedBox(height: 12),
+                        SizedBox(height: 30),
                         ProFeature(
                           icon: Image(
                             image: AssetImage(
@@ -275,7 +276,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                           subtitle:
                               'Picked wrong? Go back and change\nyour pick.',
                         ),
-                        SizedBox(height: 12),
+                       SizedBox(height: 30),
                         ProFeature(
                           icon: Image(
                             image: AssetImage('assets/icons/High Voltage.png'),
@@ -286,6 +287,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                           subtitle:
                               'Appear first in queues of people you\nreacted to.',
                         ),
+                        SizedBox(height: 30),
                       ],
                     ),
                   ),

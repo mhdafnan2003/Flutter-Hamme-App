@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/features/inbox/domain/models/inbox_variation.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -181,9 +182,9 @@ class InboxReactionCard extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: Text(
-                  variation.emoji,
-                  style: const TextStyle(fontSize: 26),
+                child: EmojiImage(
+                  emoji: variation.emoji,
+                  size: 26,
                 ),
               ),
             ),

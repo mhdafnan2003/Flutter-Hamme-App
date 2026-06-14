@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -88,72 +89,78 @@ class _DobScreenState extends ConsumerState<DobScreen> {
     return Scaffold(
       backgroundColor: TColors.white,
       body: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const DobTopBar(progress: 0.35),
-              const SizedBox(height: 30),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  "When's your birthday?",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 24,
-                    color: TColors.black,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('🎂', style: TextStyle(fontSize: 28)),
-              const SizedBox(height: 32),
-              Container(
-                width: 140,
-                height: 116,
-                decoration: BoxDecoration(
-                  color: TColors.hammeSurface,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      displayAge,
-                      style: const TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 52,
-                        color: TColors.black,
-                        height: 1,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const DobTopBar(progress: 0.35),
+                      const SizedBox(height: 30),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          "When's your birthday?",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 24,
+                            color: TColors.black,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'years old',
-                      style: TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        color: TColors.hammePrimary,
+                      const SizedBox(height: 12),
+                      const EmojiImage(emoji: '🎂', size: 28),
+                      const SizedBox(height: 32),
+                      Container(
+                        width: 140,
+                        height: 116,
+                        decoration: BoxDecoration(
+                          color: TColors.hammeSurface,
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              displayAge,
+                              style: const TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 52,
+                                color: TColors.black,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'years old',
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: TColors.hammePrimary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: Stack(
-                  alignment: Alignment.center,
+                      const SizedBox(height: 150),
+                      SizedBox(
+                        height: 220,
+                        child: Stack(
+                          alignment: Alignment.center,
                   children: [
                     Positioned(
+                      left: 0,
+                      right: 0,
                       child: IgnorePointer(
                         child: Container(
                           height: 44,
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
                             color: TColors.hammeSurface,
                             borderRadius: BorderRadius.circular(12),
@@ -189,7 +196,7 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                                 fontWeight:
                                     isSelected
                                         ? FontWeight.w900
-                                        : FontWeight.w500,
+                                        : FontWeight.w600,
                                 color:
                                     isSelected
                                         ? TColors.black
@@ -205,13 +212,10 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                       child: GestureDetector(
                         onTap: _decrementAge,
                         behavior: HitTestBehavior.opaque,
-                        child: const RotatedBox(
-                          quarterTurns: 2,
-                          child: Icon(
-                            CupertinoIcons.play_arrow_solid,
-                            color: TColors.hammeAccentBlue,
-                            size: 14,
-                          ),
+                        child: const Icon(
+                          CupertinoIcons.play_arrow_solid,
+                          color: TColors.hammePurpleColor,
+                          size: 14,
                         ),
                       ),
                     ),
@@ -220,30 +224,37 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                       child: GestureDetector(
                         onTap: _incrementAge,
                         behavior: HitTestBehavior.opaque,
-                        child: const Icon(
-                          CupertinoIcons.play_arrow_solid,
-                          color: TColors.hammeAccentBlue,
-                          size: 14,
+                        child: const RotatedBox(
+                          quarterTurns: 2,
+                          child: Icon(
+                            CupertinoIcons.play_arrow_solid,
+                            color: TColors.hammePurpleColor,
+                            size: 14,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                child: GradientButton(
-                  label: TTexts.next,
-                  onTap: () {
-                    ref
-                        .read(onboardingDraftProvider.notifier)
-                        .setBirthday(_selectedBirthday);
-                    context.go('/onboarding/name');
-                  },
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: GradientButton(
+                label: TTexts.next,
+                onTap: () {
+                  ref
+                      .read(onboardingDraftProvider.notifier)
+                      .setBirthday(_selectedBirthday);
+                  context.go('/onboarding/name');
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

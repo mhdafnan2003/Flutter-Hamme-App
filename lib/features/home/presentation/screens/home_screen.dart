@@ -40,10 +40,9 @@ class HomeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 80),
                     const HomeProfileCard(),
-
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 40),
 
                     HomeStepCard(
                       title: TTexts.homeStepOneTitle,
@@ -97,7 +96,7 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     HomeStepCard(
                       title: TTexts.homeStepTwoTitle,
@@ -169,32 +168,32 @@ class HomeScreen extends ConsumerWidget {
 
                     // const SizedBox(height: 12),
 
-                    SizedBox(
-                      width: 250,
-                      child: OutlinedButton(
-                        onPressed: () async {
-                          await ref.read(authControllerProvider.notifier).logout();
-                          if (!context.mounted) return;
-                          context.go('/splash');
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.red, width: 2),
-                          foregroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28),
-                          ),
-                        ),
-                        child: const Text(
-                          'Logout (Reset Tokens)',
-                          style: TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
+                    // SizedBox(
+                    //   width: 250,
+                    //   child: OutlinedButton(
+                    //     onPressed: () async {
+                    //       await ref.read(authControllerProvider.notifier).logout();
+                    //       if (!context.mounted) return;
+                    //       context.go('/splash');
+                    //     },
+                    //     style: OutlinedButton.styleFrom(
+                    //       side: const BorderSide(color: Colors.red, width: 2),
+                    //       foregroundColor: Colors.red,
+                    //       padding: const EdgeInsets.symmetric(vertical: 14),
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(28),
+                    //       ),
+                    //     ),
+                    //     child: const Text(
+                    //       'Logout (Reset Tokens)',
+                    //       style: TextStyle(
+                    //         fontFamily: TFonts.nunito,
+                    //         fontWeight: FontWeight.w700,
+                    //         fontSize: 16,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
 
                     // const SizedBox(height: 32),
                   ],

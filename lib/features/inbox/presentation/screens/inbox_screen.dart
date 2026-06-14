@@ -72,6 +72,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       final shareCode = session?.user.shareCode;
       final shareLink = AppConstants.buildUserShareLink(shareCode);
 
+      // Auto-copy share link to clipboard so user can paste into link sticker
+      await Clipboard.setData(ClipboardData(text: shareLink));
+
       // 4. Share to platform
       final socialShare = AppinioSocialShare();
 

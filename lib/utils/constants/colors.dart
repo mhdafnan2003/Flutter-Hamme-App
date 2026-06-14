@@ -75,6 +75,8 @@ class TColors {
   static const Color hammeInboxBlueStart = Color(0xFF01CAFD);
   static const Color hammeInboxBlueEnd = Color(0xFF0162FA);
   static const Color hammeInboxBlueBorder = Color(0xFF005FFC);
+  static const Color hammePurpleColor = Color(0xFF925CFF);
+  static const Color hammepinkcolor = Color(0xFFFF22F0);
 
   // Inbox reaction card palette — Purple
   static const Color hammeInboxPurpleStart = Color(0xFFB3A8E8);

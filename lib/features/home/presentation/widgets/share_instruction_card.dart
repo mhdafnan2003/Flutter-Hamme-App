@@ -24,7 +24,7 @@ class ShareInstructionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(31),
@@ -37,18 +37,18 @@ class ShareInstructionCard extends StatelessWidget {
             style: const TextStyle(
               fontFamily: TFonts.nunito,
               fontWeight: FontWeight.w800,
-              fontSize: 22,
-              height: 1.2,
+              fontSize: 20,
+              height: 1.25,
               color: Colors.black,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           _StepDots(activeStep: activeStep, totalSteps: totalSteps),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           instructionTitle,
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           image,
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           action,
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 
@@ -152,12 +153,9 @@ class MatchShareExportWidget extends StatelessWidget {
                                   ],
                                 ),
                                 child: Center(
-                                  child: Text(
-                                    theme.emoji,
-                                    style: const TextStyle(
-                                      fontSize: 64,
-                                      decoration: TextDecoration.none,
-                                    ),
+                                  child: EmojiImage(
+                                    emoji: theme.emoji,
+                                    size: 64,
                                   ),
                                 ),
                               ),

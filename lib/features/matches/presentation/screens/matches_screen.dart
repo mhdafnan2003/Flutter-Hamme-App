@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
@@ -82,13 +83,14 @@ class MatchesScreen extends ConsumerWidget {
             ),
 
             // ── Footer ────────────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.only(bottom: 24, top: 10),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24, top: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('🚨 ', style: TextStyle(fontSize: 14)),
-                  Text(
+                  const EmojiImage(emoji: '🚨', size: 14),
+                  const SizedBox(width: 4),
+                  const Text(
                     'Matches are vanished after 24hrs',
                     style: TextStyle(
                       fontFamily: TFonts.nunito,
@@ -233,30 +235,64 @@ class _EmptyMatchesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🥺', style: TextStyle(fontSize: 48)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 100),
+          // Title row with emoji inline
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'No matches yet ',
+                style: TextStyle(
+                  fontFamily: TFonts.nunito,
+                  fontSize: 38,
+                  fontWeight: FontWeight.w900,
+                  color: TColors.hammepinkcolor,
+                ),
+              ),
+              const EmojiImage(emoji: '🥺', size: 28),
+            ],
+          ),
+          const SizedBox(height: 30),
           const Text(
-            'No matches yet',
+            'A match happens when someone\npicks the same option as you',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: TFonts.nunito,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: TColors.hammePrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 30),
           const Text(
-            'Keep playing to find yours!',
+            'Go play to find yours',
             style: TextStyle(
               fontFamily: TFonts.nunito,
-              fontSize: 16,
-              color: Colors.grey,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF9E9E9E),
             ),
           ),
+          const SizedBox(height: 28),
+          // Skeleton placeholder rows
+          ...List.generate(7, (index) => Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Center(
+              child: Container(
+                width: 280,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2F2F5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          )),
         ],
       ),
     );

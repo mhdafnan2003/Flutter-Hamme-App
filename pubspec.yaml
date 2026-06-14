@@ -78,6 +78,8 @@ dependencies:
   play_install_referrer: ^0.5.0
   path_provider: ^2.1.5
   screenshot: ^3.0.0
+  flutter_svg: ^2.3.0
+  google_fonts: ^8.1.0
 
   # Firebase (disabled on Windows — Firebase C++ SDK has linker issues with newer MSVC)
   # Uncomment when targeting Android / iOS:

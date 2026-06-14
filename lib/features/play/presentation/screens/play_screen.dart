@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/interaction_record.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
@@ -650,9 +651,9 @@ class _MatchViewState extends ConsumerState<_MatchView> {
                               ],
                             ),
                             child: Center(
-                              child: Text(
-                                theme.emoji,
-                                style: const TextStyle(fontSize: 24),
+                              child: EmojiImage(
+                                emoji: theme.emoji,
+                                size: 24,
                               ),
                             ),
                           ),
@@ -1351,7 +1352,7 @@ class _PlayQueue extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('👀', style: TextStyle(fontSize: 14)),
+                const EmojiImage(emoji: '👀', size: 14),
                 const SizedBox(width: 8),
                 Text(
                   '$remainingCount reacted to you',
@@ -1665,9 +1666,9 @@ class _ResponseButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                emoji,
-                style: const TextStyle(fontSize: 24),
+              EmojiImage(
+                emoji: emoji,
+                size: 24,
               ),
               const SizedBox(width: 10),
               Text(

@@ -49,13 +49,14 @@ class HomeProfileCard extends ConsumerWidget {
                 ),
                 child: Stack(
                   children: [
-                    const Positioned(
+                    Positioned(
                       top: 16,
                       right: 16,
-                      child: Icon(
-                        CupertinoIcons.pencil,
+                      child: Image.asset(
+                        'assets/images/Pencil.png',
+                        width: 22,
+                        height: 22,
                         color: Colors.white,
-                        size: 22,
                       ),
                     ),
                     Align(
@@ -100,7 +101,6 @@ class HomeProfileCard extends ConsumerWidget {
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: TColors.white, width: 4),
                   color: TColors.hammeSurface,
                 ),
                 child: hasProfileImage
@@ -120,11 +120,11 @@ class HomeProfileCard extends ConsumerWidget {
               ),
         if (draft.socialPlatform != null && draft.socialPlatform!.isNotEmpty)
           Positioned(
-            bottom: 0,
-            right: 0,
+            bottom: -5,
+            right: -5,
             child: SizedBox(
-              width: 38,
-              height: 38,
+              width: 45,
+              height: 45,
               child: Padding(
                 padding: const EdgeInsets.all(6.0),
                 child: Image.asset(

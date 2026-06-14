@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hamme_app/utils/theme/widget_themes/appbar_theme.dart';
 import 'package:hamme_app/utils/theme/widget_themes/bottom_sheet_theme.dart';
 import 'package:hamme_app/utils/theme/widget_themes/checkbox_theme.dart';
@@ -13,9 +14,12 @@ import '../constants/colors.dart';
 class TAppTheme {
   TAppTheme._();
 
+  static final String? _fontFamily = GoogleFonts.nunito().fontFamily;
+
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Poppins',
+    fontFamily: _fontFamily,
+    fontFamilyFallback: const ['Apple Color Emoji', 'Noto Color Emoji', 'sans-serif'],
     disabledColor: TColors.grey,
     brightness: Brightness.light,
     primaryColor: TColors.primary,
@@ -32,7 +36,8 @@ class TAppTheme {
 
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Poppins',
+    fontFamily: _fontFamily,
+    fontFamilyFallback: const ['Apple Color Emoji', 'Noto Color Emoji', 'sans-serif'],
     disabledColor: TColors.grey,
     brightness: Brightness.dark,
     primaryColor: TColors.primary,
