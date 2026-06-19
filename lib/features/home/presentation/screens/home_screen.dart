@@ -68,7 +68,7 @@ class HomeScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: TColors.hammePrimaryDark,
-                              width: 2,
+                              width: 3,
                             ),
                           ),
                           child: Row(
@@ -85,7 +85,7 @@ class HomeScreen extends ConsumerWidget {
                                 TTexts.homeCopyLink,
                                 style: TextStyle(
                                   fontFamily: TFonts.nunito,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 16,
                                   color: TColors.hammePrimaryDark,
                                 ),

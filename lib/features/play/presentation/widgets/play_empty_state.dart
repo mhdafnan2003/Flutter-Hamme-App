@@ -12,14 +12,14 @@ class PlayEmptyState extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final backW = w * 0.58;
-        final midW = w * 0.76;
+        final backW = w * 0.72;
+        final midW = w * 0.86;
         final frontW = w;
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              height: 250,
+              height: 260,
               width: w,
               child: Stack(
                 alignment: Alignment.topCenter,
@@ -28,51 +28,37 @@ class PlayEmptyState extends StatelessWidget {
                     top: 0,
                     child: Container(
                       width: backW,
-                      height: 100,
+                      height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE0E0E0),
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                        color: const Color(0xFFE8E8E8),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   ),
                   Positioned(
-                    top: 14,
+                    top: 10,
                     child: Container(
                       width: midW,
-                      height: 100,
+                      height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0F0F0),
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                        color: const Color(0xFFE8E8E8),
+                        borderRadius: BorderRadius.circular(22),
                       ),
                     ),
                   ),
                   Positioned(
-                    top: 32,
+                    top: 22,
                     child: Container(
                       width: frontW,
-                      height: 190,
+                      height: 210,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEDE7FF),
+                        color: const Color(0xFFF0E8FF),
                         borderRadius: BorderRadius.circular(28),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFCDBDFF).withValues(alpha: 0.45),
-                            blurRadius: 40,
-                            offset: const Offset(0, 18),
+                            color: const Color(0xFFCDBDFF).withValues(alpha: 0.3),
+                            blurRadius: 30,
+                            offset: const Offset(0, 12),
                           ),
                         ],
                       ),

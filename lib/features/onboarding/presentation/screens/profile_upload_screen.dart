@@ -328,6 +328,12 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
               child: GradientButton(
                 label: TTexts.next,
                 onTap: () {
+                  if (profileImageUrl == null || profileImageUrl.isEmpty) {
+                    setState(() {
+                      _uploadError = 'Please upload a profile photo to continue.';
+                    });
+                    return;
+                  }
                   context.go('/onboarding/social_media');
                 },
               ),

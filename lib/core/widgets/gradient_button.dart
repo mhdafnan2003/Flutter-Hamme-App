@@ -20,14 +20,14 @@ class GradientButton extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [TColors.hammePrimary, TColors.hammePrimaryDark],
           ),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(40),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: const TextStyle(
             fontFamily: 'Nunito',
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w900,
             fontSize: 18,
             color: Colors.white,
           ),

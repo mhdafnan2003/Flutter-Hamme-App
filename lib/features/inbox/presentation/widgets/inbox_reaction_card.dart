@@ -71,7 +71,7 @@ class InboxReactionCard extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
                       fontWeight: FontWeight.w900,
-                      fontSize: 56, // Reduced from 60
+                      fontSize: 40, // Reduced from 60
                       color: Colors.white,
                       height: 1,
                     ),
@@ -79,9 +79,11 @@ class InboxReactionCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   // Subtitle
                   Text(
-                    count == 1
-                        ? '1 person has ${variation.typeKey} on you'
-                        : '$count people have ${variation.typeKey} on you',
+                    count == 0
+                        ? 'Numbers fill up the moment someone taps on your story link. Go share 👇'
+                        : count == 1
+                            ? '1 person has ${variation.typeKey} on you'
+                            : '$count people have ${variation.typeKey} on you',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
@@ -90,31 +92,33 @@ class InboxReactionCard extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  // Tagline pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1.1,
+                  if (count > 0) ...[
+                    const SizedBox(height: 14),
+                    // Tagline pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1.1,
+                        ),
+                      ),
+                      child: Text(
+                        variation.tagline,
+                        style: const TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13, // Reduced from 14
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                    child: Text(
-                      variation.tagline,
-                      style: const TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13, // Reduced from 14
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),

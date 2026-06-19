@@ -32,7 +32,7 @@ class HomeStepCard extends StatelessWidget {
             title,
             style: const TextStyle(
               fontFamily: TFonts.nunito,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w900,
               fontSize: 18,
               color: TColors.black,
             ),
