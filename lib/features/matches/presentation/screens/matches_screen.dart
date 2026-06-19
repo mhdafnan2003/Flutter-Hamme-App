@@ -10,11 +10,24 @@ import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class MatchesScreen extends ConsumerWidget {
+class MatchesScreen extends ConsumerStatefulWidget {
   const MatchesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MatchesScreen> createState() => _MatchesScreenState();
+}
+
+class _MatchesScreenState extends ConsumerState<MatchesScreen> {
+  final Set<String> _dismissedIds = {};
+
+  void _dismissMatch(String matchId) {
+    setState(() {
+      _dismissedIds.add(matchId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final matches = ref.watch(matchesProvider);
 
     return Scaffold(
@@ -59,14 +72,20 @@ class MatchesScreen extends ConsumerWidget {
             Expanded(
               child: matches.when(
                 data: (items) {
-                  if (items.isEmpty) return const _EmptyMatchesView();
+                  final visibleItems = items
+                      .where((m) => !_dismissedIds.contains(m.id))
+                      .toList();
+                  if (visibleItems.isEmpty) return const _EmptyMatchesView();
                   return ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    itemCount: items.length,
+                    itemCount: visibleItems.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 16),
                     itemBuilder: (context, index) {
-                      final match = items[index];
-                      return _MatchTile(match: match);
+                      final match = visibleItems[index];
+                      return _MatchTile(
+                        match: match,
+                        onDismiss: () => _dismissMatch(match.id),
+                      );
                     },
                   );
                 },
@@ -110,8 +129,9 @@ class MatchesScreen extends ConsumerWidget {
 }
 
 class _MatchTile extends StatelessWidget {
-  const _MatchTile({required this.match});
+  const _MatchTile({required this.match, required this.onDismiss});
   final MatchRecord match;
+  final VoidCallback onDismiss;
 
   Future<void> _openSocial() async {
     final user = match.matchedUser;
@@ -211,17 +231,20 @@ class _MatchTile extends StatelessWidget {
           ),
 
           // Close button
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF2F2F7),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              CupertinoIcons.xmark,
-              color: Colors.black54,
-              size: 16,
+          GestureDetector(
+            onTap: onDismiss,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF2F2F7),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                CupertinoIcons.xmark,
+                color: Colors.black54,
+                size: 16,
+              ),
             ),
           ),
         ],

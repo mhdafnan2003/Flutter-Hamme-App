@@ -115,7 +115,7 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                       ),
                       const SizedBox(height: 12),
                       const EmojiImage(emoji: '🎂', size: 28),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 82),
                       Container(
                         width: 140,
                         height: 116,

@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const players = ['S', 'K', 'R', 'N', 'A'];
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
-const playerColors = ['#ff4f97', '#35d678', '#42b6ff', '#ffd230', '#ff5c5c'];
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
 const flutterWebBaseUrl = import.meta.env.VITE_FLUTTER_WEB_URL ?? '';
 const sessionStorageKey = 'hamme_web_session_id';
@@ -244,15 +242,9 @@ function App() {
           />
         )}
 
-        <FriendsPlaying className={isSent ? 'mt-[29px]' : 'mt-[45px]'} />
-
         <footer className="mt-auto flex flex-col items-center">
           <h1 className="brand-text text-[28px] font-black leading-none tracking-[-0.06em]">Hamme</h1>
           <p className="mt-2 text-[12px] font-extrabold">play games &amp; meet people</p>
-          <div className="mt-[28px] flex gap-4 text-[12px] font-bold text-white/45">
-            <a href="#">Terms</a>
-            <a href="#">Privacy</a>
-          </div>
         </footer>
       </section>
     </main>
@@ -271,9 +263,7 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
           />
         </div>
 
-        <p className="mt-2 text-[16px] font-extrabold text-white">{profileName}</p>
-
-        <div className="mt-[6px] flex h-[37px] w-full items-center justify-center rounded-xl bg-white px-4 text-[19px] font-black tracking-[0.01em] text-black shadow-[0_7px_0_rgba(0,0,0,0.18)]">
+        <div className="mt-[10px] flex h-[37px] w-full items-center justify-center rounded-xl bg-white px-4 text-[19px] font-black tracking-[0.01em] text-black shadow-[0_7px_0_rgba(0,0,0,0.18)]">
           What do you think of me?
         </div>
 
@@ -290,6 +280,27 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
             😈 Frenemy
           </button>
           {submitError ? <p className="text-xs text-red-200">{submitError}</p> : null}
+        </div>
+
+        {/* Tap to play tooltip */}
+        <div className="mt-[28px] flex flex-col items-center">
+          <div className="relative rounded-full bg-black px-5 py-2 text-[14px] font-black text-white">
+            Tap to play
+            <div className="absolute -bottom-[6px] left-1/2 h-0 w-0 -translate-x-1/2 border-l-[6px] border-r-[6px] border-t-[7px] border-l-transparent border-r-transparent border-t-black" />
+          </div>
+        </div>
+
+        {/* HAMME.LINK pill */}
+        <div className="mt-[14px] flex h-[40px] items-center justify-center rounded-full bg-white px-5 shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
+          <span className="mr-2 text-[16px]">🔗</span>
+          <span className="text-[14px] font-black tracking-wide text-black">HAMME.LINK</span>
+        </div>
+
+        {/* Arrows pointing up */}
+        <div className="mt-[14px] flex items-center gap-6">
+          <svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 30V4M12 4L4 13M12 4L20 13" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 30V4M12 4L4 13M12 4L20 13" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 30V4M12 4L4 13M12 4L20 13" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
       </div>
     </>
@@ -436,32 +447,6 @@ function RevealScreen({
 
       {/* No web fallback — mobile users go to the store, desktop gets no redirect */}
     </div>
-  );
-}
-
-function FriendsPlaying({ className }) {
-  return (
-    <>
-        <div className={`${className} flex items-center`}>
-          <span className="mr-2 h-[10px] w-[10px] rounded-full bg-[#22ff00]" />
-          <div className="flex">
-            {players.map((player, index) => (
-              <span
-                key={player}
-                className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-white/25 text-[12px] font-black text-white"
-                style={{
-                  marginLeft: index === 0 ? 0 : -4,
-                  backgroundColor: playerColors[index],
-                }}
-              >
-                {player}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <p className="mt-[8px] text-[17px] font-extrabold tracking-[0.01em]">☝️ 6 friends playing now ☝️</p>
-    </>
   );
 }
 

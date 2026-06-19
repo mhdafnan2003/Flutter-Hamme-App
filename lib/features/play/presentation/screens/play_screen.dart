@@ -1340,7 +1340,7 @@ class _PlayQueue extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 32),
 
           // ── "👀 reacted to you" pill ───────────────────────────────────
           Container(
@@ -1358,7 +1358,7 @@ class _PlayQueue extends StatelessWidget {
                   '$remainingCount reacted to you',
                   style: const TextStyle(
                     fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     fontSize: 13,
                     color: Colors.black,
                   ),
@@ -1367,7 +1367,7 @@ class _PlayQueue extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 62),
 
           // ── Stacked card (scaled down) ────────────────
           LayoutBuilder(
@@ -1522,7 +1522,6 @@ class _PlayQueue extends StatelessWidget {
                           Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3.5),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.08),
@@ -1575,29 +1574,29 @@ class _PlayQueue extends StatelessWidget {
             },
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 45),
 
           // ── Response buttons ──────────────────────────────────────────────
           _ResponseButton(
             label: 'Friend',
             emoji: '🤝',
-            colors: const [Color(0xFF00E1FF), Color(0xFF006BFF)],
+            colors: const [Color(0xFF00CCFE), Color(0xFF005EFB)],
             disabled: isSubmitting,
             onTap: () => onSelect(InteractionType.friend),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _ResponseButton(
             label: 'Crush',
             emoji: '😍',
-            colors: const [Color(0xFFD34EDF), Color(0xFFFF3393)],
+            colors: const [Color(0xFFCF59E7), Color(0xFFFF3C9E)],
             disabled: isSubmitting,
             onTap: () => onSelect(InteractionType.crush),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _ResponseButton(
             label: 'Frenemy',
             emoji: '😈',
-            colors: const [Color(0xFFB3A8E8), Color(0xFF535590)],
+            colors: const [Color(0xFFBBADED), Color(0xFF50528D)],
             disabled: isSubmitting,
             onTap: () => onSelect(InteractionType.frenemy),
           ),
@@ -1638,7 +1637,7 @@ class _ResponseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: double.infinity,
+      width: 300,
       height: 56,
       child: DecoratedBox(
         decoration: BoxDecoration(

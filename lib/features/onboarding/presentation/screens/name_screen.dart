@@ -86,7 +86,7 @@ class _NameScreenState extends ConsumerState<NameScreen> {
                     fontSize: 24,
                     color: TColors.darkGrey,
                   ),
-                  border: InputBorder.none,
+                  
                 ),
               ),
             ),
