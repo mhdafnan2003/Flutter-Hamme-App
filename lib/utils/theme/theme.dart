@@ -9,13 +9,15 @@ import 'package:hamme_app/utils/theme/widget_themes/text_field_theme.dart';
 import 'package:hamme_app/utils/theme/widget_themes/text_theme.dart';
 
 import '../constants/colors.dart';
+import '../constants/fonts.dart';
 
 class TAppTheme {
   TAppTheme._();
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Poppins',
+    fontFamily: TFonts.nunito,
+    fontFamilyFallback: const ['Apple Color Emoji', 'Noto Color Emoji', 'sans-serif'],
     disabledColor: TColors.grey,
     brightness: Brightness.light,
     primaryColor: TColors.primary,
@@ -32,7 +34,8 @@ class TAppTheme {
 
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Poppins',
+    fontFamily: TFonts.nunito,
+    fontFamilyFallback: const ['Apple Color Emoji', 'Noto Color Emoji', 'sans-serif'],
     disabledColor: TColors.grey,
     brightness: Brightness.dark,
     primaryColor: TColors.primary,

@@ -16,6 +16,19 @@ class TImages {
   static const String snapchatIcon = "assets/icons/snap-ic.png";
   static const String snapFill = "assets/icons/snap-fill.png";
 
+  // -- Emoji Assets (platform-consistent PNG emojis)
+  static const String emojiCrush = "assets/icons/😍.png";
+  static const String emojiFriend = "assets/icons/🤝.png";
+  static const String emojiFrenemy = "assets/icons/😈.png";
+  static const String emojiBirthday = "assets/icons/🎂.png";
+  static const String emojiCamera = "assets/icons/📸.png";
+  static const String emojiSpeaking = "assets/icons/🗣️.png";
+  static const String emojiHourglass = "assets/icons/⏳.png";
+  static const String emojiEyes = "assets/icons/👀.png";
+  static const String emojiPleading = "assets/icons/🥺.png";
+  static const String emojiAlert = "assets/icons/🚨.png";
+  static const String emojiMonkey = "assets/icons/🙈.png";
+
   // -- Category Icons
   static const String sportIcon =
       "assets/icons/categories/icons8-bowling-64.png";

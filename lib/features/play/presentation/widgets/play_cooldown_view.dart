@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/play_limit_status.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 
@@ -127,7 +128,7 @@ class _PlayCooldownViewState extends State<PlayCooldownView>
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
-                      child: Text('⏳', style: TextStyle(fontSize: 36)),
+                      child: EmojiImage(emoji: '⏳', size: 36),
                     ),
                   ),
                 ),

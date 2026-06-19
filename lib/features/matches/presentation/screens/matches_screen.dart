@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
@@ -9,11 +10,24 @@ import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class MatchesScreen extends ConsumerWidget {
+class MatchesScreen extends ConsumerStatefulWidget {
   const MatchesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MatchesScreen> createState() => _MatchesScreenState();
+}
+
+class _MatchesScreenState extends ConsumerState<MatchesScreen> {
+  final Set<String> _dismissedIds = {};
+
+  void _dismissMatch(String matchId) {
+    setState(() {
+      _dismissedIds.add(matchId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final matches = ref.watch(matchesProvider);
 
     return Scaffold(
@@ -58,14 +72,20 @@ class MatchesScreen extends ConsumerWidget {
             Expanded(
               child: matches.when(
                 data: (items) {
-                  if (items.isEmpty) return const _EmptyMatchesView();
+                  final visibleItems = items
+                      .where((m) => !_dismissedIds.contains(m.id))
+                      .toList();
+                  if (visibleItems.isEmpty) return const _EmptyMatchesView();
                   return ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    itemCount: items.length,
+                    itemCount: visibleItems.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 16),
                     itemBuilder: (context, index) {
-                      final match = items[index];
-                      return _MatchTile(match: match);
+                      final match = visibleItems[index];
+                      return _MatchTile(
+                        match: match,
+                        onDismiss: () => _dismissMatch(match.id),
+                      );
                     },
                   );
                 },
@@ -82,13 +102,14 @@ class MatchesScreen extends ConsumerWidget {
             ),
 
             // ── Footer ────────────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.only(bottom: 24, top: 10),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24, top: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('🚨 ', style: TextStyle(fontSize: 14)),
-                  Text(
+                  const EmojiImage(emoji: '🚨', size: 14),
+                  const SizedBox(width: 4),
+                  const Text(
                     'Matches are vanished after 24hrs',
                     style: TextStyle(
                       fontFamily: TFonts.nunito,
@@ -108,8 +129,9 @@ class MatchesScreen extends ConsumerWidget {
 }
 
 class _MatchTile extends StatelessWidget {
-  const _MatchTile({required this.match});
+  const _MatchTile({required this.match, required this.onDismiss});
   final MatchRecord match;
+  final VoidCallback onDismiss;
 
   Future<void> _openSocial() async {
     final user = match.matchedUser;
@@ -209,17 +231,20 @@ class _MatchTile extends StatelessWidget {
           ),
 
           // Close button
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF2F2F7),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              CupertinoIcons.xmark,
-              color: Colors.black54,
-              size: 16,
+          GestureDetector(
+            onTap: onDismiss,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF2F2F7),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                CupertinoIcons.xmark,
+                color: Colors.black54,
+                size: 16,
+              ),
             ),
           ),
         ],
@@ -233,30 +258,64 @@ class _EmptyMatchesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🥺', style: TextStyle(fontSize: 48)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 100),
+          // Title row with emoji inline
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'No matches yet ',
+                style: TextStyle(
+                  fontFamily: TFonts.nunito,
+                  fontSize: 38,
+                  fontWeight: FontWeight.w900,
+                  color: TColors.hammepinkcolor,
+                ),
+              ),
+              const EmojiImage(emoji: '🥺', size: 28),
+            ],
+          ),
+          const SizedBox(height: 30),
           const Text(
-            'No matches yet',
+            'A match happens when someone\npicks the same option as you',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: TFonts.nunito,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: TColors.hammePrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 30),
           const Text(
-            'Keep playing to find yours!',
+            'Go play to find yours',
             style: TextStyle(
               fontFamily: TFonts.nunito,
-              fontSize: 16,
-              color: Colors.grey,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF9E9E9E),
             ),
           ),
+          const SizedBox(height: 28),
+          // Skeleton placeholder rows
+          ...List.generate(7, (index) => Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Center(
+              child: Container(
+                width: 280,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2F2F5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          )),
         ],
       ),
     );

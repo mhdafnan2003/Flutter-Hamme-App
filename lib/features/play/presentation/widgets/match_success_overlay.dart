@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -248,9 +249,9 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                           shape: BoxShape.circle,
                                         ),
                                         alignment: Alignment.center,
-                                        child: Text(
-                                          theme.emoji,
-                                          style: const TextStyle(fontSize: 24),
+                                        child: EmojiImage(
+                                          emoji: theme.emoji,
+                                          size: 24,
                                         ),
                                       ),
                                     ),

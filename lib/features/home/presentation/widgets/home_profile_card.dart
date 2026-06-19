@@ -1,17 +1,92 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 
-class HomeProfileCard extends ConsumerWidget {
+class HomeProfileCard extends ConsumerStatefulWidget {
   const HomeProfileCard({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeProfileCard> createState() => _HomeProfileCardState();
+}
+
+class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
+  static const int _maxImageBytes = 10 * 1024 * 1024;
+  static const Set<String> _allowedExtensions = {'jpeg', 'jpg', 'png', 'webp'};
+
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _isUploading = false;
+
+  Future<void> _changeProfileImage() async {
+    if (_isUploading) return;
+
+    final XFile? pickedFile = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1600,
+      maxHeight: 1600,
+    );
+
+    if (pickedFile == null) return;
+
+    final fileName = pickedFile.name;
+    final extension =
+        fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
+
+    if (!_allowedExtensions.contains(extension)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please upload a JPG, JPEG, PNG, or WEBP image.')),
+      );
+      return;
+    }
+
+    final bytes = await pickedFile.readAsBytes();
+    if (bytes.length > _maxImageBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Image size must be less than 10 MB.')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isUploading = true);
+
+    try {
+      final uploadDataSource = UploadRemoteDataSource(
+        ref.read(apiServiceProvider),
+      );
+      final imageUrl = await uploadDataSource.uploadProfileImageBytes(
+        bytes: bytes,
+        filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
+      );
+      await ref.read(onboardingDraftProvider.notifier).setProfileImageUrl(imageUrl);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated!')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Upload failed. Please try again.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final draft = ref.watch(onboardingDraftProvider).value ?? const OnboardingDraft();
     final profileName =
         (draft.name != null && draft.name!.trim().isNotEmpty)
@@ -49,13 +124,23 @@ class HomeProfileCard extends ConsumerWidget {
                 ),
                 child: Stack(
                   children: [
-                    const Positioned(
+                    Positioned(
                       top: 16,
                       right: 16,
-                      child: Icon(
-                        CupertinoIcons.pencil,
-                        color: Colors.white,
-                        size: 22,
+                      child: GestureDetector(
+                        onTap: _isUploading ? null : _changeProfileImage,
+                        child: _isUploading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CupertinoActivityIndicator(color: Colors.white),
+                              )
+                            : Image.asset(
+                                'assets/images/Pencil.png',
+                                width: 22,
+                                height: 22,
+                                color: Colors.white,
+                              ),
                       ),
                     ),
                     Align(
@@ -66,7 +151,7 @@ class HomeProfileCard extends ConsumerWidget {
                           profileName,
                           style: const TextStyle(
                             fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w900,
                             fontSize: 20,
                             color: TColors.white,
                           ),
@@ -82,7 +167,7 @@ class HomeProfileCard extends ConsumerWidget {
                   TTexts.homePrompt,
                   style: TextStyle(
                     fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w900,
                     fontSize: 18,
                     color: TColors.black,
                   ),
@@ -100,7 +185,6 @@ class HomeProfileCard extends ConsumerWidget {
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: TColors.white, width: 4),
                   color: TColors.hammeSurface,
                 ),
                 child: hasProfileImage
@@ -120,11 +204,11 @@ class HomeProfileCard extends ConsumerWidget {
               ),
         if (draft.socialPlatform != null && draft.socialPlatform!.isNotEmpty)
           Positioned(
-            bottom: 0,
-            right: 0,
+            bottom: -5,
+            right: -5,
             child: SizedBox(
-              width: 38,
-              height: 38,
+              width: 45,
+              height: 45,
               child: Padding(
                 padding: const EdgeInsets.all(6.0),
                 child: Image.asset(

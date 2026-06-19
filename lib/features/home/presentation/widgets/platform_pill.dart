@@ -17,17 +17,19 @@ class PlatformPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 100,
-        height: 34,
+        width: 110,
+        height: 44,
         decoration: BoxDecoration(
           color: selected ? Colors.white : const Color(0xFF606060),
-          borderRadius: BorderRadius.circular(17),
+          borderRadius: BorderRadius.circular(22),
         ),
-        child: Image.asset(
-          iconPath,
-          width: 20,
-          height: 20,
-          color: selected ? Colors.black : Colors.white,
+        child: Center(
+          child: Image.asset(
+            iconPath,
+            width: 24,
+            height: 24,
+            color: selected ? Colors.black : Colors.white,
+          ),
         ),
       ),
     );

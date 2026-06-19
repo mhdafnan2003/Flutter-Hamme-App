@@ -31,7 +31,7 @@ class HammeTopBar extends StatelessWidget {
               width: 20,
               height: 20,
             ),
-            onTap: onRightTap,
+            onTap: onRightTap ?? () => context.push('/profile'),
           ),
         ],
       ),

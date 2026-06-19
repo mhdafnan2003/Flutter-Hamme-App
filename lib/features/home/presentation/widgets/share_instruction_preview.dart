@@ -15,8 +15,8 @@ class ShareInstructionPreview extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(17),
       child: Container(
-        width: 240,
-        height: 180,
+        width: double.infinity,
+        height: 200,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFF111111), Color(0xFF9A5B36), Color(0xFF52210E)],

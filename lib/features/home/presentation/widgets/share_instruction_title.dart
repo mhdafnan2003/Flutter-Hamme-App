@@ -29,7 +29,7 @@ class ShareInstructionTitle extends StatelessWidget {
         children: [
           Text(data.prefix, style: _titleStyle),
           Image.asset(
-            'assets/icons/icon_line/paperclip.png',
+            'assets/icons/link-insta.png',
             width: 32,
             height: 32,
             fit: BoxFit.contain,
@@ -75,7 +75,7 @@ class ShareInstructionTitle extends StatelessWidget {
   static const _titleStyle = TextStyle(
     fontFamily: TFonts.nunito,
     fontWeight: FontWeight.w800,
-    fontSize: 21,
+    fontSize: 18,
     color: Colors.black,
   );
 }

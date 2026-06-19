@@ -72,11 +72,14 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       final shareCode = session?.user.shareCode;
       final shareLink = AppConstants.buildUserShareLink(shareCode);
 
+      // Auto-copy share link to clipboard so user can paste into link sticker
+      await Clipboard.setData(ClipboardData(text: shareLink));
+
       // 4. Share to platform
       final socialShare = AppinioSocialShare();
 
       if (!_isInstagramSelected) {
-        // Snapchat Logic
+        // Snapchat Logic — share to Snapchat Story
         try {
           if (Platform.isAndroid) {
             final isInstalled = await _storyChannel.invokeMethod<bool>('isSnapchatInstalled') ?? false;
@@ -88,10 +91,14 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
               return;
             }
           }
-          // iOS or fallback
-          await Share.shareXFiles([XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink');
+          // iOS or fallback — use system share sheet (Snapchat will offer Story option)
+          await Share.shareXFiles(
+            [XFile(tempPath)],
+            text: 'Check out my reactions on Hamme! $shareLink',
+          );
         } catch (e) {
           debugPrint('Snapchat share failed: $e');
+          await Share.shareXFiles([XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink');
         }
       } else {
         // Instagram Logic
@@ -292,7 +299,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 2), // Move indicators just below the card
+                  const SizedBox(height: 10), // Move indicators just below the card
 
                   // Page Indicators
                   Row(
@@ -314,111 +321,136 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 50),
 
-                  // ── Social Platform Toggle (High Fidelity) ─────────────────────
-                  GestureDetector(
-                    onTap: () => setState(() => _isInstagramSelected = !_isInstagramSelected),
-                    child: Container(
-                      width: 110,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF444444), // Dark grey base
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Stack(
+                  // ── Social Platform Toggle & Share Button ──────────────────
+                  // Only show when current page has count > 0
+                  Builder(
+                    builder: (context) {
+                      final interactions = ref.watch(receivedInteractionsProvider);
+                      final currentCount = interactions.maybeWhen(
+                        data: (items) {
+                          final counts = <String, int>{};
+                          for (final item in items) {
+                            final key = item.type.name;
+                            counts[key] = (counts[key] ?? 0) + 1;
+                          }
+                          return _countByType(counts, _variations[_currentPage].typeKey);
+                        },
+                        orElse: () => 0,
+                      );
+
+                      if (currentCount == 0) return const SizedBox.shrink();
+
+                      return Column(
                         children: [
-                          // Sliding Indicator Circle
-                          AnimatedAlign(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                            alignment: _isInstagramSelected
-                                ? Alignment.centerLeft
-                                : Alignment.centerRight,
+                          // ── Social Platform Toggle (High Fidelity) ─────────────────────
+                          GestureDetector(
+                            onTap: () => setState(() => _isInstagramSelected = !_isInstagramSelected),
                             child: Container(
-                              width: 55, // Half of 110
-                              height: 48,
+                              width: 90,
+                              height: 38,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF9A9A9A), // Lighter grey indicator
+                                color: const Color(0xFF444444), // Dark grey base
                                 borderRadius: BorderRadius.circular(24),
                               ),
-                            ),
-                          ),
-                          // Icons Row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Center(
-                                  child: Image.asset(
-                                    TImages.instaOutline,
-                                    width: 24,
-                                    height: 24,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Center(
-                                  child: Image.asset(
-                                    TImages.snapFill,
-                                    width: 24,
-                                    height: 24,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Share Button ───────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 64,
-                      child: ElevatedButton(
-                        onPressed: _isSharing ? null : _captureAndShare,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: _isSharing
-                            ? const CupertinoActivityIndicator(color: Colors.white)
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              child: Stack(
                                 children: [
-                                  Image.asset(
-                                    _isInstagramSelected
-                                        ? TImages.instaOutline
-                                        : TImages.snapFill,
-                                    width: 30,
-                                    height: 30,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  const Text(
-                                    'Share',
-                                    style: TextStyle(
-                                      fontFamily: TFonts.nunito,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 22,
-                                      color: Colors.white,
+                                  // Sliding Indicator Circle
+                                  AnimatedAlign(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                    alignment: _isInstagramSelected
+                                        ? Alignment.centerLeft
+                                        : Alignment.centerRight,
+                                    child: Container(
+                                      width: 55, // Half of 110
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF9A9A9A), // Lighter grey indicator
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
                                     ),
+                                  ),
+                                  // Icons Row
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Center(
+                                          child: Image.asset(
+                                            TImages.instaOutline,
+                                            width: 20,
+                                            height: 20,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Center(
+                                          child: Image.asset(
+                                            TImages.snapFill,
+                                            width: 20,
+                                            height: 20,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                      ),
-                    ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // ── Share Button ───────────────────────────────────────
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 28),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 64,
+                              child: ElevatedButton(
+                                onPressed: _isSharing ? null : _captureAndShare,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: _isSharing
+                                    ? const CupertinoActivityIndicator(color: Colors.white)
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Image.asset(
+                                            _isInstagramSelected
+                                                ? TImages.instaOutline
+                                                : TImages.snapFill,
+                                            width: 25,
+                                            height: 25,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          const Text(
+                                            'Share',
+                                            style: TextStyle(
+                                              fontFamily: TFonts.nunito,
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 18,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),

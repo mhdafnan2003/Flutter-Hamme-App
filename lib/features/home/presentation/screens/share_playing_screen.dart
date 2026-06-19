@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/core/constants/app_constants.dart';
+import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -47,6 +48,9 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
       final session = ref.read(authControllerProvider).value;
       final shareCode = session?.user.shareCode;
       final shareLink = AppConstants.buildUserShareLink(shareCode);
+
+      // Auto-copy share link to clipboard so user can paste into link sticker
+      await Clipboard.setData(ClipboardData(text: shareLink));
 
       final socialShare = AppinioSocialShare();
 
@@ -275,18 +279,15 @@ class StoryExportWidget extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           // Anonymous Text
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                '🙈',
-                style: TextStyle(
-                  fontSize: 32,
-                  decoration: TextDecoration.none,
-                ),
+              EmojiImage(
+                emoji: '🙈',
+                size: 32,
               ),
-              SizedBox(width: 8),
-              Text(
+              const SizedBox(width: 8),
+              const Text(
                 'send anonymously',
                 style: TextStyle(
                   fontFamily: TFonts.nunito,
