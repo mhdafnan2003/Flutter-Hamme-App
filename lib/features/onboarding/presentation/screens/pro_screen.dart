@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
@@ -392,14 +393,30 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      const FooterLink(label: 'Privacy'),
+                      FooterLink(
+                        label: 'Privacy',
+                        onTap: () async {
+                          final url = Uri.parse('https://www.hamme.app/privacy-policy');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                      ),
                       FooterLink(
                         label: 'Restore',
                         onTap: () => ref
                             .read(billingControllerProvider.notifier)
                             .restorePurchases(),
                       ),
-                      const FooterLink(label: 'Terms'),
+                      FooterLink(
+                        label: 'Terms',
+                        onTap: () async {
+                          final url = Uri.parse('https://www.hamme.app/terms-of-service');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                      ),
                     ],
                   ),
                   const Spacer(flex: 2),
