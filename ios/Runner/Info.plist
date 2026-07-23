@@ -67,10 +67,6 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Hamme may access your microphone when recording video clips through the camera.</string>
 
-	<!-- Required by: FBSDKCoreKit (via appinio_social_share) — Facebook SDK links AppTrackingTransparency -->
-	<key>NSUserTrackingUsageDescription</key>
-	<string>We use advertising identifiers to help improve your Hamme experience and to measure the effectiveness of our marketing campaigns.</string>
-
 	<!-- ============================================================ -->
 	<key>UIStatusBarStyle</key>
 	<string></string>
