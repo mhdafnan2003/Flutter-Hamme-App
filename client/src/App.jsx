@@ -719,7 +719,7 @@ function RevealScreen({
       <button
         onClick={handleReveal}
         disabled={isExpired}
-        className="mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] bg-white px-8 text-[20px] font-black text-[#c000df] shadow-[0_7px_0_rgba(0,0,0,0.10)] transition active:translate-y-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:active:translate-y-0"
+        className="reveal-button mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] bg-white px-8 text-[20px] font-black text-[#c000df] shadow-[0_7px_0_rgba(0,0,0,0.10)] transition active:translate-y-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:active:translate-y-0"
       >
         <span className="flex-1">{isExpired ? 'Link Expired' : 'Reveal'}</span>
         {!isExpired && <span className="text-[27px] font-light">{"->"}</span>}

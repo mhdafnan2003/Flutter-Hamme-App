@@ -29,6 +29,51 @@ a {
   color: inherit;
 }
 
+.reveal-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.reveal-button::after {
+  position: absolute;
+  z-index: 0;
+  top: -50%;
+  left: -35%;
+  width: 24%;
+  height: 200%;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.86), transparent);
+  transform: skewX(-22deg);
+  animation: reveal-button-glaze 2.7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.reveal-button > * {
+  position: relative;
+  z-index: 1;
+}
+
+.reveal-button:disabled::after {
+  animation: none;
+}
+
+@keyframes reveal-button-glaze {
+  0%, 22% {
+    left: -35%;
+  }
+
+  62%, 100% {
+    left: 112%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-button::after {
+    animation: none;
+  }
+}
+
 .privacy-shell {
   min-height: 100vh;
   padding: 40px 20px;
