@@ -9,6 +9,7 @@ import 'package:hamme_app/providers/billing_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
 import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
+import 'package:hamme_app/core/constants/app_constants.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
@@ -66,43 +67,75 @@ class _ProfileTextEditDialogState extends State<_ProfileTextEditDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.title, style: const TextStyle(fontFamily: TFonts.nunito, fontWeight: FontWeight.w900, fontSize: 22)),
+            Text(
+              widget.title,
+              style: const TextStyle(
+                fontFamily: TFonts.nunito,
+                fontWeight: FontWeight.w900,
+                fontSize: 22,
+              ),
+            ),
             const SizedBox(height: 18),
             TextField(
               controller: _controller,
               autofocus: true,
               maxLength: widget.username ? 32 : 80,
-              textCapitalization: widget.username ? TextCapitalization.none : TextCapitalization.words,
+              textCapitalization:
+                  widget.username
+                      ? TextCapitalization.none
+                      : TextCapitalization.words,
               decoration: InputDecoration(
                 hintText: widget.hint,
                 counterText: '',
                 filled: true,
                 fillColor: TColors.hammeSurface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: TColors.hammePrimary, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: TColors.hammePrimary,
+                    width: 1.5,
+                  ),
                 ),
               ),
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 20),
-            Row(children: [
-              Expanded(child: TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'))),
-              const SizedBox(width: 10),
-              Expanded(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF9E57FF), Color(0xFF8B44FF)]),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+            Row(
+              children: [
+                Expanded(
                   child: TextButton(
-                    onPressed: _save,
-                    child: const Text('Save', style: TextStyle(color: Colors.white, fontFamily: TFonts.nunito, fontWeight: FontWeight.w900)),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
                   ),
                 ),
-              ),
-            ]),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF9E57FF), Color(0xFF8B44FF)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: TextButton(
+                      onPressed: _save,
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -114,6 +147,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploadingImage = false;
   bool _isSaving = false;
+  bool _isLoggingOut = false;
+
+  Future<void> _logoutForOnboardingPreview() async {
+    if (_isLoggingOut) return;
+    setState(() => _isLoggingOut = true);
+    try {
+      await ref.read(authControllerProvider.notifier).logout();
+      // The router redirects signed-out users to onboarding automatically.
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not log out. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
+    }
+  }
 
   Future<String?> _showEditDialog({
     required String title,
@@ -123,12 +174,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }) {
     return showDialog<String>(
       context: context,
-      builder: (_) => _ProfileTextEditDialog(
-        title: title,
-        hint: hint,
-        initialValue: initialValue,
-        username: username,
-      ),
+      builder:
+          (_) => _ProfileTextEditDialog(
+            title: title,
+            hint: hint,
+            initialValue: initialValue,
+            username: username,
+          ),
     );
   }
 
@@ -140,7 +192,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
     if (name == null || name.isEmpty || name == currentName) return;
     await _saveProfile(
-      action: () => ProfileRemoteDataSource(ref.read(apiServiceProvider)).updateMe(name: name),
+      action:
+          () => ProfileRemoteDataSource(
+            ref.read(apiServiceProvider),
+          ).updateMe(name: name),
       onSuccess: () => ref.read(onboardingDraftProvider.notifier).setName(name),
       successMessage: 'Name updated!',
     );
@@ -156,21 +211,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       initialValue: currentUsername.replaceFirst(RegExp(r'^@'), ''),
       username: true,
     );
-    if (username == null || username.isEmpty ||
+    if (username == null ||
+        username.isEmpty ||
         username == currentUsername.replaceFirst(RegExp(r'^@'), '')) {
       return;
     }
 
     await _saveProfile(
-      action: () => ProfileRemoteDataSource(ref.read(apiServiceProvider)).updateMe(
-        instagramId: isInstagram ? username : null,
-        snapchatId: isInstagram ? null : username,
-        username: username,
-      ),
-      onSuccess: () => ref.read(onboardingDraftProvider.notifier).setSocial(
-        platform: isInstagram ? TTexts.socialInstagram : TTexts.socialSnapchat,
-        username: username,
-      ),
+      action:
+          () => ProfileRemoteDataSource(ref.read(apiServiceProvider)).updateMe(
+            instagramId: isInstagram ? username : null,
+            snapchatId: isInstagram ? null : username,
+            username: username,
+          ),
+      onSuccess:
+          () => ref
+              .read(onboardingDraftProvider.notifier)
+              .setSocial(
+                platform:
+                    isInstagram
+                        ? TTexts.socialInstagram
+                        : TTexts.socialSnapchat,
+                username: username,
+              ),
       successMessage: 'Username updated!',
     );
   }
@@ -189,12 +252,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await onSuccess();
       await ref.read(authControllerProvider.notifier).refreshUser();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMessage)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not update your profile. Please try again.')),
+          const SnackBar(
+            content: Text('Could not update your profile. Please try again.'),
+          ),
         );
       }
     } finally {
@@ -214,13 +281,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     setState(() => _isUploadingImage = true);
     try {
-      final imageUrl = await UploadRemoteDataSource(ref.read(apiServiceProvider))
-          .uploadProfileImageBytes(bytes: await image.readAsBytes(), filename: image.name);
-      await ProfileRemoteDataSource(ref.read(apiServiceProvider)).updateMe(avatarUrl: imageUrl);
-      await ref.read(onboardingDraftProvider.notifier).setProfileImageUrl(imageUrl);
+      final imageUrl = await UploadRemoteDataSource(
+        ref.read(apiServiceProvider),
+      ).uploadProfileImageBytes(
+        bytes: await image.readAsBytes(),
+        filename: image.name,
+      );
+      await ProfileRemoteDataSource(
+        ref.read(apiServiceProvider),
+      ).updateMe(avatarUrl: imageUrl);
+      await ref
+          .read(onboardingDraftProvider.notifier)
+          .setProfileImageUrl(imageUrl);
       await ref.read(authControllerProvider.notifier).refreshUser();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile photo updated!')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profile photo updated!')));
       }
     } catch (_) {
       if (mounted) {
@@ -239,13 +316,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final draft = ref.watch(onboardingDraftProvider).value;
     final isPro = ref.watch(isProProvider);
 
-    final name = (user?.name.trim().isNotEmpty ?? false) ? user!.name.trim() : 'Your Profile';
-    final isInstagram = draft?.socialPlatform == TTexts.socialInstagram ||
-        (draft?.socialPlatform == null && (user?.instagramId.isNotEmpty ?? false));
-    final socialUsername = draft?.username?.isNotEmpty == true
-        ? draft!.username!
-        : (isInstagram ? user?.instagramId ?? '' : '');
-    final handle = socialUsername.isNotEmpty ? '@${socialUsername.replaceFirst('@', '')}' : '';
+    final name =
+        (user?.name.trim().isNotEmpty ?? false)
+            ? user!.name.trim()
+            : 'Your Profile';
+    final isInstagram =
+        draft?.socialPlatform == TTexts.socialInstagram ||
+        (draft?.socialPlatform == null &&
+            (user?.instagramId.isNotEmpty ?? false));
+    final socialUsername =
+        draft?.username?.isNotEmpty == true
+            ? draft!.username!
+            : (isInstagram ? user?.instagramId ?? '' : '');
+    final handle =
+        socialUsername.isNotEmpty
+            ? '@${socialUsername.replaceFirst('@', '')}'
+            : '';
 
     // The uploaded image URL is reliably stored in the onboarding draft, so we
     // prefer the account image and fall back to the draft (same source the
@@ -254,7 +340,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
             ? user.avatarUrl
             : draft?.profileImageUrl;
-    final hasProfileImage = profileImageUrl != null && profileImageUrl.isNotEmpty;
+    final hasProfileImage =
+        profileImageUrl != null && profileImageUrl.isNotEmpty;
 
     return Scaffold(
       backgroundColor: TColors.white,
@@ -267,7 +354,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () => context.canPop() ? context.pop() : context.go('/home'),
+                    onTap:
+                        () =>
+                            context.canPop()
+                                ? context.pop()
+                                : context.go('/home'),
                     child: Container(
                       width: 44,
                       height: 44,
@@ -307,13 +398,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     color: TColors.hammeSurface,
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: hasProfileImage
-                      ? Image.network(profileImageUrl, fit: BoxFit.cover)
-                      : const Icon(
-                          CupertinoIcons.person_solid,
-                          size: 56,
-                          color: TColors.grey,
-                        ),
+                  child:
+                      hasProfileImage
+                          ? Image.network(profileImageUrl, fit: BoxFit.cover)
+                          : const Icon(
+                            CupertinoIcons.person_solid,
+                            size: 56,
+                            color: TColors.grey,
+                          ),
                 ),
                 Positioned(
                   right: -2,
@@ -328,9 +420,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(color: TColors.white, width: 3),
                       ),
-                      child: _isUploadingImage
-                          ? const CupertinoActivityIndicator(color: Colors.white, radius: 9)
-                          : const Icon(CupertinoIcons.pencil, color: Colors.white, size: 17),
+                      child:
+                          _isUploadingImage
+                              ? const CupertinoActivityIndicator(
+                                color: Colors.white,
+                                radius: 9,
+                              )
+                              : const Icon(
+                                CupertinoIcons.pencil,
+                                color: Colors.white,
+                                size: 17,
+                              ),
                     ),
                   ),
                 ),
@@ -354,7 +454,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: _isSaving ? null : () => _saveName(name),
-                  child: const Icon(CupertinoIcons.pencil, size: 18, color: TColors.hammePrimary),
+                  child: const Icon(
+                    CupertinoIcons.pencil,
+                    size: 18,
+                    color: TColors.hammePrimary,
+                  ),
                 ),
               ],
             ),
@@ -374,13 +478,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const SizedBox(width: 6),
                   GestureDetector(
-                    onTap: _isSaving
-                        ? null
-                        : () => _saveSocialUsername(
+                    onTap:
+                        _isSaving
+                            ? null
+                            : () => _saveSocialUsername(
                               currentUsername: socialUsername,
                               isInstagram: isInstagram,
                             ),
-                    child: const Icon(CupertinoIcons.pencil, size: 15, color: TColors.hammePrimary),
+                    child: const Icon(
+                      CupertinoIcons.pencil,
+                      size: 15,
+                      color: TColors.hammePrimary,
+                    ),
                   ),
                 ],
               ),
@@ -414,7 +523,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       fontFamily: TFonts.nunito,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
-                      color: isPro ? const Color(0xFF8B44FF) : TColors.darkerGrey,
+                      color:
+                          isPro ? const Color(0xFF8B44FF) : TColors.darkerGrey,
                     ),
                   ),
                 ],
@@ -449,7 +559,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(CupertinoIcons.star_fill, color: Colors.white, size: 20),
+                        Icon(
+                          CupertinoIcons.star_fill,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Upgrade to Pro',
@@ -465,6 +579,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
+
+            if (AppConstants.showDeveloperLogoutButton) ...[
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _isLoggingOut ? null : _logoutForOnboardingPreview,
+                icon:
+                    _isLoggingOut
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CupertinoActivityIndicator(radius: 8),
+                        )
+                        : const Icon(CupertinoIcons.arrow_right_square),
+                label: Text(_isLoggingOut ? 'Logging out…' : 'Log out (dev)'),
+                style: TextButton.styleFrom(
+                  foregroundColor: TColors.darkGrey,
+                  textStyle: const TextStyle(
+                    fontFamily: TFonts.nunito,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 32),
           ],

@@ -30,14 +30,20 @@ final class AppConstants {
 
   static String get appHost => dotenv.env['APP_HOST'] ?? 'app.hamme.link';
 
+  /// Developer-only control for replaying onboarding from an authenticated
+  /// account. This is always disabled in release builds, regardless of env.
+  static bool get showDeveloperLogoutButton =>
+      !kReleaseMode && dotenv.env['SHOW_DEV_LOGOUT_BUTTON'] == 'true';
+
   static String buildUserShareLink(String? shareCode) {
     final cleaned = (shareCode ?? '').trim().replaceAll('@', '');
     if (cleaned.isEmpty) {
       return shareLinkBase;
     }
-    final base = shareLinkBase.endsWith('/')
-        ? shareLinkBase.substring(0, shareLinkBase.length - 1)
-        : shareLinkBase;
+    final base =
+        shareLinkBase.endsWith('/')
+            ? shareLinkBase.substring(0, shareLinkBase.length - 1)
+            : shareLinkBase;
     return '$base/$cleaned';
   }
 }
