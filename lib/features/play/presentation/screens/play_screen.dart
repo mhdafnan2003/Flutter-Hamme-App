@@ -289,16 +289,18 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                           final effectiveItem =
                               _rewoundItem ??
                               (items.isEmpty ? null : items.first);
-                          if (effectiveItem == null)
+                          if (effectiveItem == null) {
                             return const _CompletedQueueView();
+                          }
                           return _PlayQueue(
                             item: effectiveItem,
                             remainingCount: items.length,
                             isSubmitting: controller.isLoading,
                             onSelect: (type) async {
                               final targetUserId = effectiveItem.fromUser;
-                              if (targetUserId == null || targetUserId.isEmpty)
+                              if (targetUserId == null || targetUserId.isEmpty) {
                                 return;
+                              }
                               _lastVotedItem = effectiveItem;
                               setState(() => _rewoundItem = null);
                               try {
@@ -394,8 +396,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                 final effectiveItem =
                                     _rewoundItem ??
                                     (items.isEmpty ? null : items.first);
-                                if (effectiveItem == null)
+                                if (effectiveItem == null) {
                                   return const _CompletedQueueView();
+                                }
                                 return _PlayQueue(
                                   item: effectiveItem,
                                   remainingCount: items.length,
@@ -403,8 +406,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                   onSelect: (type) async {
                                     final targetUserId = effectiveItem.fromUser;
                                     if (targetUserId == null ||
-                                        targetUserId.isEmpty)
+                                        targetUserId.isEmpty) {
                                       return;
+                                    }
                                     _lastVotedItem = effectiveItem;
                                     setState(() => _rewoundItem = null);
                                     try {
