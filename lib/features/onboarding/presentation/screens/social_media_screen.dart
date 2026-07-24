@@ -8,6 +8,7 @@ import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
+import '../../../../../core/widgets/onboarding_validation_dialog.dart';
 import '../widgets/dob_top_bar.dart';
 
 class SocialMediaScreen extends ConsumerStatefulWidget {
@@ -19,8 +20,8 @@ class SocialMediaScreen extends ConsumerStatefulWidget {
 
 class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
   final TextEditingController _usernameController = TextEditingController();
+  final FocusNode _usernameFocusNode = FocusNode();
   bool _isInstagramSelected = true;
-  String? _usernameError;
 
   @override
   void initState() {
@@ -39,6 +40,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
   @override
   void dispose() {
     _usernameController.dispose();
+    _usernameFocusNode.dispose();
     super.dispose();
   }
 
@@ -116,9 +118,10 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               TTexts.socialSnapchat,
                               style: TextStyle(
                                 fontFamily: TFonts.nunito,
-                                fontWeight: !_isInstagramSelected
-                                    ? FontWeight.w900
-                                    : FontWeight.w700,
+                                fontWeight:
+                                    !_isInstagramSelected
+                                        ? FontWeight.w900
+                                        : FontWeight.w700,
                                 fontSize: 16,
                                 color:
                                     !_isInstagramSelected
@@ -139,9 +142,10 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               TTexts.socialInstagram,
                               style: TextStyle(
                                 fontFamily: TFonts.nunito,
-                                fontWeight: _isInstagramSelected
-                                    ? FontWeight.w900
-                                    : FontWeight.w700,
+                                fontWeight:
+                                    _isInstagramSelected
+                                        ? FontWeight.w900
+                                        : FontWeight.w700,
                                 fontSize: 16,
                                 color:
                                     _isInstagramSelected
@@ -173,15 +177,16 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                 onChanged: (_) {
                   final normalized = _usernameController.text.toLowerCase();
                   if (_usernameController.text != normalized) {
-                    _usernameController.value = _usernameController.value.copyWith(
-                      text: normalized,
-                      selection: TextSelection.collapsed(offset: normalized.length),
-                    );
-                  }
-                  if (_usernameError != null) {
-                    setState(() => _usernameError = null);
+                    _usernameController.value = _usernameController.value
+                        .copyWith(
+                          text: normalized,
+                          selection: TextSelection.collapsed(
+                            offset: normalized.length,
+                          ),
+                        );
                   }
                 },
+                focusNode: _usernameFocusNode,
                 style: const TextStyle(
                   fontFamily: TFonts.nunito,
                   fontWeight: FontWeight.w600,
@@ -200,40 +205,30 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                 ),
               ),
             ),
-            if (_usernameError != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _usernameError!,
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontFamily: TFonts.nunito,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-
             const Spacer(),
 
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: GradientButton(
                 label: TTexts.next,
-                onTap: () {
-                  final username = _usernameController.text.trim().toLowerCase();
+                onTap: () async {
+                  final username =
+                      _usernameController.text.trim().toLowerCase();
                   final usernameRegex = RegExp(r'^[a-z0-9._]+$');
+                  if (username.isEmpty) {
+                    await _showUsernameError('Enter a username to continue.');
+                    return;
+                  }
                   if (username.length < 2 || username.length > 30) {
-                    setState(() {
-                      _usernameError = 'Username must be 2 to 30 characters long.';
-                    });
+                    await _showUsernameError(
+                      'Your username must be 2 to 30 characters long.',
+                    );
                     return;
                   }
                   if (!usernameRegex.hasMatch(username)) {
-                    setState(() {
-                      _usernameError =
-                          'Username can only contain lowercase letters, numbers, dots, and underscores.';
-                    });
+                    await _showUsernameError(
+                      'Use lowercase letters, numbers, dots, and underscores only.',
+                    );
                     return;
                   }
                   ref
@@ -253,5 +248,16 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showUsernameError(String message) async {
+    HapticFeedback.mediumImpact();
+    await showOnboardingValidationDialog(
+      context,
+      title: 'Choose a username',
+      message: message,
+      actionLabel: 'Add username',
+    );
+    if (mounted) _usernameFocusNode.requestFocus();
   }
 }

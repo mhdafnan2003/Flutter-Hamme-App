@@ -1,7 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +12,7 @@ import 'package:hamme_app/utils/constants/text_strings.dart';
 
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import '../../../../../core/widgets/gradient_button.dart';
+import '../../../../../core/widgets/onboarding_validation_dialog.dart';
 import '../widgets/dob_top_bar.dart';
 import '../widgets/triangle_painter.dart';
 
@@ -31,7 +31,6 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   Uint8List? _previewBytes;
   bool _isPickingImage = false;
-  String? _uploadError;
 
   @override
   void initState() {
@@ -69,7 +68,6 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
 
       if (!mounted) return;
       setState(() {
-        _uploadError = null;
         _previewBytes = bytes;
       });
       ref
@@ -281,18 +279,6 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                       ),
                     ),
                   ),
-                  if (_uploadError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Text(
-                        _uploadError!,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -303,13 +289,18 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: GradientButton(
                 label: TTexts.next,
-                onTap: () {
+                onTap: () async {
                   if ((profileImageUrl == null || profileImageUrl.isEmpty) &&
                       selectedImage == null) {
-                    setState(() {
-                      _uploadError =
-                          'Please upload a profile photo to continue.';
-                    });
+                    HapticFeedback.mediumImpact();
+                    final shouldPickImage = await showOnboardingValidationDialog(
+                      context,
+                      title: 'Add a profile photo',
+                      message:
+                          'Choose a clear photo of yourself before continuing.',
+                      actionLabel: 'Choose photo',
+                    );
+                    if (shouldPickImage && mounted) await _pickProfileImage();
                     return;
                   }
                   context.go('/onboarding/social_media');
