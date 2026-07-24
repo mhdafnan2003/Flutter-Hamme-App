@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
+import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
+import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
@@ -23,6 +25,152 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
 
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploading = false;
+  bool _isUpdatingName = false;
+
+  Future<void> _editProfileName(String currentName) async {
+    if (_isUpdatingName) return;
+
+    final controller = TextEditingController(text: currentName);
+    final updatedName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Edit your name',
+                style: TextStyle(
+                  fontFamily: TFonts.nunito,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 23,
+                  color: TColors.black,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'This is how your profile appears in Hamme.',
+                style: TextStyle(
+                  fontFamily: TFonts.nunito,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: TColors.darkGrey,
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                maxLength: 40,
+                style: const TextStyle(
+                  fontFamily: TFonts.nunito,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: 'Your name',
+                  hintStyle: const TextStyle(
+                    fontFamily: TFonts.nunito,
+                    color: TColors.grey,
+                  ),
+                  filled: true,
+                  fillColor: TColors.hammeSurface,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 15,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: TColors.hammePrimary,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+                onSubmitted: (value) => Navigator.of(dialogContext).pop(value.trim()),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w800,
+                          color: TColors.darkGrey,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF9E57FF), Color(0xFF8B44FF)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: TextButton(
+                        onPressed: () => Navigator.of(dialogContext)
+                            .pop(controller.text.trim()),
+                        child: const Text(
+                          'Save',
+                          style: TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    controller.dispose();
+
+    if (updatedName == null || updatedName.isEmpty || updatedName == currentName) {
+      return;
+    }
+
+    setState(() => _isUpdatingName = true);
+    try {
+      await ProfileRemoteDataSource(ref.read(apiServiceProvider)).updateMe(
+        name: updatedName,
+      );
+      await ref.read(onboardingDraftProvider.notifier).setName(updatedName);
+      await ref.read(authControllerProvider.notifier).refreshUser();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name updated!')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update your name. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUpdatingName = false);
+    }
+  }
 
   Future<void> _changeProfileImage() async {
     if (_isUploading) return;
@@ -146,15 +294,44 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: Text(
-                          profileName,
-                          style: const TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 20,
-                            color: TColors.white,
-                          ),
+                        padding: const EdgeInsets.only(bottom: 15, left: 46, right: 46),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                profileName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: TFonts.nunito,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 20,
+                                  color: TColors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _isUpdatingName
+                                  ? null
+                                  : () => _editProfileName(profileName),
+                              child: _isUpdatingName
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CupertinoActivityIndicator(
+                                        color: Colors.white,
+                                        radius: 8,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      CupertinoIcons.pencil,
+                                      color: Colors.white,
+                                      size: 19,
+                                    ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
