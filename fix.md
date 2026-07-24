@@ -46,3 +46,34 @@ requires those schemes to be listed in `LSApplicationQueriesSchemes` before
 - Do not commit a secret in `META_APP_ID`. A Meta App ID is normally public,
   but CI should still provide it through a build variable rather than source
   code.
+
+# 2. Match popup persistence
+
+## Current approach
+
+The Play screen saves IDs of match popups already shown in `SharedPreferences`
+on the device. This prevents the same match from appearing every time the app
+is reopened while allowing newly created match IDs to appear normally.
+
+This is intentionally local-only because the current product is used on one
+device and does not require cross-device account state.
+
+## Retention recommendation
+
+The current saved-ID list is capped at 500 entries. It removes only the
+oldest ID when the limit is exceeded; it does not clear all saved data.
+
+The backend only returns matches from the previous 24 hours, so IDs older than
+that cannot reappear. In the unlikely event that more than 500 matches arrive
+within one 24-hour window, only an evicted oldest match could be shown again.
+
+For a complete local-only solution, store each shown match ID with the time it
+was shown and remove entries only after 24 hours. That prevents repeats even
+when more than 500 matches are received in one day, without requiring a server
+change.
+
+## When server-side persistence is needed
+
+Move match-seen state to the backend only when it must survive app-data
+clearing or reinstall, or when the same user can use multiple devices.
+

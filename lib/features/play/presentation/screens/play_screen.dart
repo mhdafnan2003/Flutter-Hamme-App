@@ -22,6 +22,7 @@ import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/presentation/widgets/hamme_top_bar.dart';
 import '../widgets/play_empty_state.dart';
 import '../widgets/match_share_export_widget.dart';
@@ -44,9 +45,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   InteractionRecord? _rewoundItem;
   InteractionRecord? _lastVotedItem;
 
-  // Tracks which match IDs have already been shown as overlays this session
-  // so we don't re-show them on every 5-second refresh.
+  static const String _shownMatchIdsPreferenceKey = 'play_shown_match_ids_v1';
+
+  // Tracks match IDs already surfaced as overlays. The IDs are also saved on
+  // this device so reopening the app does not replay the same match.
   final Set<String> _shownMatchIds = {};
+  bool _shownMatchIdsLoaded = false;
   // Tracks interaction IDs already shown as poller-side "not a match" overlays.
   final Set<String> _shownPollerResultIds = {};
 
@@ -70,9 +74,41 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     });
   }
 
+  Future<void> _loadShownMatchIds() async {
+    final preferences = await SharedPreferences.getInstance();
+    final savedIds =
+        preferences.getStringList(_shownMatchIdsPreferenceKey) ??
+        const <String>[];
+
+    if (!mounted) return;
+    _shownMatchIds.addAll(savedIds);
+    _shownMatchIdsLoaded = true;
+
+    // The initial matches request may have completed while preferences loaded.
+    // Re-evaluate its cached result once local seen state is ready.
+    ref.read(matchesProvider).whenData(_checkForNewMatchesFromPollerSide);
+  }
+
+  Future<void> _markMatchAsShown(String matchId) async {
+    _shownMatchIds.add(matchId);
+
+    final preferences = await SharedPreferences.getInstance();
+    // Keep the preference bounded. Matches disappear after 24 hours, so this
+    // is substantially more history than the UI can ever need.
+    while (_shownMatchIds.length > 500) {
+      _shownMatchIds.remove(_shownMatchIds.first);
+    }
+    await preferences.setStringList(
+      _shownMatchIdsPreferenceKey,
+      _shownMatchIds.toList(growable: false),
+    );
+  }
+
   /// Called whenever matchesProvider refreshes — shows overlays for any
   /// recent matches not yet seen this session (covers the poller side).
   void _checkForNewMatchesFromPollerSide(List<MatchRecord> matches) {
+    if (!_shownMatchIdsLoaded) return;
+
     final cutoff = DateTime.now().toUtc().subtract(const Duration(hours: 24));
     for (final match in matches) {
       if (_shownMatchIds.contains(match.id)) continue;
@@ -81,7 +117,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
         _shownMatchIds.add(match.id);
         continue;
       }
-      _shownMatchIds.add(match.id);
+      unawaited(_markMatchAsShown(match.id));
       // Defer to avoid triggering navigation during a build phase.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _showPollMatchOverlay(match);
@@ -94,11 +130,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
         opaque: true,
-        pageBuilder: (ctx, _, __) => PollMatchOverlay(
-          match: match,
-          currentUserImageUrl: myImageUrl,
-          onDismiss: () => Navigator.of(ctx).pop(),
-        ),
+        pageBuilder:
+            (ctx, _, __) => PollMatchOverlay(
+              match: match,
+              currentUserImageUrl: myImageUrl,
+              onDismiss: () => Navigator.of(ctx).pop(),
+            ),
       ),
     );
   }
@@ -141,11 +178,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
         opaque: true,
-        pageBuilder: (ctx, _, __) => PollNotAMatchOverlay(
-          interaction: interaction,
-          currentUserImageUrl: myImageUrl,
-          onDismiss: () => Navigator.of(ctx).pop(),
-        ),
+        pageBuilder:
+            (ctx, _, __) => PollNotAMatchOverlay(
+              interaction: interaction,
+              currentUserImageUrl: myImageUrl,
+              onDismiss: () => Navigator.of(ctx).pop(),
+            ),
       ),
     );
   }
@@ -155,17 +193,18 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   Future<void> _showMatchOverlay(InteractionResult result) async {
     // Mark as seen so the matchesProvider listener doesn't re-show it.
     if (result.match?.id != null) {
-      _shownMatchIds.add(result.match!.id);
+      unawaited(_markMatchAsShown(result.match!.id));
     }
     final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
         opaque: true,
-        pageBuilder: (overlayContext, _, __) => MatchSuccessOverlay(
-          result: result,
-          currentUserImageUrl: myImageUrl,
-          onDismiss: () => Navigator.of(overlayContext).pop(),
-        ),
+        pageBuilder:
+            (overlayContext, _, __) => MatchSuccessOverlay(
+              result: result,
+              currentUserImageUrl: myImageUrl,
+              onDismiss: () => Navigator.of(overlayContext).pop(),
+            ),
       ),
     );
   }
@@ -174,6 +213,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_loadShownMatchIds());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPlayData();
     });
@@ -211,9 +251,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
 
     // Listen for "not a match" results the poller should see when the creator
     // voted back but it wasn't a match.
-    ref.listen<AsyncValue<List<InteractionRecord>>>(receivedInteractionsProvider, (_, next) {
-      next.whenData(_checkForNotMatchFromPollerSide);
-    });
+    ref.listen<AsyncValue<List<InteractionRecord>>>(
+      receivedInteractionsProvider,
+      (_, next) {
+        next.whenData(_checkForNotMatchFromPollerSide);
+      },
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
@@ -236,115 +279,65 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
 
                   return _lastResult != null && !_lastResult!.matched
                       ? _NotAMatchView(
-                          result: _lastResult!,
-                          remainingCount: (pending.value?.length ?? 0),
-                          onSeeNext: _onDismiss,
-                          onRewind: _triggerRewind,
-                        )
-                      : pending.when(
-                          data: (items) {
-                            final effectiveItem = _rewoundItem ?? (items.isEmpty ? null : items.first);
-                            if (effectiveItem == null) return const _CompletedQueueView();
-                            return _PlayQueue(
-                              item: effectiveItem,
-                              remainingCount: items.length,
-                              isSubmitting: controller.isLoading,
-                              onSelect: (type) async {
-                                final targetUserId = effectiveItem.fromUser;
-                                if (targetUserId == null || targetUserId.isEmpty) return;
-                                _lastVotedItem = effectiveItem;
-                                setState(() => _rewoundItem = null);
-                                try {
-                                  final result = await ref
-                                      .read(interactionControllerProvider.notifier)
-                                      .respondToUser(
-                                        targetUserId: targetUserId,
-                                        type: type,
-                                      );
-                                  if (!mounted) return;
-                                  // Refresh limit status after each vote
-                                  ref.invalidate(playLimitStatusProvider);
-
-                                  final mergedResult = result.copyWith(
-                                    interaction: result.interaction.copyWith(
-                                      fromUserName: result.interaction.fromUserName ?? effectiveItem.fromUserName,
-                                      fromUserUsername: result.interaction.fromUserUsername ?? effectiveItem.fromUserUsername,
-                                      fromUserProfileImageUrl: result.interaction.fromUserProfileImageUrl ?? effectiveItem.fromUserProfileImageUrl,
-                                      fromUserInstagramId: result.interaction.fromUserInstagramId ?? effectiveItem.fromUserInstagramId,
-                                      fromUserSnapchatId: result.interaction.fromUserSnapchatId ?? effectiveItem.fromUserSnapchatId,
-                                    ),
-                                  );
-
-                                  if (mergedResult.matched) {
-                                    await _showMatchOverlay(mergedResult);
-                                    if (!mounted) return;
-                                    _refreshPlayData();
-                                  } else {
-                                    setState(() => _lastResult = mergedResult);
-                                  }
-                                } catch (error) {
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Could not save response: $error'),
-                                      backgroundColor: TColors.error,
-                                    ),
-                                  );
-                                }
-                              },
-                            );
-                          },
-                          loading: () => const Center(
-                            child: CircularProgressIndicator(color: TColors.hammePrimary),
-                          ),
-                          error: (error, _) => Center(
-                            child: Text(
-                              'Could not load voters.\n$error',
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        );
-                },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: TColors.hammePrimary),
-                ),
-                error: (_, __) => _lastResult != null && !_lastResult!.matched
-                    ? _NotAMatchView(
                         result: _lastResult!,
                         remainingCount: (pending.value?.length ?? 0),
                         onSeeNext: _onDismiss,
                         onRewind: _triggerRewind,
                       )
-                    : pending.when(
+                      : pending.when(
                         data: (items) {
-                          final effectiveItem = _rewoundItem ?? (items.isEmpty ? null : items.first);
-                          if (effectiveItem == null) return const _CompletedQueueView();
+                          final effectiveItem =
+                              _rewoundItem ??
+                              (items.isEmpty ? null : items.first);
+                          if (effectiveItem == null)
+                            return const _CompletedQueueView();
                           return _PlayQueue(
                             item: effectiveItem,
                             remainingCount: items.length,
                             isSubmitting: controller.isLoading,
                             onSelect: (type) async {
                               final targetUserId = effectiveItem.fromUser;
-                              if (targetUserId == null || targetUserId.isEmpty) return;
+                              if (targetUserId == null || targetUserId.isEmpty)
+                                return;
                               _lastVotedItem = effectiveItem;
                               setState(() => _rewoundItem = null);
                               try {
                                 final result = await ref
-                                    .read(interactionControllerProvider.notifier)
+                                    .read(
+                                      interactionControllerProvider.notifier,
+                                    )
                                     .respondToUser(
                                       targetUserId: targetUserId,
                                       type: type,
                                     );
                                 if (!mounted) return;
+                                // Refresh limit status after each vote
+                                ref.invalidate(playLimitStatusProvider);
+
                                 final mergedResult = result.copyWith(
                                   interaction: result.interaction.copyWith(
-                                    fromUserName: result.interaction.fromUserName ?? effectiveItem.fromUserName,
-                                    fromUserUsername: result.interaction.fromUserUsername ?? effectiveItem.fromUserUsername,
-                                    fromUserProfileImageUrl: result.interaction.fromUserProfileImageUrl ?? effectiveItem.fromUserProfileImageUrl,
-                                    fromUserInstagramId: result.interaction.fromUserInstagramId ?? effectiveItem.fromUserInstagramId,
-                                    fromUserSnapchatId: result.interaction.fromUserSnapchatId ?? effectiveItem.fromUserSnapchatId,
+                                    fromUserName:
+                                        result.interaction.fromUserName ??
+                                        effectiveItem.fromUserName,
+                                    fromUserUsername:
+                                        result.interaction.fromUserUsername ??
+                                        effectiveItem.fromUserUsername,
+                                    fromUserProfileImageUrl:
+                                        result
+                                            .interaction
+                                            .fromUserProfileImageUrl ??
+                                        effectiveItem.fromUserProfileImageUrl,
+                                    fromUserInstagramId:
+                                        result
+                                            .interaction
+                                            .fromUserInstagramId ??
+                                        effectiveItem.fromUserInstagramId,
+                                    fromUserSnapchatId:
+                                        result.interaction.fromUserSnapchatId ??
+                                        effectiveItem.fromUserSnapchatId,
                                   ),
                                 );
+
                                 if (mergedResult.matched) {
                                   await _showMatchOverlay(mergedResult);
                                   if (!mounted) return;
@@ -356,7 +349,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                 if (!mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Could not save response: $error'),
+                                    content: Text(
+                                      'Could not save response: $error',
+                                    ),
                                     backgroundColor: TColors.error,
                                   ),
                                 );
@@ -364,16 +359,132 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                             },
                           );
                         },
-                        loading: () => const Center(
-                          child: CircularProgressIndicator(color: TColors.hammePrimary),
-                        ),
-                        error: (error, _) => Center(
-                          child: Text(
-                            'Could not load voters.\n$error',
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
+                        loading:
+                            () => const Center(
+                              child: CircularProgressIndicator(
+                                color: TColors.hammePrimary,
+                              ),
+                            ),
+                        error:
+                            (error, _) => Center(
+                              child: Text(
+                                'Could not load voters.\n$error',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                      );
+                },
+                loading:
+                    () => const Center(
+                      child: CircularProgressIndicator(
+                        color: TColors.hammePrimary,
                       ),
+                    ),
+                error:
+                    (_, __) =>
+                        _lastResult != null && !_lastResult!.matched
+                            ? _NotAMatchView(
+                              result: _lastResult!,
+                              remainingCount: (pending.value?.length ?? 0),
+                              onSeeNext: _onDismiss,
+                              onRewind: _triggerRewind,
+                            )
+                            : pending.when(
+                              data: (items) {
+                                final effectiveItem =
+                                    _rewoundItem ??
+                                    (items.isEmpty ? null : items.first);
+                                if (effectiveItem == null)
+                                  return const _CompletedQueueView();
+                                return _PlayQueue(
+                                  item: effectiveItem,
+                                  remainingCount: items.length,
+                                  isSubmitting: controller.isLoading,
+                                  onSelect: (type) async {
+                                    final targetUserId = effectiveItem.fromUser;
+                                    if (targetUserId == null ||
+                                        targetUserId.isEmpty)
+                                      return;
+                                    _lastVotedItem = effectiveItem;
+                                    setState(() => _rewoundItem = null);
+                                    try {
+                                      final result = await ref
+                                          .read(
+                                            interactionControllerProvider
+                                                .notifier,
+                                          )
+                                          .respondToUser(
+                                            targetUserId: targetUserId,
+                                            type: type,
+                                          );
+                                      if (!mounted) return;
+                                      final mergedResult = result.copyWith(
+                                        interaction: result.interaction.copyWith(
+                                          fromUserName:
+                                              result.interaction.fromUserName ??
+                                              effectiveItem.fromUserName,
+                                          fromUserUsername:
+                                              result
+                                                  .interaction
+                                                  .fromUserUsername ??
+                                              effectiveItem.fromUserUsername,
+                                          fromUserProfileImageUrl:
+                                              result
+                                                  .interaction
+                                                  .fromUserProfileImageUrl ??
+                                              effectiveItem
+                                                  .fromUserProfileImageUrl,
+                                          fromUserInstagramId:
+                                              result
+                                                  .interaction
+                                                  .fromUserInstagramId ??
+                                              effectiveItem.fromUserInstagramId,
+                                          fromUserSnapchatId:
+                                              result
+                                                  .interaction
+                                                  .fromUserSnapchatId ??
+                                              effectiveItem.fromUserSnapchatId,
+                                        ),
+                                      );
+                                      if (mergedResult.matched) {
+                                        await _showMatchOverlay(mergedResult);
+                                        if (!mounted) return;
+                                        _refreshPlayData();
+                                      } else {
+                                        setState(
+                                          () => _lastResult = mergedResult,
+                                        );
+                                      }
+                                    } catch (error) {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Could not save response: $error',
+                                          ),
+                                          backgroundColor: TColors.error,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                );
+                              },
+                              loading:
+                                  () => const Center(
+                                    child: CircularProgressIndicator(
+                                      color: TColors.hammePrimary,
+                                    ),
+                                  ),
+                              error:
+                                  (error, _) => Center(
+                                    child: Text(
+                                      'Could not load voters.\n$error',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                            ),
               ),
             ),
           ],
@@ -388,10 +499,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MatchView extends ConsumerStatefulWidget {
-  const _MatchView({
-    required this.result,
-    required this.onDismiss,
-  });
+  const _MatchView({required this.result, required this.onDismiss});
 
   final InteractionResult result;
   final VoidCallback onDismiss;
@@ -429,30 +537,33 @@ class _MatchViewState extends ConsumerState<_MatchView> {
     late final OverlayEntry entry;
 
     entry = OverlayEntry(
-      builder: (_) => Positioned(
-        left: -20000,
-        top: 0,
-        child: RepaintBoundary(
-          key: boundaryKey,
-          child: SizedBox(
-            width: 1080,
-            height: 1920,
-            child: MatchShareExportWidget(
-              type: type,
-              otherName: otherName,
-              otherImageUrl: otherImageUrl,
-              myImageUrl: myImageUrl,
+      builder:
+          (_) => Positioned(
+            left: -20000,
+            top: 0,
+            child: RepaintBoundary(
+              key: boundaryKey,
+              child: SizedBox(
+                width: 1080,
+                height: 1920,
+                child: MatchShareExportWidget(
+                  type: type,
+                  otherName: otherName,
+                  otherImageUrl: otherImageUrl,
+                  myImageUrl: myImageUrl,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
     );
 
     Overlay.of(context, rootOverlay: true).insert(entry);
     try {
       // Small delay to ensure everything (especially network images) is rendered
       await Future.delayed(const Duration(milliseconds: 800));
-      final boundary = boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final boundary =
+          boundaryKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) throw StateError('Boundary not available');
 
       final image = await boundary.toImage(pixelRatio: 1.0);
@@ -472,13 +583,15 @@ class _MatchViewState extends ConsumerState<_MatchView> {
     try {
       final interaction = widget.result.interaction;
       final match = widget.result.match;
-      
-      final otherName = match?.matchedUser.name.trim()
-          ?? interaction.fromUserName?.trim()
-          ?? 'Someone';
-      final otherImageUrl = match?.matchedUser.avatarUrl
-          ?? interaction.fromUserProfileImageUrl;
-      final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
+
+      final otherName =
+          match?.matchedUser.name.trim() ??
+          interaction.fromUserName?.trim() ??
+          'Someone';
+      final otherImageUrl =
+          match?.matchedUser.avatarUrl ?? interaction.fromUserProfileImageUrl;
+      final myImageUrl =
+          ref.read(onboardingDraftProvider).value?.profileImageUrl;
 
       final bytes = await _renderImage(
         type: interaction.type,
@@ -488,23 +601,27 @@ class _MatchViewState extends ConsumerState<_MatchView> {
       );
 
       final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/hamme_match_${DateTime.now().millisecondsSinceEpoch}.png').create();
+      final file =
+          await File(
+            '${tempDir.path}/hamme_match_${DateTime.now().millisecondsSinceEpoch}.png',
+          ).create();
       await file.writeAsBytes(bytes);
 
-      final text = interaction.type == InteractionType.crush
-          ? "It's a crush match! 😍"
-          : interaction.type == InteractionType.friend
+      final text =
+          interaction.type == InteractionType.crush
+              ? "It's a crush match! 😍"
+              : interaction.type == InteractionType.friend
               ? "We matched as friends! 🤝"
               : "Frenemy vibes only 😈";
 
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: text,
-      );
+      await Share.shareXFiles([XFile(file.path)], subject: text);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to share: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to share: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -548,12 +665,13 @@ class _MatchViewState extends ConsumerState<_MatchView> {
     final theme = themeForType(type);
 
     // Other person details — from match record or interaction
-    final otherName = match?.matchedUser.name.trim()
-        ?? interaction.fromUserName?.trim()
-        ?? interaction.fromUserUsername?.trim()
-        ?? 'Someone';
-    final otherImageUrl = match?.matchedUser.avatarUrl
-        ?? interaction.fromUserProfileImageUrl;
+    final otherName =
+        match?.matchedUser.name.trim() ??
+        interaction.fromUserName?.trim() ??
+        interaction.fromUserUsername?.trim() ??
+        'Someone';
+    final otherImageUrl =
+        match?.matchedUser.avatarUrl ?? interaction.fromUserProfileImageUrl;
     final otherInstagram = match?.matchedUser.instagramId ?? '';
     final otherSnap = interaction.fromUserSnapchatId ?? '';
 
@@ -564,7 +682,7 @@ class _MatchViewState extends ConsumerState<_MatchView> {
     // Determine which social platform to show in the Reply button
     final hasOtherInstagram = otherInstagram.isNotEmpty;
     final hasOtherSnap = otherSnap.isNotEmpty;
-    
+
     // Toggle logic
     final isInstagramSelected = _selectedPlatform == 'instagram';
     final isSnapchatSelected = _selectedPlatform == 'snapchat';
@@ -627,7 +745,10 @@ class _MatchViewState extends ConsumerState<_MatchView> {
                           // Left avatar (other person) — offset left
                           Positioned(
                             left: screenSize.width * 0.5 - 32 - 90,
-                            child: _MatchAvatar(imageUrl: otherImageUrl, size: 90),
+                            child: _MatchAvatar(
+                              imageUrl: otherImageUrl,
+                              size: 90,
+                            ),
                           ),
                           // Right avatar (me) — offset right
                           Positioned(
@@ -651,10 +772,7 @@ class _MatchViewState extends ConsumerState<_MatchView> {
                               ],
                             ),
                             child: Center(
-                              child: EmojiImage(
-                                emoji: theme.emoji,
-                                size: 24,
-                              ),
+                              child: EmojiImage(emoji: theme.emoji, size: 24),
                             ),
                           ),
                         ],
@@ -709,7 +827,10 @@ class _MatchViewState extends ConsumerState<_MatchView> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(50),
@@ -719,7 +840,10 @@ class _MatchViewState extends ConsumerState<_MatchView> {
                       children: [
                         if (hasOtherInstagram)
                           GestureDetector(
-                            onTap: () => setState(() => _selectedPlatform = 'instagram'),
+                            onTap:
+                                () => setState(
+                                  () => _selectedPlatform = 'instagram',
+                                ),
                             child: _SocialPill(
                               icon: TImages.instagramIcon,
                               selected: isInstagramSelected,
@@ -729,7 +853,10 @@ class _MatchViewState extends ConsumerState<_MatchView> {
                           const SizedBox(width: 4),
                         if (hasOtherSnap)
                           GestureDetector(
-                            onTap: () => setState(() => _selectedPlatform = 'snapchat'),
+                            onTap:
+                                () => setState(
+                                  () => _selectedPlatform = 'snapchat',
+                                ),
                             child: _SocialPill(
                               icon: TImages.snapchatIcon,
                               selected: isSnapchatSelected,
@@ -746,38 +873,48 @@ class _MatchViewState extends ConsumerState<_MatchView> {
                 child: SizedBox(
                   width: double.infinity,
                   height: 60,
-                  child: _isSharing
-                      ? const Center(child: CupertinoActivityIndicator(color: Colors.white))
-                      : ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(36),
-                            ),
-                            elevation: 0,
-                          ),
-                          icon: Image.asset(
-                            isSnapchatSelected ? TImages.snapchatIcon : TImages.instagramIcon,
-                            width: 24,
-                            height: 24,
-                            errorBuilder: (_, __, ___) => Icon(
-                              isSnapchatSelected ? CupertinoIcons.chat_bubble_fill : CupertinoIcons.camera_fill,
-                              size: 22,
+                  child:
+                      _isSharing
+                          ? const Center(
+                            child: CupertinoActivityIndicator(
                               color: Colors.white,
                             ),
-                          ),
-                          label: const Text(
-                            'Reply',
-                            style: TextStyle(
-                              fontFamily: TFonts.nunito,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
-                              color: Colors.white,
+                          )
+                          : ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(36),
+                              ),
+                              elevation: 0,
                             ),
+                            icon: Image.asset(
+                              isSnapchatSelected
+                                  ? TImages.snapchatIcon
+                                  : TImages.instagramIcon,
+                              width: 24,
+                              height: 24,
+                              errorBuilder:
+                                  (_, __, ___) => Icon(
+                                    isSnapchatSelected
+                                        ? CupertinoIcons.chat_bubble_fill
+                                        : CupertinoIcons.camera_fill,
+                                    size: 22,
+                                    color: Colors.white,
+                                  ),
+                            ),
+                            label: const Text(
+                              'Reply',
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                            onPressed: _shareMatch,
                           ),
-                          onPressed: _shareMatch,
-                        ),
                 ),
               ),
 
@@ -810,7 +947,8 @@ class _MatchAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasValidUrl = imageUrl != null &&
+    final hasValidUrl =
+        imageUrl != null &&
         imageUrl!.isNotEmpty &&
         imageUrl!.startsWith('http');
     return Container(
@@ -828,32 +966,37 @@ class _MatchAvatar extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: hasValidUrl
-            ? Image.network(
-                imageUrl!,
-                fit: BoxFit.cover,
-                width: size,
-                height: size,
-                loadingBuilder: (_, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    child: const Center(
-                      child: CupertinoActivityIndicator(color: Colors.white),
-                    ),
-                  );
-                },
-                errorBuilder: (_, __, ___) => _fallback(),
-              )
-            : _fallback(),
+        child:
+            hasValidUrl
+                ? Image.network(
+                  imageUrl!,
+                  fit: BoxFit.cover,
+                  width: size,
+                  height: size,
+                  loadingBuilder: (_, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      child: const Center(
+                        child: CupertinoActivityIndicator(color: Colors.white),
+                      ),
+                    );
+                  },
+                  errorBuilder: (_, __, ___) => _fallback(),
+                )
+                : _fallback(),
       ),
     );
   }
 
   Widget _fallback() => Container(
-        color: Colors.white.withValues(alpha: 0.25),
-        child: const Icon(CupertinoIcons.person_solid, color: Colors.white, size: 40),
-      );
+    color: Colors.white.withValues(alpha: 0.25),
+    child: const Icon(
+      CupertinoIcons.person_solid,
+      color: Colors.white,
+      size: 40,
+    ),
+  );
 }
 
 class _SocialPill extends StatelessWidget {
@@ -867,7 +1010,10 @@ class _SocialPill extends StatelessWidget {
       width: 42,
       height: 42,
       decoration: BoxDecoration(
-        color: selected ? Colors.white.withValues(alpha: 0.35) : Colors.transparent,
+        color:
+            selected
+                ? Colors.white.withValues(alpha: 0.35)
+                : Colors.transparent,
         shape: BoxShape.circle,
       ),
       padding: const EdgeInsets.all(8),
@@ -914,7 +1060,7 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: _totalSeconds),
-      value: 1.0,  // starts full
+      value: 1.0, // starts full
     );
 
     // Smooth progress bar
@@ -922,7 +1068,10 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
 
     // 1-second tick just for the numeric label
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       if (_secondsRemaining > 0) {
         setState(() => _secondsRemaining--);
       } else {
@@ -944,9 +1093,10 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
     final draftValue = ref.watch(onboardingDraftProvider);
     final myImageUrl = draftValue.value?.profileImageUrl;
     final otherImageUrl = widget.result.interaction.fromUserProfileImageUrl;
-    final otherName = widget.result.interaction.fromUserName?.trim()
-        ?? widget.result.interaction.fromUserUsername?.trim()
-        ?? 'Someone';
+    final otherName =
+        widget.result.interaction.fromUserName?.trim() ??
+        widget.result.interaction.fromUserUsername?.trim() ??
+        'Someone';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 0, 28, 16),
@@ -1122,7 +1272,10 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                       ),
                       // Pro badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
@@ -1183,12 +1336,15 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
             borderRadius: BorderRadius.circular(6),
             child: AnimatedBuilder(
               animation: _animController,
-              builder: (_, __) => LinearProgressIndicator(
-                value: _animController.value,
-                backgroundColor: const Color(0xFFE8DFFF),
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFB18DFF)),
-                minHeight: 5,
-              ),
+              builder:
+                  (_, __) => LinearProgressIndicator(
+                    value: _animController.value,
+                    backgroundColor: const Color(0xFFE8DFFF),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFB18DFF),
+                    ),
+                    minHeight: 5,
+                  ),
             ),
           ),
 
@@ -1253,9 +1409,10 @@ class _PlayAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasValidUrl = imageUrl != null && 
-                             imageUrl!.isNotEmpty && 
-                             imageUrl!.startsWith('http');
+    final bool hasValidUrl =
+        imageUrl != null &&
+        imageUrl!.isNotEmpty &&
+        imageUrl!.startsWith('http');
 
     return Container(
       width: size,
@@ -1272,38 +1429,43 @@ class _PlayAvatar extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: hasValidUrl
-            ? Image.network(
-                imageUrl!,
-                fit: BoxFit.cover,
-                width: size,
-                height: size,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: const Color(0xFFE8DFFF),
-                    child: const Center(
-                      child: CupertinoActivityIndicator(
-                        color: Color(0xFFB18DFF),
-                        radius: 10,
+        child:
+            hasValidUrl
+                ? Image.network(
+                  imageUrl!,
+                  fit: BoxFit.cover,
+                  width: size,
+                  height: size,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: const Color(0xFFE8DFFF),
+                      child: const Center(
+                        child: CupertinoActivityIndicator(
+                          color: Color(0xFFB18DFF),
+                          radius: 10,
+                        ),
                       ),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  debugPrint('[PlayAvatar] Error loading image: $error');
-                  return _fallback();
-                },
-              )
-            : _fallback(),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint('[PlayAvatar] Error loading image: $error');
+                    return _fallback();
+                  },
+                )
+                : _fallback(),
       ),
     );
   }
 
   Widget _fallback() => Container(
-        color: const Color(0xFFE0D8FF),
-        child: const Icon(CupertinoIcons.person_solid, color: Colors.white, size: 36),
-      );
+    color: const Color(0xFFE0D8FF),
+    child: const Icon(
+      CupertinoIcons.person_solid,
+      color: Colors.white,
+      size: 36,
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1326,11 +1488,12 @@ class _PlayQueue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatarUrl = item.fromUserProfileImageUrl;
-    final name = (item.fromUserName?.trim().isNotEmpty == true
+    final name =
+        (item.fromUserName?.trim().isNotEmpty == true
             ? item.fromUserName!.trim()
             : item.fromUserUsername?.trim().isNotEmpty == true
-                ? item.fromUserUsername!.trim()
-                : 'Someone');
+            ? item.fromUserUsername!.trim()
+            : 'Someone');
 
     // Determine which social icon to show
     final socialIcon = _socialIcon(item);
@@ -1373,15 +1536,15 @@ class _PlayQueue extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final w = constraints.maxWidth;
-              final backW  = w * 0.7;
-              final midW   = w * 0.88;
+              final backW = w * 0.7;
+              final midW = w * 0.88;
               final frontW = w;
 
-              const frontCardH   = 195.0;
+              const frontCardH = 195.0;
               const purpleHeaderH = 130.0;
               const avatarRadius = 52.0;
-              const backTop  = 0.0;
-              const midTop   = 10.0;
+              const backTop = 0.0;
+              const midTop = 10.0;
               const frontTop = 20.0;
               const avatarTop = frontTop - 40.0;
 
@@ -1460,7 +1623,10 @@ class _PlayQueue extends StatelessWidget {
                                 width: double.infinity,
                                 decoration: const BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: [Color(0xFFB18DFF), Color(0xFF9E6DFF)],
+                                    colors: [
+                                      Color(0xFFB18DFF),
+                                      Color(0xFF9E6DFF),
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
@@ -1473,13 +1639,17 @@ class _PlayQueue extends StatelessWidget {
                                       child: Icon(
                                         CupertinoIcons.flag_fill,
                                         size: 18,
-                                        color: Colors.white.withValues(alpha: 0.5),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
                                       ),
                                     ),
                                     Align(
                                       alignment: Alignment.bottomCenter,
                                       child: Padding(
-                                        padding: const EdgeInsets.only(bottom: 16),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 16,
+                                        ),
                                         child: Text(
                                           name,
                                           style: const TextStyle(
@@ -1537,16 +1707,17 @@ class _PlayQueue extends StatelessWidget {
                                   avatarUrl != null && avatarUrl.isNotEmpty
                                       ? NetworkImage(avatarUrl)
                                       : null,
-                              child: avatarUrl == null || avatarUrl.isEmpty
-                                  ? Text(
-                                      name.characters.first.toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 28,
-                                      ),
-                                    )
-                                  : null,
+                              child:
+                                  avatarUrl == null || avatarUrl.isEmpty
+                                      ? Text(
+                                        name.characters.first.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 28,
+                                        ),
+                                      )
+                                      : null,
                             ),
                           ),
                           if (socialIcon != null)
@@ -1609,9 +1780,9 @@ class _PlayQueue extends StatelessWidget {
 
   String? _socialIcon(InteractionRecord item) {
     final insta = item.fromUserInstagramId ?? '';
-    final snap  = item.fromUserSnapchatId  ?? '';
+    final snap = item.fromUserSnapchatId ?? '';
     if (insta.isNotEmpty) return TImages.instagramIcon;
-    if (snap.isNotEmpty)  return TImages.snapchatIcon;
+    if (snap.isNotEmpty) return TImages.snapchatIcon;
     return null;
   }
 }
@@ -1656,12 +1827,13 @@ class _ResponseButton extends StatelessWidget {
           ],
         ),
         child: TextButton(
-          onPressed: disabled
-              ? null
-              : () {
-                  HapticFeedback.mediumImpact();
-                  onTap();
-                },
+          onPressed:
+              disabled
+                  ? null
+                  : () {
+                    HapticFeedback.mediumImpact();
+                    onTap();
+                  },
           style: TextButton.styleFrom(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
@@ -1670,10 +1842,7 @@ class _ResponseButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              EmojiImage(
-                emoji: emoji,
-                size: 24,
-              ),
+              EmojiImage(emoji: emoji, size: 24),
               const SizedBox(width: 10),
               Text(
                 label,
