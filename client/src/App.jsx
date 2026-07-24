@@ -599,23 +599,6 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
           {submitError ? <p className="text-xs text-red-200">{submitError}</p> : null}
         </div>
 
-        <div className="mt-[28px] flex flex-col items-center">
-          <div className="relative rounded-full bg-black px-5 py-2 text-[14px] font-black text-white">
-            Tap to play
-            <div className="absolute -bottom-[6px] left-1/2 h-0 w-0 -translate-x-1/2 border-l-[6px] border-r-[6px] border-t-[7px] border-l-transparent border-r-transparent border-t-black" />
-          </div>
-        </div>
-
-        <div className="mt-[14px] flex h-[40px] items-center justify-center rounded-full bg-white px-5 shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
-          <span className="mr-2 text-[16px]">Link</span>
-          <span className="text-[14px] font-black tracking-wide text-black">HAMME.LINK</span>
-        </div>
-
-        <div className="mt-[14px] flex items-center gap-6">
-          <svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 30V4M12 4L4 13M12 4L20 13" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          <svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 30V4M12 4L4 13M12 4L20 13" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          <svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 30V4M12 4L4 13M12 4L20 13" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </div>
       </div>
     </>
   );
