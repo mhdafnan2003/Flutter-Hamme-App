@@ -21,8 +21,10 @@ module.exports = {
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
   cloudinaryFolder: process.env.CLOUDINARY_FOLDER || 'hamme/profile',
-  jwtAccessSecret: process.env.JWT_ACCESS_SECRET || 'change-me-access-secret',
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'change-me-refresh-secret',
+  // Never provide development defaults for signing keys. A predictable fallback
+  // would let anyone mint valid access and refresh tokens.
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
   jwtAccessTtl: process.env.JWT_ACCESS_TTL || '15m',
   jwtRefreshTtl: process.env.JWT_REFRESH_TTL || '30d',
   enableSockets:

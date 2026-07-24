@@ -40,6 +40,7 @@ class UploadRemoteDataSource {
         await _apiService.postMultipart(
               '/upload/profile-image',
               files: [file],
+              authenticated: true,
             )
             as Map<String, dynamic>;
 

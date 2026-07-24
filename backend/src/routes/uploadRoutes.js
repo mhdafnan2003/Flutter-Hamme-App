@@ -5,6 +5,7 @@ const path = require('path');
 const ApiError = require('../utils/ApiError');
 const uploadController = require('../controllers/uploadController');
 const logger = require('../utils/logger');
+const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -34,7 +35,7 @@ const upload = multer({
       mimetype,
       extension,
     });
-    if (mimeOk || extOk) {
+    if (mimeOk && extOk) {
       cb(null, true);
     } else {
       cb(new ApiError(400, 'Only JPG, PNG, and WEBP images are allowed.'));
@@ -42,7 +43,7 @@ const upload = multer({
   },
 });
 
-router.post('/profile-image', (req, res, next) => {
+router.post('/profile-image', authMiddleware, (req, res, next) => {
   upload.single('image')(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {

@@ -5,13 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
-import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
 
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import '../../../../../core/widgets/gradient_button.dart';
@@ -33,7 +31,6 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   Uint8List? _previewBytes;
   bool _isPickingImage = false;
-  bool _isUploading = false;
   String? _uploadError;
 
   @override
@@ -42,7 +39,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
   }
 
   Future<void> _pickProfileImage() async {
-    if (_isPickingImage || _isUploading) return;
+    if (_isPickingImage) return;
     _isPickingImage = true;
 
     try {
@@ -72,41 +69,16 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
 
       if (!mounted) return;
       setState(() {
-        _isUploading = true;
         _uploadError = null;
         _previewBytes = bytes;
       });
-
-      try {
-        final uploadDataSource = UploadRemoteDataSource(
-          ref.read(apiServiceProvider),
-        );
-        final imageUrl = await uploadDataSource.uploadProfileImageBytes(
-          bytes: bytes,
-          filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
-        );
-        await ref
-            .read(onboardingDraftProvider.notifier)
-            .setProfileImageUrl(imageUrl);
-        if (!mounted) return;
-        context.go('/onboarding/social_media');
-      } catch (error, stackTrace) {
-        debugPrint('[ProfileUpload] upload failed: $error');
-        debugPrintStack(
-          label: '[ProfileUpload] upload stack trace',
-          stackTrace: stackTrace,
-        );
-        if (!mounted) return;
-        setState(() {
-          _uploadError = 'Upload failed. Please try again.';
-        });
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isUploading = false;
-          });
-        }
-      }
+      ref
+          .read(onboardingProfileImageProvider.notifier)
+          .state = OnboardingProfileImage(
+        bytes: bytes,
+        filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
+      );
+      context.go('/onboarding/social_media');
     } finally {
       _isPickingImage = false;
     }
@@ -123,6 +95,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
   Widget build(BuildContext context) {
     final draft = ref.watch(onboardingDraftProvider).value;
     final profileImageUrl = draft?.profileImageUrl;
+    final selectedImage = ref.watch(onboardingProfileImageProvider);
 
     return Scaffold(
       backgroundColor: TColors.white,
@@ -268,6 +241,11 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                                         profileImageUrl,
                                         fit: BoxFit.cover,
                                       )
+                                      : selectedImage != null
+                                      ? Image.memory(
+                                        selectedImage.bytes,
+                                        fit: BoxFit.cover,
+                                      )
                                       : _previewBytes != null
                                       ? Image.memory(
                                         _previewBytes!,
@@ -280,20 +258,6 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                                       ),
                             ),
                           ),
-                          if (_isUploading)
-                            const Positioned.fill(
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: CupertinoActivityIndicator(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
                           Positioned(
                             bottom: 0,
                             right: 0,
@@ -340,7 +304,8 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
               child: GradientButton(
                 label: TTexts.next,
                 onTap: () {
-                  if (profileImageUrl == null || profileImageUrl.isEmpty) {
+                  if ((profileImageUrl == null || profileImageUrl.isEmpty) &&
+                      selectedImage == null) {
                     setState(() {
                       _uploadError =
                           'Please upload a profile photo to continue.';

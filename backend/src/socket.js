@@ -1,6 +1,7 @@
 const { Server } = require('socket.io');
 
 const env = require('./config/env');
+const { verifyAccessToken } = require('./services/tokenService');
 
 let ioInstance = null;
 const normalizeOrigin = (origin) =>
@@ -43,12 +44,30 @@ function initializeSocket(server) {
     },
   });
 
+  ioInstance.use((socket, next) => {
+    const authToken = socket.handshake.auth?.token;
+    const header = socket.handshake.headers.authorization || '';
+    const bearerToken = header.toLowerCase().startsWith('bearer ')
+      ? header.slice(7).trim()
+      : '';
+    const token = authToken || bearerToken;
+
+    if (!token) {
+      return next(new Error('Authentication is required.'));
+    }
+
+    try {
+      const payload = verifyAccessToken(token, { clockTolerance: 5 });
+      socket.data.userId = payload.sub;
+      return next();
+    } catch (_) {
+      return next(new Error('Authentication failed.'));
+    }
+  });
+
   ioInstance.on('connection', (socket) => {
-    socket.on('join:user', (userId) => {
-      if (userId) {
-        socket.join(`user:${userId}`);
-      }
-    });
+    // Room membership is derived from the verified token, never a client value.
+    socket.join(`user:${socket.data.userId}`);
   });
 
   return ioInstance;

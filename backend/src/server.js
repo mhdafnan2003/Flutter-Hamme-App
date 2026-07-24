@@ -7,6 +7,11 @@ const logger = require('./utils/logger');
 const { initializeSocket } = require('./socket');
 
 async function startServer() {
+  if (!env.jwtAccessSecret || !env.jwtRefreshSecret) {
+    throw new Error(
+      'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be configured before starting the API.'
+    );
+  }
   await connectDatabase();
 
   const server = http.createServer(app);
