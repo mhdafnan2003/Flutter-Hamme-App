@@ -86,12 +86,14 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
   Future<void> _openSocial() async {
     final interaction = widget.result.interaction;
     final match = widget.result.match;
-    final otherInstagram = match?.matchedUser.instagramId ?? interaction.fromUserInstagramId ?? '';
+    final otherInstagram =
+        match?.matchedUser.instagramId ?? interaction.fromUserInstagramId ?? '';
     final otherSnap = interaction.fromUserSnapchatId ?? '';
 
-    final handle = (_isInstagramSelected ? otherInstagram : otherSnap).replaceAll('@', '');
+    final handle = (_isInstagramSelected ? otherInstagram : otherSnap)
+        .replaceAll('@', '');
     if (handle.isEmpty) return;
-    
+
     final Uri url;
     if (!_isInstagramSelected) {
       url = Uri.parse('snapchat://add/$handle');
@@ -103,9 +105,10 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
-        final webUrl = !_isInstagramSelected
-            ? Uri.parse('https://www.snapchat.com/add/$handle')
-            : Uri.parse('https://www.instagram.com/$handle/');
+        final webUrl =
+            !_isInstagramSelected
+                ? Uri.parse('https://www.snapchat.com/add/$handle')
+                : Uri.parse('https://www.instagram.com/$handle/');
         await launchUrl(webUrl, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
@@ -117,16 +120,17 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
   Widget build(BuildContext context) {
     final interaction = widget.result.interaction;
     final match = widget.result.match;
-    
-    final otherName = match?.matchedUser.name.trim()
-        ?? interaction.fromUserName?.trim()
-        ?? interaction.fromUserUsername?.trim()
-        ?? 'Someone';
-    final otherImageUrl = match?.matchedUser.avatarUrl
-        ?? interaction.fromUserProfileImageUrl;
+
+    final otherName =
+        match?.matchedUser.name.trim() ??
+        interaction.fromUserName?.trim() ??
+        interaction.fromUserUsername?.trim() ??
+        'Someone';
+    final otherImageUrl =
+        match?.matchedUser.avatarUrl ?? interaction.fromUserProfileImageUrl;
 
     final theme = MatchThemeConfig.fromType(interaction.type);
-    
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -162,7 +166,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                   ),
                 ),
               ),
-              
+
               Align(
                 alignment: Alignment.center,
                 child: SingleChildScrollView(
@@ -187,12 +191,20 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                 ),
                               ),
                               child: Container(
-                                padding: const EdgeInsets.fromLTRB(24, 80, 24, 40),
+                                padding: const EdgeInsets.fromLTRB(
+                                  24,
+                                  80,
+                                  24,
+                                  40,
+                                ),
                                 width: double.infinity,
                                 decoration: BoxDecoration(
                                   color: Colors.transparent,
                                   borderRadius: BorderRadius.circular(44),
-                                  border: Border.all(color: Colors.white, width: 8),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 8,
+                                  ),
                                 ),
                                 child: Column(
                                   children: [
@@ -221,62 +233,30 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                 ),
                               ),
                             ),
-                            
+
                             // Avatars
                             Positioned(
                               top: 0,
-                              child: SizedBox(
-                                width: 300,
-                                height: 120,
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    // Current User
-                                    Positioned(
-                                      left: 45,
-                                      child: MatchAvatar(
-                                        imageUrl: widget.currentUserImageUrl,
-                                        fallbackText: 'Y',
-                                        ringColor: theme.solidBorder,
-                                      ),
-                                    ),
-                                    // Matched User
-                                    Positioned(
-                                      right: 45,
-                                      child: MatchAvatar(
-                                        imageUrl: otherImageUrl,
-                                        fallbackText: otherName.isNotEmpty
-                                            ? otherName.characters.first
-                                            : 'A',
-                                        ringColor: theme.solidBorder,
-                                      ),
-                                    ),
-                                    // Emoji Center
-                                    Align(
-                                      alignment: Alignment.center,
-                                      child: Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: EmojiImage(
-                                          emoji: theme.emoji,
-                                          size: 24,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                              child: MatchAvatarPair(
+                                currentUserImageUrl: widget.currentUserImageUrl,
+                                currentUserFallbackText: 'Y',
+                                otherImageUrl: otherImageUrl,
+                                otherFallbackText:
+                                    otherName.isNotEmpty
+                                        ? otherName.characters.first
+                                        : 'A',
+                                ringColor: theme.solidBorder,
+                                centerIcon: EmojiImage(
+                                  emoji: theme.emoji,
+                                  size: 24,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 60),
-                        
+
                         // Social Platform Switcher
                         Container(
                           width: 100,
@@ -290,9 +270,10 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                               AnimatedAlign(
                                 duration: const Duration(milliseconds: 250),
                                 curve: Curves.easeOutBack,
-                                alignment: _isInstagramSelected
-                                    ? Alignment.centerLeft
-                                    : Alignment.centerRight,
+                                alignment:
+                                    _isInstagramSelected
+                                        ? Alignment.centerLeft
+                                        : Alignment.centerRight,
                                 child: Container(
                                   width: 48,
                                   height: 48,
@@ -303,11 +284,15 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                 ),
                               ),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: GestureDetector(
-                                      onTap: () => setState(() => _isInstagramSelected = true),
+                                      onTap:
+                                          () => setState(
+                                            () => _isInstagramSelected = true,
+                                          ),
                                       child: Center(
                                         child: Image.asset(
                                           'assets/icons/insta-outline.png',
@@ -320,7 +305,10 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                   ),
                                   Expanded(
                                     child: GestureDetector(
-                                      onTap: () => setState(() => _isInstagramSelected = false),
+                                      onTap:
+                                          () => setState(
+                                            () => _isInstagramSelected = false,
+                                          ),
                                       child: Center(
                                         child: Image.asset(
                                           'assets/icons/snap-fill.png',
@@ -336,9 +324,9 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                             ],
                           ),
                         ),
-                        
+
                         const SizedBox(height: 30),
-                        
+
                         // Reply Button
                         SizedBox(
                           width: double.infinity,
@@ -385,6 +373,167 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
   }
 }
 
+/// Brings the two matching profiles together, then keeps a subtle glossy
+/// highlight moving across them while the match screen is visible.
+class MatchAvatarPair extends StatefulWidget {
+  const MatchAvatarPair({
+    super.key,
+    required this.currentUserImageUrl,
+    required this.currentUserFallbackText,
+    required this.otherImageUrl,
+    required this.otherFallbackText,
+    required this.ringColor,
+    required this.centerIcon,
+  });
+
+  final String? currentUserImageUrl;
+  final String currentUserFallbackText;
+  final String? otherImageUrl;
+  final String otherFallbackText;
+  final Color ringColor;
+  final Widget centerIcon;
+
+  @override
+  State<MatchAvatarPair> createState() => _MatchAvatarPairState();
+}
+
+class _MatchAvatarPairState extends State<MatchAvatarPair>
+    with TickerProviderStateMixin {
+  late final AnimationController _entranceController;
+  late final AnimationController _glazeController;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 850),
+    )..forward();
+    _glazeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    _glazeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_entranceController, _glazeController]),
+      builder: (context, child) {
+        final arrival = Curves.easeOutBack.transform(_entranceController.value);
+        final centerScale = Curves.easeOutBack.transform(
+          Interval(0.56, 1).transform(_entranceController.value),
+        );
+
+        return SizedBox(
+          width: 300,
+          height: 120,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                left: 45,
+                child: Transform.translate(
+                  offset: Offset(-190 * (1 - arrival), 0),
+                  child: Transform.scale(
+                    scale: 0.86 + (0.14 * arrival),
+                    child: _GlossyMatchAvatar(
+                      glazeProgress: _glazeController.value,
+                      avatar: MatchAvatar(
+                        imageUrl: widget.currentUserImageUrl,
+                        fallbackText: widget.currentUserFallbackText,
+                        ringColor: widget.ringColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 45,
+                child: Transform.translate(
+                  offset: Offset(190 * (1 - arrival), 0),
+                  child: Transform.scale(
+                    scale: 0.86 + (0.14 * arrival),
+                    child: _GlossyMatchAvatar(
+                      glazeProgress: (_glazeController.value + 0.5) % 1,
+                      avatar: MatchAvatar(
+                        imageUrl: widget.otherImageUrl,
+                        fallbackText: widget.otherFallbackText,
+                        ringColor: widget.ringColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Transform.scale(
+                scale: centerScale,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: widget.centerIcon,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GlossyMatchAvatar extends StatelessWidget {
+  const _GlossyMatchAvatar({required this.avatar, required this.glazeProgress});
+
+  final Widget avatar;
+  final double glazeProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 116,
+      height: 116,
+      child: Stack(
+        children: [
+          avatar,
+          ClipOval(
+            child: Transform.translate(
+              offset: Offset(-150 + (300 * glazeProgress), 0),
+              child: Transform.rotate(
+                angle: -0.3,
+                child: Container(
+                  width: 32,
+                  height: 180,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Color(0x99FFFFFF),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class MatchAvatar extends StatelessWidget {
   const MatchAvatar({
     super.key,
@@ -411,21 +560,22 @@ class MatchAvatar extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: ClipOval(
-          child: imageUrl != null && imageUrl!.isNotEmpty
-              ? Image.network(imageUrl!, fit: BoxFit.cover)
-              : Container(
-                  color: const Color(0xFFF2F2F7),
-                  alignment: Alignment.center,
-                  child: Text(
-                    fallbackText.toUpperCase(),
-                    style: const TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 32,
-                      color: Colors.black54,
+          child:
+              imageUrl != null && imageUrl!.isNotEmpty
+                  ? Image.network(imageUrl!, fit: BoxFit.cover)
+                  : Container(
+                    color: const Color(0xFFF2F2F7),
+                    alignment: Alignment.center,
+                    child: Text(
+                      fallbackText.toUpperCase(),
+                      style: const TextStyle(
+                        fontFamily: TFonts.nunito,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 32,
+                        color: Colors.black54,
+                      ),
                     ),
                   ),
-                ),
         ),
       ),
     );

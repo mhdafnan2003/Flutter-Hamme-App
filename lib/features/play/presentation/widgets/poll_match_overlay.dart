@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'match_success_overlay.dart' show MatchThemeConfig, MatchAvatar;
+import 'match_success_overlay.dart' show MatchAvatarPair, MatchThemeConfig;
 
 /// Shown to the original poller (Person B who voted via share link) when
 /// Person A responds in the play screen and a match is created.
@@ -38,6 +38,7 @@ class _PollMatchOverlayState extends State<PollMatchOverlay> {
     await Future.delayed(const Duration(milliseconds: 150));
     HapticFeedback.heavyImpact();
   }
+
   // AppUser doesn't carry snapchat — instagram only for this path
   bool get _hasInstagram => _otherInstagram.isNotEmpty;
 
@@ -61,9 +62,10 @@ class _PollMatchOverlayState extends State<PollMatchOverlay> {
   @override
   Widget build(BuildContext context) {
     final theme = MatchThemeConfig.fromType(widget.match.type);
-    final otherName = widget.match.matchedUser.name.trim().isNotEmpty
-        ? widget.match.matchedUser.name.trim()
-        : 'Someone';
+    final otherName =
+        widget.match.matchedUser.name.trim().isNotEmpty
+            ? widget.match.matchedUser.name.trim()
+            : 'Someone';
     final otherImageUrl = widget.match.matchedUser.avatarUrl;
 
     return Scaffold(
@@ -125,12 +127,20 @@ class _PollMatchOverlayState extends State<PollMatchOverlay> {
                                 ),
                               ),
                               child: Container(
-                                padding: const EdgeInsets.fromLTRB(24, 80, 24, 40),
+                                padding: const EdgeInsets.fromLTRB(
+                                  24,
+                                  80,
+                                  24,
+                                  40,
+                                ),
                                 width: double.infinity,
                                 decoration: BoxDecoration(
                                   color: Colors.transparent,
                                   borderRadius: BorderRadius.circular(44),
-                                  border: Border.all(color: Colors.white, width: 8),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 8,
+                                  ),
                                 ),
                                 child: Column(
                                   children: [
@@ -163,47 +173,18 @@ class _PollMatchOverlayState extends State<PollMatchOverlay> {
                             // Avatars
                             Positioned(
                               top: 0,
-                              child: SizedBox(
-                                width: 300,
-                                height: 120,
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    Positioned(
-                                      left: 45,
-                                      child: MatchAvatar(
-                                        imageUrl: widget.currentUserImageUrl,
-                                        fallbackText: 'Y',
-                                        ringColor: theme.solidBorder,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      right: 45,
-                                      child: MatchAvatar(
-                                        imageUrl: otherImageUrl,
-                                        fallbackText: otherName.isNotEmpty
-                                            ? otherName.characters.first
-                                            : 'A',
-                                        ringColor: theme.solidBorder,
-                                      ),
-                                    ),
-                                    Align(
-                                      alignment: Alignment.center,
-                                      child: Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          theme.emoji,
-                                          style: const TextStyle(fontSize: 24),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                              child: MatchAvatarPair(
+                                currentUserImageUrl: widget.currentUserImageUrl,
+                                currentUserFallbackText: 'Y',
+                                otherImageUrl: otherImageUrl,
+                                otherFallbackText:
+                                    otherName.isNotEmpty
+                                        ? otherName.characters.first
+                                        : 'A',
+                                ringColor: theme.solidBorder,
+                                centerIcon: Text(
+                                  theme.emoji,
+                                  style: const TextStyle(fontSize: 24),
                                 ),
                               ),
                             ),
@@ -232,11 +213,12 @@ class _PollMatchOverlayState extends State<PollMatchOverlay> {
                                 width: 24,
                                 height: 24,
                                 color: Colors.white,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                  CupertinoIcons.camera_fill,
-                                  size: 22,
-                                  color: Colors.white,
-                                ),
+                                errorBuilder:
+                                    (_, __, ___) => const Icon(
+                                      CupertinoIcons.camera_fill,
+                                      size: 22,
+                                      color: Colors.white,
+                                    ),
                               ),
                               label: const Text(
                                 'Reply',
