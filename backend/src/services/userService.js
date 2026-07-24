@@ -30,6 +30,7 @@ async function updateMe(userId, updates) {
   const allowedUpdates = {
     name: updates.name,
     instagramId: updates.instagramId,
+    snapchatId: updates.snapchatId,
     profileImageUrl: updates.avatarUrl ?? updates.profileImageUrl,
     username: normalizedUsername || updates.username,
   };

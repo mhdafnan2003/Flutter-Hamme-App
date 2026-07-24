@@ -23,6 +23,7 @@ class ProfileRemoteDataSource {
   Future<AppUser> updateMe({
     String? name,
     String? instagramId,
+    String? snapchatId,
     String? username,
     String? avatarUrl,
   }) async {
@@ -30,6 +31,9 @@ class ProfileRemoteDataSource {
     if (name != null && name.isNotEmpty) body['name'] = name;
     if (instagramId != null && instagramId.isNotEmpty) {
       body['instagramId'] = instagramId;
+    }
+    if (snapchatId != null && snapchatId.isNotEmpty) {
+      body['snapchatId'] = snapchatId;
     }
     if (username != null && username.isNotEmpty) body['username'] = username;
     if (avatarUrl != null && avatarUrl.isNotEmpty) {

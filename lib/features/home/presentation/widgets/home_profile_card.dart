@@ -168,6 +168,9 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
   bool _isUploading = false;
   bool _isUpdatingName = false;
 
+  // Kept temporarily for compatibility with the existing profile-card state;
+  // editing is now exposed exclusively from ProfileScreen.
+  // ignore: unused_element
   Future<void> _editProfileName(String currentName) async {
     if (_isUpdatingName) return;
 
@@ -201,6 +204,7 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _changeProfileImage() async {
     if (_isUploading) return;
 
@@ -301,66 +305,18 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                 ),
                 child: Stack(
                   children: [
-                    Positioned(
-                      top: 16,
-                      right: 16,
-                      child: GestureDetector(
-                        onTap: _isUploading ? null : _changeProfileImage,
-                        child: _isUploading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CupertinoActivityIndicator(color: Colors.white),
-                              )
-                            : Image.asset(
-                                'assets/images/Pencil.png',
-                                width: 22,
-                                height: 22,
-                                color: Colors.white,
-                              ),
-                      ),
-                    ),
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 15, left: 46, right: 46),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                profileName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontFamily: TFonts.nunito,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 20,
-                                  color: TColors.white,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: _isUpdatingName
-                                  ? null
-                                  : () => _editProfileName(profileName),
-                              child: _isUpdatingName
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CupertinoActivityIndicator(
-                                        color: Colors.white,
-                                        radius: 8,
-                                      ),
-                                    )
-                                  : const Icon(
-                                      CupertinoIcons.pencil,
-                                      color: Colors.white,
-                                      size: 19,
-                                    ),
-                            ),
-                          ],
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: Text(
+                          profileName,
+                          style: const TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                            color: TColors.white,
+                          ),
                         ),
                       ),
                     ),
