@@ -36,8 +36,8 @@ subprojects {
             } catch (e: Exception) {}
 
             project.tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                kotlinOptions {
-                    jvmTarget = target
+                compilerOptions {
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(target))
                 }
             }
         }
