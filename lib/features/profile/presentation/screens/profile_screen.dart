@@ -157,7 +157,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       username: true,
     );
     if (username == null || username.isEmpty ||
-        username == currentUsername.replaceFirst(RegExp(r'^@'), '')) return;
+        username == currentUsername.replaceFirst(RegExp(r'^@'), '')) {
+      return;
+    }
 
     await _saveProfile(
       action: () => ProfileRemoteDataSource(ref.read(apiServiceProvider)).updateMe(
