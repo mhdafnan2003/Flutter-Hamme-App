@@ -149,94 +149,95 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 150),
+                      const SizedBox(height: 60),
                       SizedBox(
                         height: 220,
                         child: Stack(
                           alignment: Alignment.center,
-                  children: [
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      child: IgnorePointer(
-                        child: Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: TColors.hammeSurface,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    CupertinoTheme(
-                      data: const CupertinoThemeData(
-                        brightness: Brightness.light,
-                      ),
-                      child: CupertinoPicker.builder(
-                        scrollController:
-                            _ageController ??= FixedExtentScrollController(
-                              initialItem: _selectedAge - _minAge,
-                            ),
-                        itemExtent: 44,
-                        onSelectedItemChanged: _onAgeChanged,
-                        selectionOverlay: const SizedBox.shrink(),
-                        squeeze: 1.0,
-                        magnification: 1.15,
-                        useMagnifier: true,
-                        childCount: _maxAge - _minAge + 1,
-                        itemBuilder: (context, index) {
-                          final age = _minAge + index;
-                          final isSelected = age == _selectedAge;
-                          return Center(
-                            child: Text(
-                              age.toString(),
-                              style: TextStyle(
-                                fontFamily: TFonts.nunito,
-                                fontSize: isSelected ? 20 : 15,
-                                fontWeight:
-                                    isSelected
-                                        ? FontWeight.w900
-                                        : FontWeight.w600,
-                                color:
-                                    isSelected
-                                        ? TColors.black
-                                        : TColors.darkGrey,
+                          children: [
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              child: IgnorePointer(
+                                child: Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: TColors.hammeSurface,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                    Positioned(
-                      left: 16,
-                      child: GestureDetector(
-                        onTap: _decrementAge,
-                        behavior: HitTestBehavior.opaque,
-                        child: const Icon(
-                          CupertinoIcons.play_arrow_solid,
-                          color: TColors.hammePurpleColor,
-                          size: 14,
+                            CupertinoTheme(
+                              data: const CupertinoThemeData(
+                                brightness: Brightness.light,
+                              ),
+                              child: CupertinoPicker.builder(
+                                scrollController:
+                                    _ageController ??=
+                                        FixedExtentScrollController(
+                                          initialItem: _selectedAge - _minAge,
+                                        ),
+                                itemExtent: 44,
+                                onSelectedItemChanged: _onAgeChanged,
+                                selectionOverlay: const SizedBox.shrink(),
+                                squeeze: 1.0,
+                                magnification: 1.15,
+                                useMagnifier: true,
+                                childCount: _maxAge - _minAge + 1,
+                                itemBuilder: (context, index) {
+                                  final age = _minAge + index;
+                                  final isSelected = age == _selectedAge;
+                                  return Center(
+                                    child: Text(
+                                      age.toString(),
+                                      style: TextStyle(
+                                        fontFamily: TFonts.nunito,
+                                        fontSize: isSelected ? 20 : 15,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w900
+                                                : FontWeight.w600,
+                                        color:
+                                            isSelected
+                                                ? TColors.black
+                                                : TColors.darkGrey,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            Positioned(
+                              left: 16,
+                              child: GestureDetector(
+                                onTap: _decrementAge,
+                                behavior: HitTestBehavior.opaque,
+                                child: const Icon(
+                                  CupertinoIcons.play_arrow_solid,
+                                  color: TColors.hammePurpleColor,
+                                  size: 14,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              right: 16,
+                              child: GestureDetector(
+                                onTap: _incrementAge,
+                                behavior: HitTestBehavior.opaque,
+                                child: const RotatedBox(
+                                  quarterTurns: 2,
+                                  child: Icon(
+                                    CupertinoIcons.play_arrow_solid,
+                                    color: TColors.hammePurpleColor,
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    Positioned(
-                      right: 16,
-                      child: GestureDetector(
-                        onTap: _incrementAge,
-                        behavior: HitTestBehavior.opaque,
-                        child: const RotatedBox(
-                          quarterTurns: 2,
-                          child: Icon(
-                            CupertinoIcons.play_arrow_solid,
-                            color: TColors.hammePurpleColor,
-                            size: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
                     ],
                   ),
                 ),
