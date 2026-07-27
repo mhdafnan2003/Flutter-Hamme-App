@@ -1,5 +1,5 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/models/interaction_record.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'match_success_overlay.dart' show MatchAvatar;
@@ -43,22 +43,7 @@ class PollNotAMatchOverlay extends StatelessWidget {
               Positioned(
                 right: 20,
                 top: 20,
-                child: GestureDetector(
-                  onTap: onDismiss,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.10),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      CupertinoIcons.xmark,
-                      size: 18,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
+                child: AppCloseCircleButton(onPressed: onDismiss),
               ),
 
               Align(
@@ -83,7 +68,12 @@ class PollNotAMatchOverlay extends StatelessWidget {
                                 ),
                               ),
                               child: Container(
-                                padding: const EdgeInsets.fromLTRB(24, 80, 24, 40),
+                                padding: const EdgeInsets.fromLTRB(
+                                  24,
+                                  80,
+                                  24,
+                                  40,
+                                ),
                                 width: double.infinity,
                                 decoration: BoxDecoration(
                                   color: Colors.white,

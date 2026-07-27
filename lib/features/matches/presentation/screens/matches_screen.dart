@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
@@ -252,22 +253,7 @@ class _MatchTile extends StatelessWidget {
           ),
 
           // Close button
-          GestureDetector(
-            onTap: onDismiss,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF2F2F7),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                CupertinoIcons.xmark,
-                color: Colors.black54,
-                size: 16,
-              ),
-            ),
-          ),
+          AppCloseCircleButton(onPressed: onDismiss),
         ],
       ),
     );

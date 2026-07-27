@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -86,22 +87,7 @@ class _PollMatchOverlayState extends State<PollMatchOverlay> {
               Positioned(
                 right: 20,
                 top: 20,
-                child: GestureDetector(
-                  onTap: widget.onDismiss,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      CupertinoIcons.xmark,
-                      size: 18,
-                      color: theme.closeIconColor,
-                    ),
-                  ),
-                ),
+                child: AppCloseCircleButton(onPressed: widget.onDismiss),
               ),
 
               Align(

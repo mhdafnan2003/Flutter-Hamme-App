@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
 import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
 import 'package:hamme_app/core/utils/app_exception.dart';
+import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/billing_providers.dart';
@@ -279,14 +280,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                 Positioned(
                   top: topInset + 18,
                   right: 24,
-                  child: GestureDetector(
-                    onTap: _dismiss,
-                    child: const Icon(
-                      Icons.close_rounded,
-                      color: TColors.white,
-                      size: 26,
-                    ),
-                  ),
+                  child: AppCloseCircleButton(onPressed: _dismiss),
                 ),
               ],
             ),

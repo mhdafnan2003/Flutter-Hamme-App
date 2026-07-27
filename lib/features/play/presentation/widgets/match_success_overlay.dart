@@ -1,6 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
@@ -10,14 +10,14 @@ import 'package:url_launcher/url_launcher.dart';
 class MatchThemeConfig {
   final List<Color> bgGradient;
   final Color solidBorder;
-  final Color closeIconColor;
+  final Color socialPillColor;
   final String emoji;
   final String choiceText;
 
   const MatchThemeConfig({
     required this.bgGradient,
     required this.solidBorder,
-    required this.closeIconColor,
+    required this.socialPillColor,
     required this.emoji,
     required this.choiceText,
   });
@@ -28,7 +28,7 @@ class MatchThemeConfig {
         return const MatchThemeConfig(
           bgGradient: [Color(0xFFCF59E7), Color(0xFFFF3C9E)],
           solidBorder: Color(0xFFFF3C9E),
-          closeIconColor: Color(0xFFC75AF6),
+          socialPillColor: Color(0xFFF589DE),
           emoji: '😍',
           choiceText: 'Crush',
         );
@@ -36,7 +36,7 @@ class MatchThemeConfig {
         return const MatchThemeConfig(
           bgGradient: [Color(0xFF00D1FF), Color(0xFF0066FF)],
           solidBorder: Color(0xFF0066FF),
-          closeIconColor: Color(0xFF0099FF),
+          socialPillColor: Color(0xFF8992F5),
           emoji: '🤝',
           choiceText: 'Friend',
         );
@@ -44,7 +44,7 @@ class MatchThemeConfig {
         return const MatchThemeConfig(
           bgGradient: [Color(0xFFA5A5D7), Color(0xFF676798)],
           solidBorder: Color(0xFF676798),
-          closeIconColor: Color(0xFF8B8CB5),
+          socialPillColor: Color(0xFF89A7F5),
           emoji: '😈',
           choiceText: 'Frenemy',
         );
@@ -147,24 +147,9 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
             children: [
               // Close Button
               Positioned(
-                right: 20,
+                right: 24,
                 top: 20,
-                child: GestureDetector(
-                  onTap: widget.onDismiss,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      CupertinoIcons.xmark,
-                      size: 18,
-                      color: theme.closeIconColor,
-                    ),
-                  ),
-                ),
+                child: AppCloseCircleButton(onPressed: widget.onDismiss),
               ),
 
               Align(
@@ -259,7 +244,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                           width: 84,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.4),
+                            color: Colors.white.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(19),
                           ),
                           child: Stack(
@@ -276,47 +261,60 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                   height: 38,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: theme.solidBorder,
+                                    color: theme.socialPillColor,
                                   ),
                                 ),
                               ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap:
-                                          () => setState(
-                                            () => _isInstagramSelected = true,
-                                          ),
-                                      child: Center(
-                                        child: Image.asset(
-                                          'assets/icons/insta-outline.png',
-                                          width: 20,
-                                          height: 20,
-                                          color: Colors.white,
-                                        ),
+                              Positioned(
+                                left: 9,
+                                top: 9,
+                                child: IgnorePointer(
+                                  child: Image.asset(
+                                    'assets/icons/insta-outline.png',
+                                    width: 20,
+                                    height: 20,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 9,
+                                top: 9.5,
+                                child: IgnorePointer(
+                                  child: Image.asset(
+                                    'assets/icons/snap-fill.png',
+                                    width: 20,
+                                    height: 19,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap:
+                                            () => setState(
+                                              () => _isInstagramSelected = true,
+                                            ),
+                                        child: const SizedBox.expand(),
                                       ),
                                     ),
-                                  ),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap:
-                                          () => setState(
-                                            () => _isInstagramSelected = false,
-                                          ),
-                                      child: Center(
-                                        child: Image.asset(
-                                          'assets/icons/snap-fill.png',
-                                          width: 20,
-                                          height: 20,
-                                          color: Colors.white,
-                                        ),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap:
+                                            () => setState(
+                                              () =>
+                                                  _isInstagramSelected = false,
+                                            ),
+                                        child: const SizedBox.expand(),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -335,6 +333,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.black,
                                 side: BorderSide.none,
+                                padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(22),
                                 ),
@@ -345,7 +344,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                     ? 'assets/icons/insta-outline.png'
                                     : 'assets/icons/snap-fill.png',
                                 width: 24,
-                                height: 24,
+                                height: _isInstagramSelected ? 24 : 22.8,
                                 color: Colors.white,
                               ),
                               label: const Text(

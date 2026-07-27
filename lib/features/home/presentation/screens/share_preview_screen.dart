@@ -1,7 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/features/home/domain/models/share_instruction_data.dart';
 import 'package:hamme_app/features/home/presentation/widgets/platform_pill.dart';
@@ -53,21 +53,8 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
               Positioned(
                 top: 18,
                 right: 18,
-                child: GestureDetector(
-                  onTap: () => context.go('/home'),
-                  child: Container(
-                    width: 31,
-                    height: 31,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.72),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      CupertinoIcons.xmark,
-                      color: Color(0xFF676767),
-                      size: 22,
-                    ),
-                  ),
+                child: AppCloseCircleButton(
+                  onPressed: () => context.go('/home'),
                 ),
               ),
               Center(
@@ -107,24 +94,25 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                           ),
                           action: ShareActionButton(
                             label: _step == 4 ? 'Share' : 'Next Step',
-                            iconPath: _step == 4
-                                ? (_isInstagram
-                                    ? 'assets/icons/insta-outline.png'
-                                    : 'assets/icons/snap-fill.png')
-                                : null,
+                            iconPath:
+                                _step == 4
+                                    ? (_isInstagram
+                                        ? 'assets/icons/insta-outline.png'
+                                        : 'assets/icons/snap-fill.png')
+                                    : null,
                             onTap:
                                 _step == 4
                                     ? () {
-                                        ref
-                                            .read(
-                                              shareTutorialCompletionProvider
-                                                  .notifier,
-                                            )
-                                            .markComplete();
-                                        context.go(
-                                          '/share/playing?autoShare=true&platform=${_isInstagram ? 'instagram' : 'snapchat'}',
-                                        );
-                                      }
+                                      ref
+                                          .read(
+                                            shareTutorialCompletionProvider
+                                                .notifier,
+                                          )
+                                          .markComplete();
+                                      context.go(
+                                        '/share/playing?autoShare=true&platform=${_isInstagram ? 'instagram' : 'snapchat'}',
+                                      );
+                                    }
                                     : _nextStep,
                           ),
                         ),

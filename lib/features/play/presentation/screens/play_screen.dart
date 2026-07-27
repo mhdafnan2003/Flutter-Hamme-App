@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/interaction_record.dart';
 import 'package:hamme_app/models/interaction_type.dart';
@@ -298,7 +299,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                             isSubmitting: controller.isLoading,
                             onSelect: (type) async {
                               final targetUserId = effectiveItem.fromUser;
-                              if (targetUserId == null || targetUserId.isEmpty) {
+                              if (targetUserId == null ||
+                                  targetUserId.isEmpty) {
                                 return;
                               }
                               _lastVotedItem = effectiveItem;
@@ -712,22 +714,7 @@ class _MatchViewState extends ConsumerState<_MatchView> {
                 alignment: Alignment.topRight,
                 child: Padding(
                   padding: const EdgeInsets.only(top: 16, right: 20),
-                  child: GestureDetector(
-                    onTap: widget.onDismiss,
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        CupertinoIcons.xmark,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
+                  child: AppCloseCircleButton(onPressed: widget.onDismiss),
                 ),
               ),
 
