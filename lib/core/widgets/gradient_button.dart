@@ -4,8 +4,14 @@ import 'package:hamme_app/utils/constants/colors.dart';
 class GradientButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
+  final double fontSize;
 
-  const GradientButton({super.key, required this.label, required this.onTap});
+  const GradientButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.fontSize = 18,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,10 +31,10 @@ class GradientButton extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Nunito',
             fontWeight: FontWeight.w900,
-            fontSize: 18,
+            fontSize: fontSize,
             color: Colors.white,
           ),
         ),

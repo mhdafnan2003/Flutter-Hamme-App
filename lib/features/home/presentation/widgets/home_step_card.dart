@@ -1,6 +1,4 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 
 class HomeStepCard extends StatelessWidget {
@@ -9,6 +7,8 @@ class HomeStepCard extends StatelessWidget {
     this.subtitle,
     this.child,
     this.padding = const EdgeInsets.all(24),
+    this.subtitleSpacing = 8,
+    this.childSpacing = 16,
     super.key,
   });
 
@@ -16,6 +16,8 @@ class HomeStepCard extends StatelessWidget {
   final String? subtitle;
   final Widget? child;
   final EdgeInsetsGeometry padding;
+  final double subtitleSpacing;
+  final double childSpacing;
 
   @override
   Widget build(BuildContext context) {
@@ -23,36 +25,41 @@ class HomeStepCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: TColors.light,
+        color: const Color(0xFFF6F7F9),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: TFonts.nunito,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
-              color: TColors.black,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              maxLines: 1,
+              style: const TextStyle(
+                fontFamily: TFonts.nunito,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: Colors.black,
+              ),
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              subtitle!,
-              style: const TextStyle(
-                fontFamily: TFonts.nunito,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: TColors.textSecondary,
+            SizedBox(height: subtitleSpacing),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                subtitle!,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontFamily: TFonts.nunito,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: Color(0xFF7B7D82),
+                ),
               ),
             ),
           ],
-          if (child != null) ...[
-            const SizedBox(height: 16),
-            child!,
-          ],
+          if (child != null) ...[SizedBox(height: childSpacing), child!],
         ],
       ),
     );

@@ -179,25 +179,29 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
       builder: (_) => _EditNameDialog(initialName: currentName),
     );
 
-    if (updatedName == null || updatedName.isEmpty || updatedName == currentName) {
+    if (updatedName == null ||
+        updatedName.isEmpty ||
+        updatedName == currentName) {
       return;
     }
 
     setState(() => _isUpdatingName = true);
     try {
-      await ProfileRemoteDataSource(ref.read(apiServiceProvider)).updateMe(
-        name: updatedName,
-      );
+      await ProfileRemoteDataSource(
+        ref.read(apiServiceProvider),
+      ).updateMe(name: updatedName);
       await ref.read(onboardingDraftProvider.notifier).setName(updatedName);
       await ref.read(authControllerProvider.notifier).refreshUser();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name updated!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name updated!')));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update your name. Please try again.')),
+        const SnackBar(
+          content: Text('Could not update your name. Please try again.'),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isUpdatingName = false);
@@ -224,7 +228,9 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
     if (!_allowedExtensions.contains(extension)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please upload a JPG, JPEG, PNG, or WEBP image.')),
+        const SnackBar(
+          content: Text('Please upload a JPG, JPEG, PNG, or WEBP image.'),
+        ),
       );
       return;
     }
@@ -249,11 +255,13 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
         bytes: bytes,
         filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
       );
-      await ref.read(onboardingDraftProvider.notifier).setProfileImageUrl(imageUrl);
+      await ref
+          .read(onboardingDraftProvider.notifier)
+          .setProfileImageUrl(imageUrl);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo updated!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile photo updated!')));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -268,14 +276,15 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
 
   @override
   Widget build(BuildContext context) {
-    final draft = ref.watch(onboardingDraftProvider).value ?? const OnboardingDraft();
+    final draft =
+        ref.watch(onboardingDraftProvider).value ?? const OnboardingDraft();
     final profileName =
         (draft.name != null && draft.name!.trim().isNotEmpty)
             ? draft.name!.trim()
             : TTexts.homeProfileName;
     final profileImageUrl = draft.profileImageUrl;
     final hasProfileImage =
-      profileImageUrl != null && profileImageUrl.isNotEmpty;
+        profileImageUrl != null && profileImageUrl.isNotEmpty;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -285,12 +294,12 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
           width: double.infinity,
           decoration: BoxDecoration(
             color: TColors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 40,
+                spreadRadius: -8,
               ),
             ],
           ),
@@ -298,17 +307,17 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
             children: [
               Container(
                 width: double.infinity,
-                height: 120,
+                height: 134,
                 decoration: const BoxDecoration(
-                  color: TColors.hammePrimary,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  color: Color(0xFFA678FF),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
                 ),
                 child: Stack(
                   children: [
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.only(bottom: 24),
                         child: Text(
                           profileName,
                           style: const TextStyle(
@@ -320,18 +329,34 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                         ),
                       ),
                     ),
+                    Positioned(
+                      top: 8,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () => _editProfileName(profileName),
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Image.asset(
+                            'assets/images/Pencil.png',
+                            width: 24,
+                            height: 24,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
+                padding: EdgeInsets.symmetric(vertical: 14),
                 child: Text(
                   TTexts.homePrompt,
                   style: TextStyle(
                     fontFamily: TFonts.nunito,
                     fontWeight: FontWeight.w900,
                     fontSize: 18,
-                    color: TColors.black,
+                    color: Colors.black,
                   ),
                 ),
               ),
@@ -339,66 +364,66 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
           ),
         ),
         Positioned(
-          top: -50,
+          top: -53,
           child: Stack(
             children: [
               Container(
-                width: 100,
-                height: 100,
+                width: 120,
+                height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: TColors.hammeSurface,
                 ),
-                child: hasProfileImage
-                    ? ClipOval(
-                      child: Image.network(
-                        profileImageUrl,
-                        fit: BoxFit.cover,
-                        width: 100,
-                        height: 100,
-                      ),
-                    )
-                    : const Icon(
-                  CupertinoIcons.person_solid,
-                  size: 50,
-                  color: TColors.grey,
-                ),
+                child:
+                    hasProfileImage
+                        ? ClipOval(
+                          child: Image.network(
+                            profileImageUrl,
+                            fit: BoxFit.cover,
+                            width: 120,
+                            height: 120,
+                          ),
+                        )
+                        : const Icon(
+                          CupertinoIcons.person_solid,
+                          size: 60,
+                          color: TColors.grey,
+                        ),
               ),
-        if (draft.socialPlatform != null && draft.socialPlatform!.isNotEmpty)
-          Positioned(
-            bottom: -5,
-            right: -5,
-            child: SizedBox(
-              width: 45,
-              height: 45,
-              child: Padding(
-                padding: const EdgeInsets.all(6.0),
-                child: Image.asset(
-                  draft.socialPlatform == TTexts.socialInstagram
-                      ? TImages.instagramIcon
-                      : TImages.snapchatIcon,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: draft.socialPlatform == TTexts.socialSnapchat
-                            ? TColors.snapchatYellow
-                            : TColors.hammePrimary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        draft.socialPlatform == TTexts.socialInstagram
-                            ? CupertinoIcons.camera_fill
-                            : CupertinoIcons.chat_bubble_fill,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    );
-                  },
+              if (draft.socialPlatform != null &&
+                  draft.socialPlatform!.isNotEmpty)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: Image.asset(
+                      draft.socialPlatform == TTexts.socialInstagram
+                          ? TImages.instagramIcon
+                          : TImages.snapchatIcon,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color:
+                                draft.socialPlatform == TTexts.socialSnapchat
+                                    ? TColors.snapchatYellow
+                                    : TColors.hammePrimary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            draft.socialPlatform == TTexts.socialInstagram
+                                ? CupertinoIcons.camera_fill
+                                : CupertinoIcons.chat_bubble_fill,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
             ],
           ),
         ),

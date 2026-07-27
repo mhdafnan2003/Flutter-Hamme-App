@@ -12,7 +12,7 @@ class HammeTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -24,12 +24,12 @@ class HammeTopBar extends StatelessWidget {
             ),
             onTap: onLeftTap ?? () => context.push('/matches'),
           ),
-          Image.asset(TImages.hammeHomeLogo, height: 30),
+          Image.asset(TImages.hammeHomeLogo, width: 98, height: 26),
           TopBarCircleButton(
             icon: Image.asset(
               'assets/icons/icon_filled/user_3.png',
-              width: 20,
-              height: 20,
+              width: 22,
+              height: 22,
             ),
             onTap: onRightTap ?? () => context.push('/profile'),
           ),

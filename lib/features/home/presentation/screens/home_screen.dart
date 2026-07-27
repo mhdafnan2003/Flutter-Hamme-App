@@ -37,102 +37,121 @@ class HomeScreen extends ConsumerWidget {
 
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.zero,
                 child: Column(
                   children: [
                     const SizedBox(height: 80),
-                    const HomeProfileCard(),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      child: HomeProfileCard(),
+                    ),
                     const SizedBox(height: 40),
 
-                    HomeStepCard(
-                      title: TTexts.homeStepOneTitle,
-                      subtitle: shareLink,
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: GestureDetector(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: shareLink));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Link copied to clipboard!'),
-                              duration: const Duration(seconds: 2),
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: TColors.hammePrimaryDark,
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: 150,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: TColors.hammePrimaryDark,
-                              width: 3,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                'assets/icons/link.png',
-                                width: 18,
-                                height: 18,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: HomeStepCard(
+                        title: TTexts.homeStepOneTitle,
+                        subtitle: shareLink,
+                        padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+                        subtitleSpacing: 12,
+                        childSpacing: 12,
+                        child: GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: shareLink));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Link copied to clipboard!'),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: TColors.hammePrimaryDark,
+                              ),
+                            );
+                          },
+                          child: Container(
+                            width: 150,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(19),
+                              border: Border.all(
                                 color: TColors.hammePrimaryDark,
+                                width: 3,
                               ),
-                              SizedBox(width: 6),
-                              Text(
-                                TTexts.homeCopyLink,
-                                style: TextStyle(
-                                  fontFamily: TFonts.nunito,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 16,
-                                  color: TColors.hammePrimaryDark,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/icons/link.png',
+                                  width: 16,
+                                  height: 16,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    HomeStepCard(
-                      title: TTexts.homeStepTwoTitle,
-                      child: SizedBox(
-                        width: 250,
-                        child: GradientButton(
-                          label: TTexts.homeShareAction,
-                          onTap: () async {
-                            final hasSeenTutorial =
-                                ref.read(shareTutorialCompletionProvider).value ??
-                                false;
-                            if (hasSeenTutorial) {
-                              // Silent sharing from home screen
-                              showCupertinoDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const Center(
-                                  child: CupertinoActivityIndicator(
-                                    color: Colors.white,
-                                    radius: 15,
+                                const SizedBox(width: 4),
+                                Text(
+                                  TTexts.homeCopyLink,
+                                  style: const TextStyle(
+                                    fontFamily: TFonts.nunito,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                    color: Color(0xFF884EFF),
                                   ),
                                 ),
-                              );
-                              await SharePlayingScreen.shareStory(context, ref);
-                              if (context.mounted) {
-                                Navigator.of(context).pop();
-                              }
-                            } else {
-                              context.push('/share');
-                            }
-                          },
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: HomeStepCard(
+                        title: TTexts.homeStepTwoTitle,
+                        padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
+                        childSpacing: 14,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: GradientButton(
+                            label: TTexts.homeShareAction,
+                            fontSize: 20,
+                            onTap: () async {
+                              final hasSeenTutorial =
+                                  ref
+                                      .read(shareTutorialCompletionProvider)
+                                      .value ??
+                                  false;
+                              if (hasSeenTutorial) {
+                                // Silent sharing from home screen
+                                showCupertinoDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder:
+                                      (context) => const Center(
+                                        child: CupertinoActivityIndicator(
+                                          color: Colors.white,
+                                          radius: 15,
+                                        ),
+                                      ),
+                                );
+                                await SharePlayingScreen.shareStory(
+                                  context,
+                                  ref,
+                                );
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              } else {
+                                context.push('/share');
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
 
                     // SizedBox(
                     //   width: 250,

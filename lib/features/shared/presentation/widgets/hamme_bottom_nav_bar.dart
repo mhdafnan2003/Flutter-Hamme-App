@@ -17,109 +17,152 @@ class HammeBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: TColors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, -4),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        backgroundColor: TColors.white,
-        elevation: 0,
-        type: BottomNavigationBarType.fixed,
-        currentIndex: currentIndex,
-        onTap: onTap,
-        selectedItemColor: TColors.black,
-        unselectedItemColor: TColors.black.withValues(alpha: 0.4),
-        selectedLabelStyle: const TextStyle(
-          fontFamily: TFonts.nunito,
-          fontWeight: FontWeight.w900,
-          fontSize: 12,
+    final systemBottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    final bottomReserve = systemBottomInset < 16 ? 16.0 : systemBottomInset;
+
+    return SizedBox(
+      // Figma: 48 px of navigation content + the 34 px iPhone home area.
+      height: 48 + bottomReserve,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: TColors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.16),
+              offset: const Offset(0, -1),
+              blurRadius: 8,
+              spreadRadius: 2,
+            ),
+          ],
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontFamily: TFonts.nunito,
-          fontWeight: FontWeight.w900,
-          fontSize: 12,
-        ),
-        items: [
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Opacity(
-                opacity: currentIndex == 0 ? 1 : 0.4,
-                child: Image.asset(
+        child: Row(
+          children: [
+            Expanded(
+              child: _HammeNavItem(
+                label: TTexts.navShare,
+                selected: currentIndex == 0,
+                onTap: () => onTap(0),
+                icon: Image.asset(
                   'assets/icons/Outbox Tray.png',
-                  width: 26,
-                  height: 26,
+                  width: 24,
+                  height: 24,
                 ),
               ),
             ),
-            label: TTexts.navShare,
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Opacity(
-                    opacity: currentIndex == 1 ? 1 : 0.4,
-                    child: Image.asset(
-                      'assets/icons/Fire.png',
-                      width: 26,
-                      height: 26,
-                    ),
-                  ),
-                  if ((playBadgeCount ?? 0) > 0)
-                    Positioned(
-                      top: -6,
-                      right: -14,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF0037),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          playBadgeCount! > 99 ? '99+' : '$playBadgeCount',
-                          style: const TextStyle(
-                            color: TColors.white,
-                            fontFamily: TFonts.nunito,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            height: 1,
+            Expanded(
+              child: _HammeNavItem(
+                label: TTexts.navPlay,
+                selected: currentIndex == 1,
+                onTap: () => onTap(1),
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    Image.asset('assets/icons/Fire.png', width: 24, height: 24),
+                    if ((playBadgeCount ?? 0) > 0)
+                      Positioned(
+                        top: -6,
+                        right: -14,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF0037),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            playBadgeCount! > 99 ? '99+' : '$playBadgeCount',
+                            style: const TextStyle(
+                              color: TColors.white,
+                              fontFamily: TFonts.nunito,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              height: 1,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            label: TTexts.navPlay,
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Opacity(
-                opacity: currentIndex == 2 ? 1 : 0.4,
-                child: Image.asset(
-                  'assets/icons/Open Mailbox With Raised Flag.png',
-                  width: 26,
-                  height: 26,
+                  ],
                 ),
               ),
             ),
-            label: TTexts.navInbox,
-          ),
-        ],
+            Expanded(
+              child: _HammeNavItem(
+                label: TTexts.navInbox,
+                selected: currentIndex == 2,
+                onTap: () => onTap(2),
+                icon: Image.asset(
+                  'assets/icons/Open Mailbox With Raised Flag.png',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HammeNavItem extends StatelessWidget {
+  const _HammeNavItem({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final Widget icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final opacity = selected ? 1.0 : 0.4;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            Positioned(
+              top: 6,
+              child: Opacity(
+                opacity: opacity,
+                child: SizedBox(width: 24, height: 24, child: icon),
+              ),
+            ),
+            Positioned(
+              top: 34,
+              left: 0,
+              right: 0,
+              child: Opacity(
+                opacity: opacity,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: TFonts.nunito,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    height: 4 / 3,
+                    color: TColors.black,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
