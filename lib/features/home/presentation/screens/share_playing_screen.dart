@@ -60,9 +60,7 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
         try {
           if (Platform.isAndroid) {
             final isInstalled =
-                await _storyChannel.invokeMethod<bool>(
-                  'isSnapchatInstalled',
-                ) ??
+                await _storyChannel.invokeMethod<bool>('isSnapchatInstalled') ??
                 false;
             if (isInstalled) {
               final launchResult = await _storyChannel.invokeMethod<String>(
@@ -167,7 +165,8 @@ Future<Uint8List> _captureStoryFromHiddenOverlay(
   try {
     await Future.delayed(const Duration(milliseconds: 500));
     final boundary =
-        boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+        boundaryKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
     if (boundary == null) {
       throw StateError('Export boundary not available.');
     }
@@ -194,12 +193,14 @@ class _SharePlayingScreenState extends ConsumerState<SharePlayingScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await SharePlayingScreen.shareStory(context, ref, platform: widget.platform);
+      await SharePlayingScreen.shareStory(
+        context,
+        ref,
+        platform: widget.platform,
+      );
       if (mounted) context.go('/home');
     });
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +223,7 @@ class StoryExportWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final profileImageUrl = draft.profileImageUrl;
     final hasProfileImage =
-      profileImageUrl != null && profileImageUrl.isNotEmpty;
+        profileImageUrl != null && profileImageUrl.isNotEmpty;
 
     return Container(
       width: 1080,
@@ -247,18 +248,16 @@ class StoryExportWidget extends StatelessWidget {
                 ),
               ],
             ),
-            child: hasProfileImage
-                ? ClipOval(
-                    child: Image.network(
-                      profileImageUrl,
-                      fit: BoxFit.cover,
+            child:
+                hasProfileImage
+                    ? ClipOval(
+                      child: Image.network(profileImageUrl, fit: BoxFit.cover),
+                    )
+                    : const Icon(
+                      CupertinoIcons.person_solid,
+                      size: 120,
+                      color: Colors.white,
                     ),
-                  )
-                : const Icon(
-                    CupertinoIcons.person_solid,
-                    size: 120,
-                    color: Colors.white,
-                  ),
           ),
           const SizedBox(height: 40),
           // Question Pill
@@ -284,10 +283,7 @@ class StoryExportWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              EmojiImage(
-                emoji: '🙈',
-                size: 32,
-              ),
+              EmojiImage(emoji: '🙈', size: 32),
               const SizedBox(width: 8),
               const Text(
                 'send anonymously',
@@ -321,75 +317,10 @@ class StoryExportWidget extends StatelessWidget {
             colors: [Color(0xFFB6A8EA), Color(0xFF595A96)],
           ),
           const SizedBox(height: 60),
-          // Tooltip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(50),
-            ),
-            child: const Text(
-              'Tap to play',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 36,
-                fontFamily: TFonts.nunito,
-                decoration: TextDecoration.none,
-              ),
-            ),
-          ),
-          CustomPaint(
-            size: const Size(40, 20),
-            painter: TrianglePainter(),
-          ),
-          const SizedBox(height: 10),
-          // Link Sticker Area
-          CustomPaint(
-            painter: DashedRectPainter(
-              color: Colors.white70,
-              strokeWidth: 4,
-              gap: 10,
-            ),
-            child: Container(
-              width: 600,
-              height: 150,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(40),
-              ),
-              child: const Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(CupertinoIcons.link, color: Color(0xFF00C2FF), size: 70),
-                    SizedBox(width: 20),
-                    Text(
-                      'PLACE LINK\nSTICKER HERE',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 34,
-                        fontFamily: TFonts.nunito,
-                        decoration: TextDecoration.none,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 40),
-          // Arrows
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _StoryArrow(),
-              const SizedBox(width: 100),
-              _StoryArrow(),
-              const SizedBox(width: 100),
-              _StoryArrow(),
-            ],
+          Image.asset(
+            'assets/images/placelink.png',
+            height: 460,
+            fit: BoxFit.contain,
           ),
           const SizedBox(height: 150),
           // Footer
@@ -457,111 +388,4 @@ class _StoryButton extends StatelessWidget {
       ),
     );
   }
-}
-
-class _StoryArrow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(80, 110),
-      painter: ArrowPainter(strokeWidth: 12),
-    );
-  }
-}
-
-class TrianglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    path.moveTo(0, 0);
-    path.lineTo(size.width, 0);
-    path.lineTo(size.width / 2, size.height);
-    path.close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class DashedRectPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double gap;
-
-  DashedRectPainter({
-    this.color = Colors.white,
-    this.strokeWidth = 2.0,
-    this.gap = 5.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Radius.circular(size.height / 4),
-    );
-    path.addRRect(rrect);
-
-    final dashPath = Path();
-    double distance = 0.0;
-    for (final metric in path.computeMetrics()) {
-      while (distance < metric.length) {
-        dashPath.addPath(
-          metric.extractPath(distance, distance + gap),
-          Offset.zero,
-        );
-        distance += gap * 2;
-      }
-      distance = 0.0;
-    }
-
-    canvas.drawPath(dashPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class ArrowPainter extends CustomPainter {
-  final double strokeWidth;
-  ArrowPainter({this.strokeWidth = 5});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    // Vertical line
-    path.moveTo(size.width / 2, size.height);
-    path.lineTo(size.width / 2, 0);
-    
-    // Left tip
-    path.moveTo(size.width / 2, 0);
-    path.lineTo(size.width * 0.1, size.height * 0.4);
-    
-    // Right tip
-    path.moveTo(size.width / 2, 0);
-    path.lineTo(size.width * 0.9, size.height * 0.4);
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
