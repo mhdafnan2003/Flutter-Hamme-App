@@ -204,6 +204,11 @@ class _ProScreenState extends ConsumerState<ProScreen> {
   Widget build(BuildContext context) {
     final billing = ref.watch(billingControllerProvider);
     final isUpgrade = !widget.isOnboarding;
+    final topInset = MediaQuery.paddingOf(context).top;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final headerHeight = (topInset + 100).clamp(140.0, 160.0);
+    final footerBottomPadding =
+        bottomInset > 0 ? (bottomInset - 5).clamp(20.0, 29.0) : 20.0;
 
     // A new Pro purchase can dismiss the paywall. A restored purchase goes
     // through _restoreProProfile so its old profile is restored explicitly.
@@ -240,13 +245,13 @@ class _ProScreenState extends ConsumerState<ProScreen> {
       body: Column(
         children: [
           SizedBox(
-            height: 140,
+            height: headerHeight,
             child: Stack(
               children: [
                 ClipPath(
                   clipper: HeaderCurveClipper(),
                   child: Container(
-                    height: 140,
+                    height: headerHeight,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -257,7 +262,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                   ),
                 ),
                 Positioned(
-                  top: 50,
+                  top: topInset + 22,
                   left: 0,
                   right: 0,
                   child: Row(
@@ -272,7 +277,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                   ),
                 ),
                 Positioned(
-                  top: 46,
+                  top: topInset + 18,
                   right: 24,
                   child: GestureDetector(
                     onTap: _dismiss,
@@ -289,222 +294,304 @@ class _ProScreenState extends ConsumerState<ProScreen> {
           Expanded(
             child: SafeArea(
               top: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    const Spacer(flex: 2),
-                    const Text(
-                      'Unlock Unlimited\nAccess 🔒',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontSize: 28,
-                        height: 1.1,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFFCE00E6),
-                      ),
-                    ),
-                    const Spacer(flex: 2),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F0FD),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFE2DBFF),
-                          width: 1.5,
+              bottom: false,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final horizontalPadding =
+                      constraints.maxWidth < 350 ? 20.0 : 28.0;
+                  const minimumContentHeight = 570.0;
+                  final contentHeight =
+                      constraints.maxHeight < minimumContentHeight
+                          ? minimumContentHeight
+                          : constraints.maxHeight;
+
+                  return SingleChildScrollView(
+                    child: SizedBox(
+                      height: contentHeight,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
                         ),
-                      ),
-                      child: const Column(
-                        children: [
-                          SizedBox(height: 30),
-                          ProFeature(
-                            icon: Image(
-                              image: AssetImage('assets/icons/Infinity.png'),
-                              width: 28,
-                              height: 28,
-                            ),
-                            title: 'Unlimited Play',
-                            subtitle:
-                                'No waiting, Play every profile,\nanytime.',
-                          ),
-                          SizedBox(height: 30),
-                          ProFeature(
-                            icon: Image(
-                              image: AssetImage(
-                                'assets/icons/Right Arrow Curving Left.png',
-                              ),
-                              width: 28,
-                              height: 28,
-                            ),
-                            title: 'Unlimited Rewinds',
-                            subtitle:
-                                'Picked wrong? Go back and change\nyour pick.',
-                          ),
-                          SizedBox(height: 30),
-                          ProFeature(
-                            icon: Image(
-                              image: AssetImage(
-                                'assets/icons/High Voltage.png',
-                              ),
-                              width: 28,
-                              height: 28,
-                            ),
-                            title: 'Priority Profile',
-                            subtitle:
-                                'Appear first in queues of people you\nreacted to.',
-                          ),
-                          SizedBox(height: 30),
-                        ],
-                      ),
-                    ),
-                    const Spacer(flex: 3),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        AvatarBubble(label: 'N', color: Color(0xFFFA3F8F)),
-                        AvatarBubble(label: 'K', color: Color(0xFF1BD66B)),
-                        AvatarBubble(label: 'A', color: Color(0xFF3FA7FF)),
-                        AvatarBubble(label: 'S', color: Color(0xFFFFCB36)),
-                        AvatarBubble(label: 'R', color: Color(0xFFFF5252)),
-                        SizedBox(width: 12),
-                        Text(
-                          '1000+ went PRO today',
-                          style: TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: TColors.darkGrey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(flex: 1),
-                    Container(
-                      width: double.infinity,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(29),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF9E57FF), Color(0xFF8B44FF)],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF9E57FF,
-                            ).withValues(alpha: 0.2),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: ctaBusy ? () {} : () => onCta(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(29),
-                          ),
-                        ),
-                        child:
-                            ctaBusy
-                                ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                                : Text(
-                                  ctaLabel,
-                                  style: const TextStyle(
+                        child: Column(
+                          children: [
+                            const Spacer(flex: 2),
+                            const Column(
+                              children: [
+                                Text(
+                                  'Unlock Unlimited',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
                                     fontFamily: TFonts.nunito,
-                                    fontSize: 20,
+                                    fontSize: 28,
+                                    height: 1.1,
                                     fontWeight: FontWeight.w900,
-                                    color: Colors.white,
+                                    color: Color(0xFFCE00E6),
                                   ),
                                 ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Access ',
+                                      style: TextStyle(
+                                        fontFamily: TFonts.nunito,
+                                        fontSize: 28,
+                                        height: 1.1,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFFCE00E6),
+                                      ),
+                                    ),
+                                    Image(
+                                      image: AssetImage(
+                                        'assets/icons/Unlocked.png',
+                                      ),
+                                      width: 28,
+                                      height: 28,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const Spacer(flex: 2),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F0FD),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFE2DBFF),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: const Column(
+                                children: [
+                                  SizedBox(height: 10),
+                                  ProFeature(
+                                    icon: Image(
+                                      image: AssetImage(
+                                        'assets/icons/Infinity.png',
+                                      ),
+                                      width: 32,
+                                      height: 32,
+                                    ),
+                                    title: 'Unlimited Play',
+                                    subtitle:
+                                        'No waiting, Play every profile,\nanytime.',
+                                  ),
+                                  SizedBox(height: 24),
+                                  ProFeature(
+                                    icon: Image(
+                                      image: AssetImage(
+                                        'assets/icons/Right Arrow Curving Left.png',
+                                      ),
+                                      width: 32,
+                                      height: 32,
+                                    ),
+                                    title: 'Unlimited Rewinds',
+                                    subtitle:
+                                        'Picked wrong? Go back and change\nyour pick.',
+                                  ),
+                                  SizedBox(height: 24),
+                                  ProFeature(
+                                    icon: Image(
+                                      image: AssetImage(
+                                        'assets/icons/High Voltage.png',
+                                      ),
+                                      width: 32,
+                                      height: 32,
+                                    ),
+                                    title: 'Priority Profile',
+                                    subtitle:
+                                        'Appear first in queues of people you\nreacted to.',
+                                  ),
+                                  SizedBox(height: 10),
+                                ],
+                              ),
+                            ),
+                            const Spacer(flex: 3),
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                AvatarBubble(
+                                  label: 'N',
+                                  color: Color(0xFFFA3F8F),
+                                ),
+                                AvatarBubble(
+                                  label: 'K',
+                                  color: Color(0xFF1BD66B),
+                                ),
+                                AvatarBubble(
+                                  label: 'A',
+                                  color: Color(0xFF3FA7FF),
+                                ),
+                                AvatarBubble(
+                                  label: 'S',
+                                  color: Color(0xFFFFCB36),
+                                ),
+                                AvatarBubble(
+                                  label: 'R',
+                                  color: Color(0xFFFF5252),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  '1000+ went PRO today',
+                                  style: TextStyle(
+                                    fontFamily: TFonts.nunito,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: TColors.darkGrey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(flex: 1),
+                            Container(
+                              width: double.infinity,
+                              height: 58,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(29),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF9E57FF),
+                                    Color(0xFF8B44FF),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF9E57FF,
+                                    ).withValues(alpha: 0.2),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: ctaBusy ? () {} : () => onCta(),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(29),
+                                  ),
+                                ),
+                                child:
+                                    ctaBusy
+                                        ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
+                                          ),
+                                        )
+                                        : Text(
+                                          ctaLabel,
+                                          style: const TextStyle(
+                                            fontFamily: TFonts.nunito,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                              ),
+                            ),
+                            if (errorText != null) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                errorText,
+                                style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontFamily: TFonts.nunito,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                            const Spacer(flex: 1),
+                            Text(
+                              billing.proProduct != null
+                                  ? 'pro renews for ${billing.proProduct!.price}/wk'
+                                  : 'pro renews for \$6.99/wk',
+                              style: const TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: TColors.darkGrey,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FooterLink(
+                                      label: 'Privacy',
+                                      onTap: () async {
+                                        final url = Uri.parse(
+                                          'https://www.hamme.app/privacy-policy',
+                                        );
+                                        if (await canLaunchUrl(url)) {
+                                          await launchUrl(
+                                            url,
+                                            mode:
+                                                LaunchMode.externalApplication,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  FooterLink(
+                                    label: 'Restore',
+                                    onTap:
+                                        billing.busy || _isRestoringProfile
+                                            ? null
+                                            : _restoreProProfile,
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: FooterLink(
+                                      label: 'Terms',
+                                      onTap: () async {
+                                        final url = Uri.parse(
+                                          'https://www.hamme.app/terms-of-service',
+                                        );
+                                        if (await canLaunchUrl(url)) {
+                                          await launchUrl(
+                                            url,
+                                            mode:
+                                                LaunchMode.externalApplication,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: footerBottomPadding),
+                          ],
+                        ),
                       ),
                     ),
-                    if (errorText != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        errorText,
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                    const Spacer(flex: 1),
-                    Text(
-                      billing.proProduct != null
-                          ? 'pro renews for ${billing.proProduct!.price}/wk'
-                          : 'pro renews for \$6.99/wk',
-                      style: const TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: TColors.darkGrey,
-                      ),
-                    ),
-                    const Spacer(flex: 1),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        FooterLink(
-                          label: 'Privacy',
-                          onTap: () async {
-                            final url = Uri.parse(
-                              'https://www.hamme.app/privacy-policy',
-                            );
-                            if (await canLaunchUrl(url)) {
-                              await launchUrl(
-                                url,
-                                mode: LaunchMode.externalApplication,
-                              );
-                            }
-                          },
-                        ),
-                        FooterLink(
-                          label: 'Restore',
-                          onTap:
-                              billing.busy || _isRestoringProfile
-                                  ? null
-                                  : _restoreProProfile,
-                        ),
-                        FooterLink(
-                          label: 'Terms',
-                          onTap: () async {
-                            final url = Uri.parse(
-                              'https://www.hamme.app/terms-of-service',
-                            );
-                            if (await canLaunchUrl(url)) {
-                              await launchUrl(
-                                url,
-                                mode: LaunchMode.externalApplication,
-                              );
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const Spacer(flex: 2),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
