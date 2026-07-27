@@ -261,8 +261,17 @@ function ShareFlowApp() {
         )}
 
         <footer className="mt-auto flex flex-col items-center">
+          <img
+            src="/frieendsareplaying.png"
+            alt="6 friends playing now"
+            className="mb-[82px] h-[61px] w-[202px] object-contain"
+          />
           <h1 className="brand-text text-[28px] font-black leading-none tracking-[-0.06em]">Hamme</h1>
           <p className="mt-2 text-[12px] font-extrabold">play games &amp; meet people</p>
+          <nav className="mt-6 flex items-center gap-4 text-[12px] font-bold text-white/70">
+            <a href="/terms-of-service" className="transition hover:text-white">Terms</a>
+            <a href="/privacy-policy" className="transition hover:text-white">Privacy</a>
+          </nav>
         </footer>
       </section>
     </main>
@@ -685,7 +694,13 @@ function RevealScreen({
   return (
     <div className="w-full">
       <div className="mx-auto flex h-[25px] w-[96px] items-center justify-center rounded-full border border-white/80 bg-white/10 text-[18px] font-extrabold">
-        <span className="mr-[7px] flex h-[19px] w-[19px] items-center justify-center rounded-full bg-white text-[12px] text-[#9b55f7]">OK</span>
+        <span className="relative mr-[7px] h-[19px] w-[19px] shrink-0 overflow-hidden">
+          <img
+            src="/tic.png"
+            alt=""
+            className="absolute left-1/2 top-1/2 h-[48px] w-[48px] max-w-none -translate-x-1/2 -translate-y-1/2"
+          />
+        </span>
         Sent!
       </div>
 
@@ -743,7 +758,13 @@ function AlreadyVotedScreen({ profileName, profileImage }) {
   return (
     <div className="w-full">
       <div className="mx-auto flex h-[25px] w-[96px] items-center justify-center rounded-full border border-white/80 bg-white/10 text-[18px] font-extrabold">
-        <span className="mr-[7px] flex h-[19px] w-[19px] items-center justify-center rounded-full bg-white text-[12px] text-[#9b55f7]">OK</span>
+        <span className="relative mr-[7px] h-[19px] w-[19px] shrink-0 overflow-hidden">
+          <img
+            src="/tic.png"
+            alt=""
+            className="absolute left-1/2 top-1/2 h-[48px] w-[48px] max-w-none -translate-x-1/2 -translate-y-1/2"
+          />
+        </span>
         Sent!
       </div>
       <div className="mt-[40px] flex flex-col items-center gap-3">
