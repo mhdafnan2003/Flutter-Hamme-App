@@ -28,7 +28,7 @@ class InboxReactionCard extends StatelessWidget {
   String get _message {
     if (count == 0) {
       return 'Numbers fill up the moment someone\n'
-          'taps on your story link. Go share \u{1F447}';
+          'taps on your story link. Go share \u{1F446}';
     }
     if (count == 1) {
       return '1 person has ${variation.typeKey} on you';
