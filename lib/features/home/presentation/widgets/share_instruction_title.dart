@@ -30,8 +30,8 @@ class ShareInstructionTitle extends StatelessWidget {
           Text(data.prefix, style: _titleStyle),
           Image.asset(
             'assets/icons/link-insta.png',
-            width: 32,
-            height: 32,
+            width: 80,
+            height: 40,
             fit: BoxFit.contain,
           ),
           Text(data.suffix, style: _titleStyle),
