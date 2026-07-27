@@ -82,7 +82,7 @@ class HomeScreen extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Image.asset(
-                                  'assets/icons/link.png',
+                                  'assets/icons/copy.png',
                                   width: 16,
                                   height: 16,
                                 ),
