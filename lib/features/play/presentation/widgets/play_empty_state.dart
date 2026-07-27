@@ -52,7 +52,7 @@ class PlayEmptyState extends StatelessWidget {
                       width: frontW,
                       height: 210,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0E8FF),
+                        color: const Color(0xFFEBE5F6),
                         borderRadius: BorderRadius.circular(28),
                         boxShadow: [
                           BoxShadow(
