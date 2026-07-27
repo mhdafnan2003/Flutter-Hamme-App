@@ -15,7 +15,7 @@ class ShareInstructionTitle extends StatelessWidget {
         textAlign: TextAlign.center,
         style: const TextStyle(
           fontFamily: TFonts.nunito,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           fontSize: 24,
           color: Colors.black,
         ),
