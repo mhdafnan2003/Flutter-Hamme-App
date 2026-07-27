@@ -171,7 +171,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                 alignment: Alignment.center,
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -182,25 +182,26 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                           children: [
                             // Match Card (Double Border)
                             Container(
-                              margin: const EdgeInsets.only(top: 60),
+                              margin: const EdgeInsets.only(top: 58),
+                              height: 225,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(50),
+                                borderRadius: BorderRadius.circular(48),
                                 border: Border.all(
                                   color: theme.solidBorder,
-                                  width: 6,
+                                  width: 8,
                                 ),
                               ),
                               child: Container(
-                                padding: const EdgeInsets.fromLTRB(
-                                  24,
-                                  80,
-                                  24,
-                                  40,
-                                ),
                                 width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  58,
+                                  16,
+                                  12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(44),
+                                  borderRadius: BorderRadius.circular(40),
                                   border: Border.all(
                                     color: Colors.white,
                                     width: 8,
@@ -212,22 +213,18 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                       "It's a Match!",
                                       style: TextStyle(
                                         fontFamily: TFonts.nunito,
-                                        fontSize: 38,
+                                        fontSize: 36,
                                         fontWeight: FontWeight.w900,
                                         color: Colors.white,
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      '${otherName.isEmpty ? "Someone" : otherName} also chose ${theme.choiceText}.\nYou both want the same thing.',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontFamily: TFonts.nunito,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                        height: 1.4,
-                                      ),
+                                    const SizedBox(height: 12),
+                                    _MatchDescription(
+                                      otherName:
+                                          otherName.isEmpty
+                                              ? 'Someone'
+                                              : otherName,
+                                      choiceText: theme.choiceText,
                                     ),
                                   ],
                                 ),
@@ -248,22 +245,22 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                 ringColor: theme.solidBorder,
                                 centerIcon: EmojiImage(
                                   emoji: theme.emoji,
-                                  size: 24,
+                                  size: 36,
                                 ),
                               ),
                             ),
                           ],
                         ),
 
-                        const SizedBox(height: 60),
+                        const SizedBox(height: 48),
 
                         // Social Platform Switcher
                         Container(
-                          width: 100,
-                          height: 48,
+                          width: 84,
+                          height: 38,
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.4),
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(19),
                           ),
                           child: Stack(
                             children: [
@@ -275,8 +272,8 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                         ? Alignment.centerLeft
                                         : Alignment.centerRight,
                                 child: Container(
-                                  width: 48,
-                                  height: 48,
+                                  width: 38,
+                                  height: 38,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: theme.solidBorder,
@@ -296,8 +293,8 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                       child: Center(
                                         child: Image.asset(
                                           'assets/icons/insta-outline.png',
-                                          width: 24,
-                                          height: 24,
+                                          width: 20,
+                                          height: 20,
                                           color: Colors.white,
                                         ),
                                       ),
@@ -312,8 +309,8 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                       child: Center(
                                         child: Image.asset(
                                           'assets/icons/snap-fill.png',
-                                          width: 24,
-                                          height: 24,
+                                          width: 20,
+                                          height: 20,
                                           color: Colors.white,
                                         ),
                                       ),
@@ -325,37 +322,40 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                           ),
                         ),
 
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 16),
 
                         // Reply Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 64,
-                          child: ElevatedButton.icon(
-                            onPressed: _openSocial,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              side: BorderSide.none,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 62,
+                            child: ElevatedButton.icon(
+                              onPressed: _openSocial,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.black,
+                                side: BorderSide.none,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                                elevation: 0,
                               ),
-                              elevation: 0,
-                            ),
-                            icon: Image.asset(
-                              _isInstagramSelected
-                                  ? 'assets/icons/insta-outline.png'
-                                  : 'assets/icons/snap-fill.png',
-                              width: 24,
-                              height: 24,
-                              color: Colors.white,
-                            ),
-                            label: const Text(
-                              'Reply',
-                              style: TextStyle(
-                                fontFamily: TFonts.nunito,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
+                              icon: Image.asset(
+                                _isInstagramSelected
+                                    ? 'assets/icons/insta-outline.png'
+                                    : 'assets/icons/snap-fill.png',
+                                width: 24,
+                                height: 24,
                                 color: Colors.white,
+                              ),
+                              label: const Text(
+                                'Reply',
+                                style: TextStyle(
+                                  fontFamily: TFonts.nunito,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -369,6 +369,47 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MatchDescription extends StatelessWidget {
+  const _MatchDescription({required this.otherName, required this.choiceText});
+
+  final String otherName;
+  final String choiceText;
+
+  static const _style = TextStyle(
+    fontFamily: TFonts.nunito,
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: Colors.white,
+    height: 1.4,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 22.4,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$otherName also chose $choiceText.',
+              maxLines: 1,
+              style: _style,
+            ),
+          ),
+        ),
+        const Text(
+          'You both want the same thing.',
+          maxLines: 1,
+          textAlign: TextAlign.center,
+          style: _style,
+        ),
+      ],
     );
   }
 }
@@ -433,13 +474,13 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
         );
 
         return SizedBox(
-          width: 300,
-          height: 120,
+          width: 225,
+          height: 116,
           child: Stack(
             alignment: Alignment.center,
             children: [
               Positioned(
-                left: 45,
+                left: 0,
                 child: Transform.translate(
                   offset: Offset(-190 * (1 - arrival), 0),
                   child: Transform.scale(
@@ -456,7 +497,7 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
                 ),
               ),
               Positioned(
-                right: 45,
+                right: 0,
                 child: Transform.translate(
                   offset: Offset(190 * (1 - arrival), 0),
                   child: Transform.scale(
@@ -475,8 +516,8 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
               Transform.scale(
                 scale: centerScale,
                 child: Container(
-                  width: 48,
-                  height: 48,
+                  width: 42,
+                  height: 42,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
