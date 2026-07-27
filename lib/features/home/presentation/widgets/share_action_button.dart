@@ -18,14 +18,17 @@ class ShareActionButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
         width: double.infinity,
-        height: 50,
+        height: 56,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF9150FF), Color(0xFF8848F4)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF9F6FFF), Color(0xFF7838FE)],
           ),
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(28),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -38,8 +41,8 @@ class ShareActionButton extends StatelessWidget {
               label,
               style: const TextStyle(
                 fontFamily: TFonts.nunito,
-                fontWeight: FontWeight.w800,
-                fontSize: 19,
+                fontWeight: FontWeight.w900,
+                fontSize: 20,
                 color: Colors.white,
               ),
             ),
