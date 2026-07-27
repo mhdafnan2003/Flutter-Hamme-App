@@ -46,12 +46,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     try {
       final variation = _variations[_currentPage];
       final interactions = ref.read(receivedInteractionsProvider).value ?? [];
-      final count = _countByType(
-        {for (var i in interactions) i.type.name: interactions.where((it) => it.type == i.type).length},
-        variation.typeKey,
-      );
-      
-      final draft = ref.read(onboardingDraftProvider).value ?? const OnboardingDraft();
+      final count = _countByType({
+        for (var i in interactions)
+          i.type.name: interactions.where((it) => it.type == i.type).length,
+      }, variation.typeKey);
+
+      final draft =
+          ref.read(onboardingDraftProvider).value ?? const OnboardingDraft();
       final profileImageUrl = draft.profileImageUrl;
 
       // 1. Capture the image silently
@@ -84,7 +85,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         // Snapchat Logic — share to Snapchat Story
         try {
           if (Platform.isAndroid) {
-            final isInstalled = await _storyChannel.invokeMethod<bool>('isSnapchatInstalled') ?? false;
+            final isInstalled =
+                await _storyChannel.invokeMethod<bool>('isSnapchatInstalled') ??
+                false;
             if (isInstalled) {
               await _storyChannel.invokeMethod('shareToSnapchatStory', {
                 'imagePath': tempPath,
@@ -94,24 +97,30 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
             }
           }
           // iOS or fallback — use system share sheet (Snapchat will offer Story option)
-          await Share.shareXFiles(
-            [XFile(tempPath)],
-            text: 'Check out my reactions on Hamme! $shareLink',
-          );
+          await Share.shareXFiles([
+            XFile(tempPath),
+          ], text: 'Check out my reactions on Hamme! $shareLink');
         } catch (e) {
           debugPrint('Snapchat share failed: $e');
-          await Share.shareXFiles([XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink');
+          await Share.shareXFiles([
+            XFile(tempPath),
+          ], text: 'Check out my reactions on Hamme! $shareLink');
         }
       } else {
         // Instagram Logic
         try {
           bool instagramInstalled = false;
           if (Platform.isAndroid) {
-            instagramInstalled = await _storyChannel.invokeMethod<bool>('isInstagramInstalled') ?? false;
+            instagramInstalled =
+                await _storyChannel.invokeMethod<bool>(
+                  'isInstagramInstalled',
+                ) ??
+                false;
           } else {
             final installedApps = await socialShare.getInstalledApps();
             instagramInstalled = installedApps.entries.any(
-              (entry) => entry.value && entry.key.toLowerCase().contains('instagram'),
+              (entry) =>
+                  entry.value && entry.key.toLowerCase().contains('instagram'),
             );
           }
 
@@ -137,8 +146,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       }
 
       // Final Fallback
-      await Share.shareXFiles([XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink');
-
+      await Share.shareXFiles([
+        XFile(tempPath),
+      ], text: 'Check out my reactions on Hamme! $shareLink');
     } catch (e) {
       debugPrint('Error in _captureAndShare: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -163,29 +173,34 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     late final OverlayEntry entry;
 
     entry = OverlayEntry(
-      builder: (_) => Positioned(
-        left: -20000,
-        top: 0,
-        child: RepaintBoundary(
-          key: boundaryKey,
-          child: SizedBox(
-            width: 1080,
-            height: 1920,
-            child: InboxShareExportWidget(
-              variation: variation,
-              count: count,
-              profileImageUrl: profileImageUrl,
-              isInstagram: isInstagram,
+      builder:
+          (_) => Positioned(
+            left: -20000,
+            top: 0,
+            child: RepaintBoundary(
+              key: boundaryKey,
+              child: SizedBox(
+                width: 1080,
+                height: 1920,
+                child: InboxShareExportWidget(
+                  variation: variation,
+                  count: count,
+                  profileImageUrl: profileImageUrl,
+                  isInstagram: isInstagram,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
     );
 
     Overlay.of(context, rootOverlay: true).insert(entry);
     try {
-      await Future.delayed(const Duration(milliseconds: 600)); // Allow time for fonts/images to render
-      final boundary = boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      await Future.delayed(
+        const Duration(milliseconds: 600),
+      ); // Allow time for fonts/images to render
+      final boundary =
+          boundaryKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) throw StateError('Boundary not available');
 
       final image = await boundary.toImage(pixelRatio: 1.0);
@@ -255,206 +270,248 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           children: [
             const HammeTopBar(),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 40),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 87),
 
-                  // Carousel
-                  SizedBox(
-                    height: 320, // Reduced to bring indicators closer
-                    child: Builder(
+                    // Carousel
+                    SizedBox(
+                      height: 283,
+                      child: Builder(
+                        builder: (context) {
+                          final interactions = ref.watch(
+                            receivedInteractionsProvider,
+                          );
+                          final draftAsync = ref.watch(onboardingDraftProvider);
+                          final profileImageUrl = draftAsync.maybeWhen(
+                            data: (d) => d.profileImageUrl,
+                            orElse: () => null,
+                          );
+
+                          return interactions.when(
+                            data: (items) {
+                              final counts = <String, int>{};
+                              for (final item in items) {
+                                final key = item.type.name;
+                                counts[key] = (counts[key] ?? 0) + 1;
+                              }
+                              return PageView.builder(
+                                controller: _pageController,
+                                onPageChanged:
+                                    (index) =>
+                                        setState(() => _currentPage = index),
+                                itemCount: _variations.length,
+                                itemBuilder: (context, index) {
+                                  final variation = _variations[index];
+                                  final count = _countByType(
+                                    counts,
+                                    variation.typeKey,
+                                  );
+                                  return InboxReactionCard(
+                                    variation: variation,
+                                    count: count,
+                                    imageUrl: profileImageUrl,
+                                  );
+                                },
+                              );
+                            },
+                            loading:
+                                () => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                            error:
+                                (_, __) => const Center(
+                                  child: Text('Error loading reactions'),
+                                ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Page Indicators
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        _variations.length,
+                        (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: _currentPage == index ? 16 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color:
+                                _currentPage == index
+                                    ? _variations[_currentPage].borderColor
+                                    : const Color(0xFFE0E0E0),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 50),
+
+                    // ── Social Platform Toggle & Share Button ──────────────────
+                    // Only show when current page has count > 0
+                    Builder(
                       builder: (context) {
-                        final interactions = ref.watch(receivedInteractionsProvider);
-                        final draftAsync = ref.watch(onboardingDraftProvider);
-                        final profileImageUrl = draftAsync.maybeWhen(
-                          data: (d) => d.profileImageUrl,
-                          orElse: () => null,
+                        final interactions = ref.watch(
+                          receivedInteractionsProvider,
                         );
-
-                        return interactions.when(
+                        final currentCount = interactions.maybeWhen(
                           data: (items) {
                             final counts = <String, int>{};
                             for (final item in items) {
                               final key = item.type.name;
                               counts[key] = (counts[key] ?? 0) + 1;
                             }
-                            return PageView.builder(
-                              controller: _pageController,
-                              onPageChanged: (index) => setState(() => _currentPage = index),
-                              itemCount: _variations.length,
-                              itemBuilder: (context, index) {
-                                final variation = _variations[index];
-                                final count = _countByType(counts, variation.typeKey);
-                                return InboxReactionCard(
-                                  variation: variation,
-                                  count: count,
-                                  imageUrl: profileImageUrl,
-                                );
-                              },
+                            return _countByType(
+                              counts,
+                              _variations[_currentPage].typeKey,
                             );
                           },
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (_, __) => const Center(child: Text('Error loading reactions')),
+                          orElse: () => 0,
                         );
-                      },
-                    ),
-                  ),
 
-                  const SizedBox(height: 10), // Move indicators just below the card
+                        if (currentCount == 0) return const SizedBox.shrink();
 
-                  // Page Indicators
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _variations.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: _currentPage == index ? 24 : 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: _currentPage == index
-                              ? _variations[_currentPage].borderColor
-                              : const Color(0xFFE0E0E0),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 50),
-
-                  // ── Social Platform Toggle & Share Button ──────────────────
-                  // Only show when current page has count > 0
-                  Builder(
-                    builder: (context) {
-                      final interactions = ref.watch(receivedInteractionsProvider);
-                      final currentCount = interactions.maybeWhen(
-                        data: (items) {
-                          final counts = <String, int>{};
-                          for (final item in items) {
-                            final key = item.type.name;
-                            counts[key] = (counts[key] ?? 0) + 1;
-                          }
-                          return _countByType(counts, _variations[_currentPage].typeKey);
-                        },
-                        orElse: () => 0,
-                      );
-
-                      if (currentCount == 0) return const SizedBox.shrink();
-
-                      return Column(
-                        children: [
-                          // ── Social Platform Toggle (High Fidelity) ─────────────────────
-                          GestureDetector(
-                            onTap: () => setState(() => _isInstagramSelected = !_isInstagramSelected),
-                            child: Container(
-                              width: 90,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF444444), // Dark grey base
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Stack(
-                                children: [
-                                  // Sliding Indicator Circle
-                                  AnimatedAlign(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                    alignment: _isInstagramSelected
-                                        ? Alignment.centerLeft
-                                        : Alignment.centerRight,
-                                    child: Container(
-                                      width: 55, // Half of 110
-                                      height: 48,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF9A9A9A), // Lighter grey indicator
-                                        borderRadius: BorderRadius.circular(24),
+                        return Column(
+                          children: [
+                            // ── Social Platform Toggle (High Fidelity) ─────────────────────
+                            GestureDetector(
+                              onTap:
+                                  () => setState(
+                                    () =>
+                                        _isInstagramSelected =
+                                            !_isInstagramSelected,
+                                  ),
+                              child: Container(
+                                width: 90,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF444444,
+                                  ), // Dark grey base
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    // Sliding Indicator Circle
+                                    AnimatedAlign(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      curve: Curves.easeInOut,
+                                      alignment:
+                                          _isInstagramSelected
+                                              ? Alignment.centerLeft
+                                              : Alignment.centerRight,
+                                      child: Container(
+                                        width: 55, // Half of 110
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFF9A9A9A,
+                                          ), // Lighter grey indicator
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  // Icons Row
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Center(
-                                          child: Image.asset(
-                                            TImages.instaOutline,
-                                            width: 20,
-                                            height: 20,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Center(
-                                          child: Image.asset(
-                                            TImages.snapFill,
-                                            width: 20,
-                                            height: 20,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // ── Share Button ───────────────────────────────────────
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 28),
-                            child: SizedBox(
-                              width: double.infinity,
-                              height: 64,
-                              child: ElevatedButton(
-                                onPressed: _isSharing ? null : _captureAndShare,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.black,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: _isSharing
-                                    ? const CupertinoActivityIndicator(color: Colors.white)
-                                    : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Image.asset(
-                                            _isInstagramSelected
-                                                ? TImages.instaOutline
-                                                : TImages.snapFill,
-                                            width: 25,
-                                            height: 25,
-                                            color: Colors.white,
-                                          ),
-                                          const SizedBox(width: 10),
-                                          const Text(
-                                            'Share',
-                                            style: TextStyle(
-                                              fontFamily: TFonts.nunito,
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 18,
+                                    // Icons Row
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Center(
+                                            child: Image.asset(
+                                              TImages.instaOutline,
+                                              width: 20,
+                                              height: 20,
                                               color: Colors.white,
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                        Expanded(
+                                          child: Center(
+                                            child: Image.asset(
+                                              TImages.snapFill,
+                                              width: 20,
+                                              height: 20,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+
+                            const SizedBox(height: 12),
+
+                            // ── Share Button ───────────────────────────────────────
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                              ),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 64,
+                                child: ElevatedButton(
+                                  onPressed:
+                                      _isSharing ? null : _captureAndShare,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.black,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child:
+                                      _isSharing
+                                          ? const CupertinoActivityIndicator(
+                                            color: Colors.white,
+                                          )
+                                          : Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Image.asset(
+                                                _isInstagramSelected
+                                                    ? TImages.instaOutline
+                                                    : TImages.snapFill,
+                                                width: 25,
+                                                height: 25,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              const Text(
+                                                'Share',
+                                                style: TextStyle(
+                                                  fontFamily: TFonts.nunito,
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 18,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

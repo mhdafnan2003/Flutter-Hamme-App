@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
@@ -37,47 +37,57 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
           children: [
             // ── Top Bar ───────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => context.pop(),
                     child: Container(
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFF2F2F7),
+                        color: TColors.hammeSurface,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        CupertinoIcons.left_chevron,
-                        color: Colors.black,
-                        size: 20,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          'assets/icons/icon_line/matches_chevron_left.svg',
+                          width: 9,
+                          height: 16,
+                        ),
                       ),
                     ),
                   ),
                   Expanded(
                     child: Center(
-                      child: Image.asset(TImages.hammeHomeLogo, height: 32),
+                      child: Image.asset(
+                        TImages.hammeHomeLogo,
+                        width: 98,
+                        height: 26,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 44), // Spacer to balance back button
+                  const SizedBox(width: 40),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // ── Match List ────────────────────────────────────────────────
             Expanded(
               child: matches.when(
                 data: (items) {
-                  final visibleItems = items
-                      .where((m) => !_dismissedIds.contains(m.id))
-                      .toList();
+                  final visibleItems =
+                      items
+                          .where((m) => !_dismissedIds.contains(m.id))
+                          .toList();
                   if (visibleItems.isEmpty) return const _EmptyMatchesView();
                   return ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     itemCount: visibleItems.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 16),
                     itemBuilder: (context, index) {
@@ -89,15 +99,15 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                     },
                   );
                 },
-                loading: () => const Center(
-                  child: CupertinoActivityIndicator(),
-                ),
-                error: (error, _) => Center(
-                  child: Text(
-                    'Error: $error',
-                    style: const TextStyle(fontFamily: TFonts.nunito),
-                  ),
-                ),
+                loading:
+                    () => const Center(child: CupertinoActivityIndicator()),
+                error:
+                    (error, _) => Center(
+                      child: Text(
+                        'Error: $error',
+                        style: const TextStyle(fontFamily: TFonts.nunito),
+                      ),
+                    ),
               ),
             ),
 
@@ -107,15 +117,19 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const EmojiImage(emoji: '🚨', size: 14),
+                  Image.asset(
+                    'assets/images/matches_police_light.png',
+                    width: 16,
+                    height: 16,
+                  ),
                   const SizedBox(width: 4),
                   const Text(
                     'Matches are vanished after 24hrs',
                     style: TextStyle(
                       fontFamily: TFonts.nunito,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF9E9E9E),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFB2B2B2),
                     ),
                   ),
                 ],
@@ -135,13 +149,17 @@ class _MatchTile extends StatelessWidget {
 
   Future<void> _openSocial() async {
     final user = match.matchedUser;
-    final handle = (user.instagramId.isNotEmpty ? user.instagramId : user.shareCode).replaceAll('@', '');
+    final handle = (user.instagramId.isNotEmpty
+            ? user.instagramId
+            : user.shareCode)
+        .replaceAll('@', '');
     if (handle.isEmpty) return;
 
-    final isSnap = user.email.contains('snap') || 
-                   user.name.toLowerCase().contains('snap') ||
-                   user.id.contains('snap');
-    
+    final isSnap =
+        user.email.contains('snap') ||
+        user.name.toLowerCase().contains('snap') ||
+        user.id.contains('snap');
+
     final Uri url;
     if (isSnap) {
       url = Uri.parse('snapchat://add/$handle');
@@ -153,9 +171,10 @@ class _MatchTile extends StatelessWidget {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
-        final webUrl = isSnap 
-            ? Uri.parse('https://www.snapchat.com/add/$handle')
-            : Uri.parse('https://www.instagram.com/$handle/');
+        final webUrl =
+            isSnap
+                ? Uri.parse('https://www.snapchat.com/add/$handle')
+                : Uri.parse('https://www.instagram.com/$handle/');
         await launchUrl(webUrl, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
@@ -167,10 +186,11 @@ class _MatchTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = match.matchedUser;
     final name = user.name.trim().isNotEmpty ? user.name.trim() : 'Someone';
-    final handle = user.instagramId.isNotEmpty ? user.instagramId : '@${user.shareCode}';
-    
-    final isSnap = handle.toLowerCase().contains('snap') || 
-                   user.id.contains('snap');
+    final handle =
+        user.instagramId.isNotEmpty ? user.instagramId : '@${user.shareCode}';
+
+    final isSnap =
+        handle.toLowerCase().contains('snap') || user.id.contains('snap');
     final platformLabel = isSnap ? 'snap' : 'ig';
 
     return GestureDetector(
@@ -187,19 +207,20 @@ class _MatchTile extends StatelessWidget {
               color: Color(0xFFE5E5EA),
             ),
             clipBehavior: Clip.antiAlias,
-            child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
-                : Center(
-                    child: Text(
-                      name.characters.first.toUpperCase(),
-                      style: const TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 20,
-                        color: Colors.black54,
+            child:
+                user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                    ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
+                    : Center(
+                      child: Text(
+                        name.characters.first.toUpperCase(),
+                        style: const TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          color: Colors.black54,
+                        ),
                       ),
                     ),
-                  ),
           ),
           const SizedBox(width: 14),
 
@@ -262,7 +283,7 @@ class _EmptyMatchesView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          const SizedBox(height: 100),
+          const SizedBox(height: 93),
           // Title row with emoji inline
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -271,15 +292,19 @@ class _EmptyMatchesView extends StatelessWidget {
                 'No matches yet ',
                 style: TextStyle(
                   fontFamily: TFonts.nunito,
-                  fontSize: 38,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
                   color: TColors.hammepinkcolor,
                 ),
               ),
-              const EmojiImage(emoji: '🥺', size: 28),
+              Image.asset(
+                'assets/images/matches_pleading_face.png',
+                width: 32,
+                height: 32,
+              ),
             ],
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 22),
           const Text(
             'A match happens when someone\npicks the same option as you',
             textAlign: TextAlign.center,
@@ -287,35 +312,38 @@ class _EmptyMatchesView extends StatelessWidget {
               fontFamily: TFonts.nunito,
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: Colors.black87,
-              height: 1.4,
+              color: Colors.black,
+              height: 1.3,
             ),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 31),
           const Text(
             'Go play to find yours',
             style: TextStyle(
               fontFamily: TFonts.nunito,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF9E9E9E),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF878787),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 30),
           // Skeleton placeholder rows
-          ...List.generate(7, (index) => Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Center(
-              child: Container(
-                width: 280,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF2F2F5),
-                  borderRadius: BorderRadius.circular(14),
+          ...List.generate(
+            5,
+            (index) => Padding(
+              padding: EdgeInsets.only(bottom: index == 4 ? 0 : 24),
+              child: Center(
+                child: Container(
+                  width: 297,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8E8E8).withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),
-          )),
+          ),
         ],
       ),
     );
