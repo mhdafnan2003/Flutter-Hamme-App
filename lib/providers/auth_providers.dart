@@ -146,6 +146,21 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     return true;
   }
 
+  /// Accepts a session recovered by the backend from a Google-verified active
+  /// subscription. This is used after reinstall, when local auth storage may
+  /// have been removed but Play still owns the subscription.
+  Future<void> acceptBillingRestoredSession(AuthSession session) async {
+    await ref
+        .read(secureStorageServiceProvider)
+        .storeTokens(
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        );
+    await ref.read(onboardingCompletionProvider.notifier).markComplete();
+    ref.invalidate(onboardingCompletionProvider);
+    state = AsyncData(session);
+  }
+
   Future<void> guestRegister({
     required int age,
     required String displayName,

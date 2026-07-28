@@ -4,6 +4,10 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
+const {
+  createAccessToken,
+  createRefreshToken,
+} = require('./tokenService');
 
 // Product IDs that grant Pro. Override with PRO_PRODUCT_IDS (comma separated).
 const PRO_PRODUCT_IDS = (process.env.PRO_PRODUCT_IDS || 'hamme_pro_weekly')
@@ -319,6 +323,97 @@ async function verifyPurchase(userId, payload) {
 }
 
 /**
+ * Recovers the original Hamme session after reinstall. Possession of a Play
+ * purchase token alone is not trusted: Google must verify that it belongs to
+ * this package, contains an approved active product, and is already linked to
+ * the returned Hamme account (by stored token or Google's obfuscated account
+ * identifier).
+ */
+async function restoreSessionFromPurchase(payload) {
+  const { platform = 'android', productId, purchaseToken } = payload || {};
+  if (platform !== 'android') {
+    throw new ApiError(503, 'iOS purchase restoration is not configured.');
+  }
+  if (!productId || !purchaseToken) {
+    throw new ApiError(400, 'productId and purchaseToken are required.');
+  }
+  if (!PRO_PRODUCT_IDS.includes(productId)) {
+    throw new ApiError(400, 'Unknown product id.');
+  }
+
+  const snapshot = await fetchSubscription(
+    purchaseToken,
+    payload.packageName
+  );
+  if (!snapshot.productIds.includes(productId)) {
+    throw new ApiError(402, 'Purchase token does not match the requested product.');
+  }
+  if (!snapshot.active) {
+    throw new ApiError(402, 'The subscription is not currently entitled to Pro.');
+  }
+
+  let user = await User.findOne({ proPurchaseToken: purchaseToken }).select(
+    '+proPurchaseToken'
+  );
+  if (!user) {
+    const externalAccountId =
+      snapshot.raw.externalAccountIdentifiers?.obfuscatedExternalAccountId;
+    if (mongoose.isValidObjectId(externalAccountId)) {
+      const attributedUser = await User.findById(externalAccountId).select(
+        '+proPurchaseToken'
+      );
+      const tokenIsCompatible =
+        attributedUser &&
+        (!attributedUser.proPurchaseToken ||
+          attributedUser.proPurchaseToken === purchaseToken ||
+          attributedUser.proPurchaseToken === snapshot.linkedPurchaseToken);
+      if (tokenIsCompatible) user = attributedUser;
+    }
+  }
+
+  if (!user) {
+    throw new ApiError(
+      404,
+      'No Hamme profile is linked to this Google Play subscription.'
+    );
+  }
+
+  await saveSubscriptionSnapshot(user, purchaseToken, snapshot);
+
+  if (snapshot.acknowledgementPending) {
+    try {
+      await acknowledgeSubscription(
+        purchaseToken,
+        snapshot.productId,
+        payload.packageName
+      );
+    } catch (error) {
+      logger.error('Restored subscription acknowledgement failed', {
+        userId: user.id,
+        message: error.message,
+      });
+    }
+  }
+
+  const accessToken = createAccessToken(user);
+  const refreshToken = createRefreshToken(user);
+  await User.findByIdAndUpdate(user.id, {
+    $push: {
+      refreshTokens: {
+        $each: [refreshToken],
+        $slice: -10,
+      },
+    },
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+    user,
+  };
+}
+
+/**
  * Re-checks the store token owned by a user. This gives the app a safe
  * reconciliation path in addition to RTDN delivery.
  */
@@ -493,6 +588,7 @@ async function processRtdn(pubsubEnvelope) {
 module.exports = {
   PRO_PRODUCT_IDS,
   processRtdn,
+  restoreSessionFromPurchase,
   syncUserSubscription,
   verifyPurchase,
   verifyRtdnAuthorization,

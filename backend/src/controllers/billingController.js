@@ -10,6 +10,15 @@ async function status(req, res) {
   return res.status(200).json({ isPro: user.isPro, user: user.toJSON() });
 }
 
+async function restoreSession(req, res) {
+  const result = await billingService.restoreSessionFromPurchase(req.body);
+  return res.status(200).json({
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    user: result.user.toJSON(),
+  });
+}
+
 async function rtdn(req, res) {
   await billingService.verifyRtdnAuthorization(req.headers.authorization);
   await billingService.processRtdn(req.body);
@@ -19,6 +28,7 @@ async function rtdn(req, res) {
 }
 
 module.exports = {
+  restoreSession,
   rtdn,
   status,
   verify,

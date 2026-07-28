@@ -10,11 +10,52 @@ This is the complete setup checklist for selling Hamme Pro through Google Play.
 | Subscription product ID | `hamme_pro_weekly` |
 | Suggested base plan ID | `weekly` |
 | Purchase verification endpoint | `POST /api/v1/billing/verify` |
+| Reinstall session recovery endpoint | `POST /api/v1/billing/restore-session` |
 | Entitlement reconciliation endpoint | `GET /api/v1/billing/status` |
 | Google RTDN push endpoint | `POST /api/v1/billing/google-play/rtdn` |
 
 Do not create a different Play product ID unless the Flutter and backend product
 IDs are changed at the same time.
+
+## Backend requirement and deployment order
+
+The Google Play subscription implementation requires both the updated Flutter
+application and the updated Hamme backend.
+
+The backend is required to:
+
+- Verify purchase and restoration tokens directly with Google Play.
+- Confirm the Android package, product ID, subscription state and paid expiry.
+- Bind each Google purchase token to only one Hamme profile.
+- Restore the original Hamme profile after an uninstall.
+- Issue new Hamme access and refresh tokens when local login storage was removed.
+- Process renewals, cancellations, grace periods, account hold, recovery,
+  revocation and expiry through RTDN.
+- Preserve admin-granted Pro independently from paid Pro.
+
+The automatic reinstall flow uses:
+
+```text
+POST /api/v1/billing/restore-session
+```
+
+Without the updated backend, the updated Flutter app cannot securely restore the
+original Hamme login after reinstall. Automatic restoration will fail even when
+Google Play reports that the subscription is already owned.
+
+Deploy in this order:
+
+1. Deploy the updated backend.
+2. Configure the Google Play API and RTDN environment variables.
+3. Confirm the backend health endpoint and RTDN endpoint are reachable.
+4. Create and activate the Play subscription and base plan.
+5. Upload the updated Android AAB to the internal-testing track.
+6. Test purchase, uninstall, reinstall and automatic restoration.
+7. Release the Android update to production only after the complete internal
+   test succeeds.
+
+Do not release the updated Flutter application before its matching backend has
+been deployed.
 
 ## 1. Complete the Indian merchant verification
 
@@ -272,6 +313,29 @@ The Flutter purchase request sends the opaque Hamme user ID to Google as the
 obfuscated account identifier. This helps the backend attribute an initial RTDN
 even if it arrives before the app’s verification request.
 
+### Reinstall and automatic restoration
+
+Uninstalling an app can remove Hamme's locally stored login tokens, but it does
+not cancel the subscription owned by the Google Play account.
+
+On a fresh Android installation, Hamme automatically queries Play for active
+owned subscriptions. If one is found, the backend:
+
+1. Verifies the purchase token directly with Google.
+2. Confirms the package, product, state and paid expiry.
+3. Finds the original Hamme profile using the stored purchase-token ownership
+   or Google's obfuscated Hamme account identifier.
+4. Re-establishes a login session for that original profile.
+5. Restores Pro without asking the user to purchase again.
+
+If the user reaches the Upgrade button before automatic restoration finishes
+and Play reports that the item is already owned, Hamme performs the same
+verified restoration instead of showing a final purchase failure.
+
+The recovery endpoint does not accept a client claim by itself. A currently
+active Google-verified token that is already attributable to the returned Hamme
+profile is required.
+
 ### Entitlement decisions
 
 | Google state | Hamme paid Pro |
@@ -360,11 +424,13 @@ Official testing guidance:
 
 ### Restore
 
-1. Sign out or reinstall the app.
-2. Sign into the same Hamme account.
-3. Use the same Google Play account.
-4. Select **Restore Purchases**.
-5. Confirm Pro is restored.
+1. Uninstall Hamme while the test subscription is active.
+2. Keep the subscribing Google Play account on the device.
+3. Reinstall Hamme from Google Play.
+4. Confirm the original Hamme profile and Pro access restore automatically.
+5. If automatic restoration has not completed, open the Pro screen and select
+   **Restore Purchases**.
+6. Confirm the app does not ask the user to buy the already-owned plan again.
 
 ### Admin grant isolation
 

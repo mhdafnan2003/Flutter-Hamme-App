@@ -42,7 +42,11 @@ class ApiService {
   }) async {
     final uri = _buildUri(path);
     final requestBody = body == null ? null : jsonEncode(body);
-    debugPrint('[Api] POST start: $uri auth=$authenticated body=$requestBody');
+    // Purchase tokens, passwords and auth responses are bearer secrets. Do not
+    // print request bodies even in debug builds.
+    debugPrint(
+      '[Api] POST start: $uri auth=$authenticated bodyBytes=${requestBody?.length ?? 0}',
+    );
     final response = await _sendWithAuthRetry(
       (headers) => _client.post(uri, headers: headers, body: requestBody),
       authenticated: authenticated,
@@ -264,9 +268,9 @@ class ApiService {
 
   dynamic _decodeResponse(http.Response response) {
     if (kDebugMode) {
-      final body = response.body;
-      final preview = body.length > 500 ? '${body.substring(0, 500)}...(truncated)' : body;
-      debugPrint('[Api] raw response (${response.statusCode}): $preview');
+      debugPrint(
+        '[Api] response status=${response.statusCode} bodyBytes=${response.body.length}',
+      );
     }
     final hasBody = response.body.trim().isNotEmpty;
     final decodedBody = hasBody ? jsonDecode(response.body) : null;
@@ -285,9 +289,10 @@ class ApiService {
           final detailMsg = first['msg']?.toString();
           final detailField = first['path']?.toString();
           if (detailMsg != null && detailMsg.isNotEmpty) {
-            message = detailField != null && detailField.isNotEmpty
-                ? '$detailField: $detailMsg'
-                : detailMsg;
+            message =
+                detailField != null && detailField.isNotEmpty
+                    ? '$detailField: $detailMsg'
+                    : detailMsg;
           }
         }
       }
