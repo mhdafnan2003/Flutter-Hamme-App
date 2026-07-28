@@ -27,8 +27,31 @@ async function updateConfig({ freeUserCardLimit, cardCooldownMinutes }) {
 }
 
 async function getCardLimitStatus(userId) {
-  const user = await User.findById(userId).select('isPro');
-  if (user?.isPro) {
+  const user = await User.findById(userId).select(
+    'isPro adminPro storeProActive proPlatform proExpiryAt proSubscriptionState proAutoRenewing'
+  );
+  const adminEntitled =
+    user?.adminPro || (user?.proPlatform === 'admin' && user?.isPro);
+  const storeEntitled = Boolean(
+    user?.storeProActive &&
+      user?.proExpiryAt &&
+      user.proExpiryAt.getTime() > Date.now()
+  );
+  const effectivePro = Boolean(adminEntitled || storeEntitled);
+
+  // Enforce the stored paid expiry even if an RTDN is delayed. Keep the
+  // denormalized compatibility flag consistent for subsequent reads.
+  if (user && user.isPro !== effectivePro) {
+    user.isPro = effectivePro;
+    if (user.storeProActive && !storeEntitled) {
+      user.storeProActive = false;
+      user.proSubscriptionState = 'SUBSCRIPTION_STATE_EXPIRED';
+      user.proAutoRenewing = false;
+    }
+    await user.save();
+  }
+
+  if (effectivePro) {
     return { limited: false, viewsLeft: null, resetAt: null, maxCards: null, cooldownMinutes: null, isPro: true };
   }
 

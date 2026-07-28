@@ -1,5 +1,9 @@
+const { google } = require('googleapis');
+const mongoose = require('mongoose');
+
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
+const logger = require('../utils/logger');
 
 // Product IDs that grant Pro. Override with PRO_PRODUCT_IDS (comma separated).
 const PRO_PRODUCT_IDS = (process.env.PRO_PRODUCT_IDS || 'hamme_pro_weekly')
@@ -7,94 +11,255 @@ const PRO_PRODUCT_IDS = (process.env.PRO_PRODUCT_IDS || 'hamme_pro_weekly')
   .map((value) => value.trim())
   .filter(Boolean);
 
-// Subscription states (Play Developer API v2) that count as an active entitlement.
 const ACTIVE_SUBSCRIPTION_STATES = new Set([
   'SUBSCRIPTION_STATE_ACTIVE',
   'SUBSCRIPTION_STATE_IN_GRACE_PERIOD',
 ]);
 
 let androidPublisherPromise = null;
+let oidcVerifier = null;
 
-/**
- * Lazily build an authenticated Google Play Android Publisher client.
- * Returns null when no service-account credentials are configured so callers
- * can decide how to handle an unconfigured environment.
- */
+function getConfiguredPackageName() {
+  return (process.env.ANDROID_PACKAGE_NAME || '').trim();
+}
+
+function ensurePackageName(packageName) {
+  const configured = getConfiguredPackageName();
+  if (!configured) {
+    throw new ApiError(503, 'ANDROID_PACKAGE_NAME is not configured.');
+  }
+  if (packageName && packageName !== configured) {
+    throw new ApiError(400, 'Purchase package name does not match this app.');
+  }
+  return configured;
+}
+
 async function getAndroidPublisher() {
   if (androidPublisherPromise) return androidPublisherPromise;
 
   const credentialsJson = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON;
   const credentialsFile = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_FILE;
-  if (!credentialsJson && !credentialsFile) {
-    return null;
-  }
+  if (!credentialsJson && !credentialsFile) return null;
 
   androidPublisherPromise = (async () => {
-    // Lazy require so the backend still boots if googleapis isn't installed yet.
-    // eslint-disable-next-line global-require
-    const { google } = require('googleapis');
     const authOptions = {
       scopes: ['https://www.googleapis.com/auth/androidpublisher'],
     };
     if (credentialsJson) {
-      authOptions.credentials = JSON.parse(credentialsJson);
+      try {
+        authOptions.credentials = JSON.parse(credentialsJson);
+      } catch (_) {
+        throw new ApiError(
+          500,
+          'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON contains invalid JSON.'
+        );
+      }
     } else {
       authOptions.keyFile = credentialsFile;
     }
+
     const auth = new google.auth.GoogleAuth(authOptions);
     const authClient = await auth.getClient();
     return google.androidpublisher({ version: 'v3', auth: authClient });
   })();
 
-  return androidPublisherPromise;
+  try {
+    return await androidPublisherPromise;
+  } catch (error) {
+    androidPublisherPromise = null;
+    throw error;
+  }
 }
 
-/**
- * Verifies an Android subscription purchase token with Google Play.
- * @returns {{configured: boolean, valid: boolean, raw?: object}}
- */
-async function verifyAndroidSubscription({ packageName, productId, purchaseToken }) {
+function approvedLineItems(subscription) {
+  return (subscription.lineItems || []).filter(
+    (item) => item.productId && PRO_PRODUCT_IDS.includes(item.productId)
+  );
+}
+
+function latestExpiry(lineItems) {
+  let latest = null;
+  for (const item of lineItems) {
+    const parsed = item.expiryTime ? new Date(item.expiryTime) : null;
+    if (parsed && !Number.isNaN(parsed.getTime())) {
+      if (!latest || parsed > latest) latest = parsed;
+    }
+  }
+  return latest;
+}
+
+function isEntitled(subscription, expiryAt) {
+  const paidPeriodRemaining = Boolean(
+    expiryAt && expiryAt.getTime() > Date.now()
+  );
+  if (ACTIVE_SUBSCRIPTION_STATES.has(subscription.subscriptionState)) {
+    return paidPeriodRemaining;
+  }
+
+  // A user who cancels keeps access through the already-paid billing period.
+  return (
+    subscription.subscriptionState === 'SUBSCRIPTION_STATE_CANCELED' &&
+    paidPeriodRemaining
+  );
+}
+
+function subscriptionSnapshot(raw) {
+  const lineItems = approvedLineItems(raw);
+  if (lineItems.length === 0) {
+    throw new ApiError(
+      402,
+      'The Google Play purchase does not contain an approved Pro product.'
+    );
+  }
+
+  const expiryAt = latestExpiry(lineItems);
+  return {
+    raw,
+    productIds: [...new Set(lineItems.map((item) => item.productId))],
+    productId: lineItems[0].productId,
+    state: raw.subscriptionState || 'SUBSCRIPTION_STATE_UNSPECIFIED',
+    expiryAt,
+    active: isEntitled(raw, expiryAt),
+    autoRenewing: lineItems.some(
+      (item) => item.autoRenewingPlan?.autoRenewEnabled === true
+    ),
+    linkedPurchaseToken: raw.linkedPurchaseToken || null,
+    acknowledgementPending:
+      raw.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING',
+  };
+}
+
+async function fetchSubscription(purchaseToken, packageName) {
   const publisher = await getAndroidPublisher();
   if (!publisher) {
-    return { configured: false, valid: false };
-  }
-  if (!packageName) {
-    throw new ApiError(500, 'ANDROID_PACKAGE_NAME is not configured.');
+    throw new ApiError(
+      503,
+      'Google Play purchase verification is not configured on the server.'
+    );
   }
 
-  // Prefer the v2 endpoint; fall back to v1 if it isn't available.
+  const resolvedPackageName = ensurePackageName(packageName);
   try {
     const response = await publisher.purchases.subscriptionsv2.get({
-      packageName,
+      packageName: resolvedPackageName,
       token: purchaseToken,
     });
-    const state = response.data.subscriptionState;
-    return {
-      configured: true,
-      valid: ACTIVE_SUBSCRIPTION_STATES.has(state),
-      raw: response.data,
-    };
+    return subscriptionSnapshot(response.data);
   } catch (error) {
-    const response = await publisher.purchases.subscriptions.get({
-      packageName,
+    if (error instanceof ApiError) throw error;
+    const status = Number(error?.code || error?.response?.status);
+    if ([400, 404, 410].includes(status)) {
+      throw new ApiError(402, 'Google Play could not find an active purchase.');
+    }
+    if ([401, 403].includes(status)) {
+      throw new ApiError(
+        503,
+        'Google Play verification credentials are not authorized.'
+      );
+    }
+    throw new ApiError(503, 'Google Play verification is temporarily unavailable.');
+  }
+}
+
+function hasLegacyAdminGrant(user) {
+  return user.adminPro || (user.proPlatform === 'admin' && user.isPro);
+}
+
+async function saveSubscriptionSnapshot(user, purchaseToken, snapshot) {
+  // Migrate an old admin grant into its dedicated field before overwriting
+  // legacy proPlatform data with the store platform.
+  user.adminPro = hasLegacyAdminGrant(user);
+  user.storeProActive = snapshot.active;
+  user.isPro = user.adminPro || user.storeProActive;
+  user.proProductId = snapshot.productId;
+  user.proPlatform = 'android';
+  user.proPurchaseToken = purchaseToken;
+  user.proSubscriptionState = snapshot.state;
+  user.proExpiryAt = snapshot.expiryAt;
+  user.proAutoRenewing = snapshot.autoRenewing;
+  user.proLastVerifiedAt = new Date();
+  user.proUpdatedAt = new Date();
+
+  try {
+    await user.save();
+  } catch (error) {
+    if (error?.code === 11000) {
+      throw new ApiError(
+        409,
+        'This Google Play purchase is already linked to another Hamme account.'
+      );
+    }
+    throw error;
+  }
+  return user;
+}
+
+async function markStoreSubscriptionInactive(user, state) {
+  user.adminPro = hasLegacyAdminGrant(user);
+  user.storeProActive = false;
+  user.isPro = user.adminPro;
+  user.proSubscriptionState = state;
+  user.proAutoRenewing = false;
+  user.proLastVerifiedAt = new Date();
+  user.proUpdatedAt = new Date();
+  await user.save();
+  return user;
+}
+
+async function assertTokenOwnership(userId, purchaseToken, linkedPurchaseToken) {
+  const tokenOwner = await User.findOne({ proPurchaseToken: purchaseToken })
+    .select('+proPurchaseToken')
+    .lean();
+  if (tokenOwner && tokenOwner._id.toString() !== userId.toString()) {
+    throw new ApiError(
+      409,
+      'This Google Play purchase is already linked to another Hamme account.'
+    );
+  }
+
+  if (linkedPurchaseToken) {
+    const linkedOwner = await User.findOne({
+      proPurchaseToken: linkedPurchaseToken,
+    })
+      .select('+proPurchaseToken')
+      .lean();
+    if (linkedOwner && linkedOwner._id.toString() !== userId.toString()) {
+      throw new ApiError(
+        409,
+        'The previous subscription is linked to another Hamme account.'
+      );
+    }
+  }
+}
+
+async function acknowledgeSubscription(purchaseToken, productId, packageName) {
+  const publisher = await getAndroidPublisher();
+  if (!publisher) return;
+
+  try {
+    await publisher.purchases.subscriptions.acknowledge({
+      packageName: ensurePackageName(packageName),
       subscriptionId: productId,
       token: purchaseToken,
+      requestBody: {},
     });
-    const expiry = Number(response.data.expiryTimeMillis || 0);
-    return {
-      configured: true,
-      valid: expiry > Date.now(),
-      raw: response.data,
-    };
+  } catch (error) {
+    // A concurrent client/server acknowledgement is harmless.
+    if (Number(error?.code) === 409) return;
+    throw error;
   }
 }
 
 /**
- * Verifies a purchase and, when valid, grants the Pro entitlement to the user.
+ * Verifies a purchase against Google, binds its globally unique token to one
+ * Hamme account, grants/revokes the paid entitlement, and acknowledges the
+ * initial purchase.
  */
 async function verifyPurchase(userId, payload) {
   const { platform = 'android', productId, purchaseToken } = payload || {};
-
+  if (platform !== 'android') {
+    throw new ApiError(503, 'iOS purchase verification is not configured.');
+  }
   if (!productId || !purchaseToken) {
     throw new ApiError(400, 'productId and purchaseToken are required.');
   }
@@ -102,65 +267,233 @@ async function verifyPurchase(userId, payload) {
     throw new ApiError(400, 'Unknown product id.');
   }
 
-  const allowUnverified = process.env.ALLOW_UNVERIFIED_IAP === 'true';
-  let granted = false;
-
-  if (platform === 'android') {
-    const packageName = payload.packageName || process.env.ANDROID_PACKAGE_NAME;
-    const result = await verifyAndroidSubscription({
-      packageName,
-      productId,
-      purchaseToken,
-    });
-
-    if (!result.configured) {
-      if (allowUnverified) {
-        console.warn(
-          '[Billing] Google Play verification not configured; granting because ALLOW_UNVERIFIED_IAP=true'
-        );
-        granted = true;
-      } else {
-        throw new ApiError(
-          503,
-          'Purchase verification is not configured on the server.'
-        );
-      }
-    } else {
-      granted = result.valid;
-    }
-  } else {
-    // iOS App Store verification is not implemented yet.
-    if (allowUnverified) {
-      granted = true;
-    } else {
-      throw new ApiError(503, 'iOS purchase verification is not configured.');
-    }
+  const snapshot = await fetchSubscription(
+    purchaseToken,
+    payload.packageName
+  );
+  // Never trust the product ID supplied by the device; require the verified
+  // Google response to contain that same product.
+  if (!snapshot.productIds.includes(productId)) {
+    throw new ApiError(402, 'Purchase token does not match the requested product.');
+  }
+  const googleAccountId =
+    snapshot.raw.externalAccountIdentifiers?.obfuscatedExternalAccountId;
+  if (googleAccountId && googleAccountId !== userId.toString()) {
+    throw new ApiError(
+      409,
+      'This Google Play purchase was started by another Hamme account.'
+    );
+  }
+  if (!snapshot.active) {
+    throw new ApiError(402, 'The subscription is not currently entitled to Pro.');
   }
 
-  if (!granted) {
-    throw new ApiError(402, 'Purchase could not be verified.');
-  }
-
-  const user = await User.findByIdAndUpdate(
+  await assertTokenOwnership(
     userId,
-    {
-      isPro: true,
-      proProductId: productId,
-      proPlatform: platform,
-      proPurchaseToken: purchaseToken,
-      proUpdatedAt: new Date(),
-    },
-    { new: true }
+    purchaseToken,
+    snapshot.linkedPurchaseToken
   );
 
-  if (!user) {
-    throw new ApiError(404, 'User not found.');
+  const user = await User.findById(userId).select('+proPurchaseToken');
+  if (!user) throw new ApiError(404, 'User not found.');
+  await saveSubscriptionSnapshot(user, purchaseToken, snapshot);
+
+  if (snapshot.acknowledgementPending) {
+    try {
+      await acknowledgeSubscription(
+        purchaseToken,
+        snapshot.productId,
+        payload.packageName
+      );
+    } catch (error) {
+      // The Flutter client also acknowledges after this endpoint succeeds.
+      // Keep the verified entitlement and allow that fallback to run.
+      logger.error('Server-side subscription acknowledgement failed', {
+        userId: user.id,
+        message: error.message,
+      });
+    }
   }
 
   return user;
 }
 
+/**
+ * Re-checks the store token owned by a user. This gives the app a safe
+ * reconciliation path in addition to RTDN delivery.
+ */
+async function syncUserSubscription(userId) {
+  const user = await User.findById(userId).select('+proPurchaseToken');
+  if (!user) throw new ApiError(404, 'User not found.');
+
+  if (!user.proPurchaseToken) {
+    user.adminPro = hasLegacyAdminGrant(user);
+    user.storeProActive = false;
+    user.isPro = user.adminPro;
+    await user.save();
+    return user;
+  }
+
+  try {
+    const snapshot = await fetchSubscription(user.proPurchaseToken);
+    return saveSubscriptionSnapshot(user, user.proPurchaseToken, snapshot);
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode === 402) {
+      return markStoreSubscriptionInactive(
+        user,
+        'SUBSCRIPTION_STATE_EXPIRED'
+      );
+    }
+    throw error;
+  }
+}
+
+async function verifyRtdnAuthorization(authorizationHeader) {
+  const audience = (process.env.GOOGLE_PLAY_RTDN_AUDIENCE || '').trim();
+  if (!audience) {
+    throw new ApiError(503, 'GOOGLE_PLAY_RTDN_AUDIENCE is not configured.');
+  }
+
+  const match = /^Bearer\s+(.+)$/i.exec(authorizationHeader || '');
+  if (!match) throw new ApiError(401, 'Missing RTDN authorization token.');
+
+  oidcVerifier ||= new google.auth.OAuth2();
+  let ticket;
+  try {
+    ticket = await oidcVerifier.verifyIdToken({
+      idToken: match[1],
+      audience,
+    });
+  } catch (_) {
+    throw new ApiError(401, 'Invalid RTDN authorization token.');
+  }
+
+  const payload = ticket.getPayload();
+  const expectedEmail = (
+    process.env.GOOGLE_PLAY_RTDN_SERVICE_ACCOUNT_EMAIL || ''
+  ).trim();
+  if (
+    payload?.email_verified !== true ||
+    (expectedEmail && payload.email !== expectedEmail)
+  ) {
+    throw new ApiError(401, 'RTDN service account is not authorized.');
+  }
+}
+
+function decodeDeveloperNotification(pubsubEnvelope) {
+  const encoded = pubsubEnvelope?.message?.data;
+  if (!encoded || typeof encoded !== 'string') {
+    throw new ApiError(400, 'RTDN message data is required.');
+  }
+
+  try {
+    return JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+  } catch (_) {
+    throw new ApiError(400, 'RTDN message data is invalid.');
+  }
+}
+
+/**
+ * Pub/Sub notifications contain only a token and event type. Always query the
+ * Developer API for current state instead of trusting the notification type.
+ * Reprocessing is intentionally idempotent, so Pub/Sub retries are safe.
+ */
+async function processRtdn(pubsubEnvelope) {
+  const notification = decodeDeveloperNotification(pubsubEnvelope);
+  if (notification.testNotification) {
+    return { test: true, updated: false };
+  }
+
+  ensurePackageName(notification.packageName);
+  const subscriptionNotification = notification.subscriptionNotification;
+  if (!subscriptionNotification) {
+    // The same Play topic can also carry one-time-product notifications.
+    return { test: false, updated: false, ignored: true };
+  }
+  const purchaseToken = subscriptionNotification.purchaseToken;
+  if (!purchaseToken) {
+    throw new ApiError(400, 'RTDN subscription purchase token is required.');
+  }
+
+  let snapshot;
+  try {
+    snapshot = await fetchSubscription(
+      purchaseToken,
+      notification.packageName
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode === 402) {
+      const expiredUser = await User.findOne({
+        proPurchaseToken: purchaseToken,
+      }).select('+proPurchaseToken');
+      if (expiredUser) {
+        await markStoreSubscriptionInactive(
+          expiredUser,
+          'SUBSCRIPTION_STATE_EXPIRED'
+        );
+        return {
+          test: false,
+          updated: true,
+          userId: expiredUser.id,
+          active: false,
+          state: 'SUBSCRIPTION_STATE_EXPIRED',
+        };
+      }
+      return { test: false, updated: false };
+    }
+    throw error;
+  }
+
+  let user = await User.findOne({ proPurchaseToken: purchaseToken }).select(
+    '+proPurchaseToken'
+  );
+  // Upgrades can produce a new token. Google links it to the prior token, which
+  // lets us safely retain the same Hamme owner.
+  if (!user && snapshot.linkedPurchaseToken) {
+    user = await User.findOne({
+      proPurchaseToken: snapshot.linkedPurchaseToken,
+    }).select('+proPurchaseToken');
+  }
+  if (!user) {
+    const externalAccountId =
+      snapshot.raw.externalAccountIdentifiers?.obfuscatedExternalAccountId;
+    if (mongoose.isValidObjectId(externalAccountId)) {
+      const attributedUser = await User.findById(externalAccountId).select(
+        '+proPurchaseToken'
+      );
+      // A modified client must not be able to replace an unrelated token by
+      // supplying another user's id as its obfuscated account identifier.
+      const mayReplaceToken =
+        attributedUser &&
+        (!attributedUser.proPurchaseToken ||
+          attributedUser.proPurchaseToken === purchaseToken ||
+          attributedUser.proPurchaseToken === snapshot.linkedPurchaseToken);
+      if (mayReplaceToken) user = attributedUser;
+    }
+  }
+
+  if (!user) {
+    logger.info('RTDN token has no Hamme account owner yet', {
+      messageId: pubsubEnvelope?.message?.messageId,
+      state: snapshot.state,
+    });
+    return { test: false, updated: false };
+  }
+
+  await saveSubscriptionSnapshot(user, purchaseToken, snapshot);
+  return {
+    test: false,
+    updated: true,
+    userId: user.id,
+    active: snapshot.active,
+    state: snapshot.state,
+  };
+}
+
 module.exports = {
-  verifyPurchase,
   PRO_PRODUCT_IDS,
+  processRtdn,
+  syncUserSubscription,
+  verifyPurchase,
+  verifyRtdnAuthorization,
 };

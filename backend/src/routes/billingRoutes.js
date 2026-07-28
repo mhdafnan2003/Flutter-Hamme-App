@@ -7,6 +7,12 @@ const validateRequest = require('../middleware/validateRequest');
 
 const router = express.Router();
 
+// Google Cloud Pub/Sub push endpoint. Authentication is performed with the
+// Google-signed OIDC bearer token, not a Hamme user token.
+router.post('/google-play/rtdn', billingController.rtdn);
+
+router.get('/status', authMiddleware, billingController.status);
+
 router.post(
   '/verify',
   authMiddleware,

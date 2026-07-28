@@ -103,23 +103,17 @@ async function listUsers({ search = '', page = 1, limit = 25 } = {}) {
 }
 
 async function setProStatus(userId, isPro) {
-  const update = {
-    isPro: Boolean(isPro),
-    proUpdatedAt: new Date(),
-  };
-  if (!isPro) {
-    update.proProductId = null;
-    update.proPlatform = null;
-    update.proPurchaseToken = null;
-  } else {
-    update.proProductId = 'admin_grant';
-    update.proPlatform = 'admin';
-  }
-
-  const user = await User.findByIdAndUpdate(userId, update, { new: true });
+  const user = await User.findById(userId);
   if (!user) {
     throw new ApiError(404, 'User not found.');
   }
+
+  user.adminPro = Boolean(isPro);
+  // Preserve a paid subscription when an admin grant is removed.
+  user.isPro = user.adminPro || user.storeProActive;
+  user.proUpdatedAt = new Date();
+  await user.save();
+
   return user;
 }
 

@@ -96,6 +96,7 @@ class BillingController extends Notifier<BillingState> {
   InAppPurchase? _iap;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   Completer<bool>? _restoreCompleter;
+  Future<void>? _serverRefreshInFlight;
 
   @override
   BillingState build() {
@@ -127,6 +128,9 @@ class BillingController extends Notifier<BillingState> {
         // keep the user in Pro after an admin downgrade or subscription expiry.
         state = state.copyWith(isPro: false);
         unawaited(_revokeEntitlement());
+      }
+      if (next.value?.user != null) {
+        unawaited(_refreshServerEntitlement());
       }
     });
 
@@ -161,6 +165,9 @@ class BillingController extends Notifier<BillingState> {
     }
 
     state = state.copyWith(isPro: entitlement, storeAvailable: available);
+    if (sessionPro != null) {
+      unawaited(_refreshServerEntitlement());
+    }
 
     if (!available || _iap == null) {
       debugPrint('[Billing] store not available on this device');
@@ -187,7 +194,9 @@ class BillingController extends Notifier<BillingState> {
     if (state.busy) return;
 
     if (_iap == null || !state.storeAvailable) {
-      state = state.copyWith(error: 'In-app purchases are not available on this platform.');
+      state = state.copyWith(
+        error: 'In-app purchases are not available on this platform.',
+      );
       return;
     }
 
@@ -201,9 +210,25 @@ class BillingController extends Notifier<BillingState> {
 
     state = state.copyWith(purchasePending: true, error: null);
     try {
-      final purchaseParam = PurchaseParam(productDetails: product);
+      final user = ref.read(authControllerProvider).value?.user;
+      if (user == null) {
+        state = state.copyWith(
+          purchasePending: false,
+          error: 'Please sign in before purchasing Pro.',
+        );
+        return;
+      }
+      // The opaque Hamme user id is forwarded to Google as the obfuscated
+      // account id. RTDN can then attribute an initial purchase even if its
+      // notification reaches the backend before the app verification call.
+      final purchaseParam = PurchaseParam(
+        productDetails: product,
+        applicationUserName: user.id,
+      );
       // Subscriptions and non-consumables both use buyNonConsumable.
-      final started = await _iap!.buyNonConsumable(purchaseParam: purchaseParam);
+      final started = await _iap!.buyNonConsumable(
+        purchaseParam: purchaseParam,
+      );
       if (!started) {
         state = state.copyWith(
           purchasePending: false,
@@ -223,14 +248,17 @@ class BillingController extends Notifier<BillingState> {
   Future<bool> restorePurchases() async {
     if (state.busy) return false;
     if (_iap == null) {
-      state = state.copyWith(error: 'In-app purchases are not available on this platform.');
+      state = state.copyWith(
+        error: 'In-app purchases are not available on this platform.',
+      );
       return false;
     }
     state = state.copyWith(restoring: true, error: null);
     final restoreCompleter = Completer<bool>();
     _restoreCompleter = restoreCompleter;
     try {
-      await _iap!.restorePurchases();
+      final user = ref.read(authControllerProvider).value?.user;
+      await _iap!.restorePurchases(applicationUserName: user?.id);
     } catch (error) {
       debugPrint('[Billing] restorePurchases failed: $error');
       state = state.copyWith(
@@ -335,6 +363,36 @@ class BillingController extends Notifier<BillingState> {
     } catch (error) {
       debugPrint('[Billing] backend verification failed: $error');
       return false;
+    }
+  }
+
+  /// Reconciles the cached entitlement with Google through the backend. RTDN
+  /// keeps the server current, while this check repairs any missed/delayed push.
+  Future<void> _refreshServerEntitlement() {
+    _serverRefreshInFlight ??= _doRefreshServerEntitlement();
+    return _serverRefreshInFlight!.whenComplete(() {
+      _serverRefreshInFlight = null;
+    });
+  }
+
+  Future<void> _doRefreshServerEntitlement() async {
+    try {
+      final api = ref.read(apiServiceProvider);
+      final response = await api.get('/billing/status', authenticated: true);
+      if (response is! Map<String, dynamic>) return;
+      final entitlement = response['isPro'];
+      if (entitlement is! bool) return;
+
+      state = state.copyWith(isPro: entitlement);
+      if (entitlement) {
+        await _grantEntitlement();
+      } else {
+        await _revokeEntitlement();
+      }
+    } catch (error) {
+      // A reconciliation failure must not interrupt app startup. The backend
+      // remains authoritative and RTDN/status will repair state on a later try.
+      debugPrint('[Billing] server entitlement refresh failed: $error');
     }
   }
 

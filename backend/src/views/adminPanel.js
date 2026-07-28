@@ -46,7 +46,7 @@ module.exports = `<!doctype html>
 <body>
 <header>
   <h1>Hamme Admin · Plan Manager</h1>
-  <p>List users and switch their plan between Free and Pro.</p>
+  <p>List users and manage complimentary Pro access without overriding paid subscriptions.</p>
 </header>
 <div class="wrap">
   <div class="card">
@@ -148,11 +148,14 @@ module.exports = `<!doctype html>
     }
     tbody.innerHTML = data.users.map(function (u) {
       var isPro = !!u.isPro;
+      var adminPro = !!u.adminPro;
+      var storePro = !!u.storeProActive;
       var avatar = u.avatarUrl ? '<img class="avatar" src="' + escapeHtml(u.avatarUrl) + '" onerror="this.style.visibility=\\'hidden\\'"/>' : '<div class="avatar"></div>';
-      var badge = isPro ? '<span class="badge pro">PRO</span>' : '<span class="badge free">FREE</span>';
-      var btn = isPro
-        ? '<button class="btn-danger" data-id="' + u.id + '" data-pro="false">Downgrade to Free</button>'
-        : '<button class="btn-primary" data-id="' + u.id + '" data-pro="true">Upgrade to Pro</button>';
+      var source = storePro && adminPro ? 'PLAY + ADMIN' : storePro ? 'PLAY' : adminPro ? 'ADMIN' : 'LEGACY';
+      var badge = isPro ? '<span class="badge pro">PRO · ' + source + '</span>' : '<span class="badge free">FREE</span>';
+      var btn = adminPro
+        ? '<button class="btn-danger" data-id="' + u.id + '" data-pro="false">Remove admin grant</button>'
+        : '<button class="btn-primary" data-id="' + u.id + '" data-pro="true">Grant Pro</button>';
       return '<tr>' +
         '<td>' + avatar + '</td>' +
         '<td>' + escapeHtml(u.name) + '</td>' +
@@ -187,7 +190,7 @@ module.exports = `<!doctype html>
     setStatus('Updating…');
     try {
       await api('/users/' + id + '/plan', { method: 'PATCH', body: JSON.stringify({ isPro: isPro }) });
-      setStatus('Updated to ' + (isPro ? 'PRO' : 'FREE') + '.', 'ok');
+      setStatus(isPro ? 'Admin Pro grant added.' : 'Admin Pro grant removed.', 'ok');
       load();
     } catch (e) {
       setStatus(e.message, 'err');

@@ -58,6 +58,18 @@ const userSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    // Pro can come from a complimentary admin grant, an active store
+    // subscription, or both. `isPro` remains the denormalized effective value
+    // returned to older app versions.
+    adminPro: {
+      type: Boolean,
+      default: false,
+    },
+    storeProActive: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     proProductId: {
       type: String,
       default: null,
@@ -70,6 +82,22 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
       select: false,
+    },
+    proSubscriptionState: {
+      type: String,
+      default: null,
+    },
+    proExpiryAt: {
+      type: Date,
+      default: null,
+    },
+    proAutoRenewing: {
+      type: Boolean,
+      default: null,
+    },
+    proLastVerifiedAt: {
+      type: Date,
+      default: null,
     },
     proUpdatedAt: {
       type: Date,
@@ -108,6 +136,11 @@ const userSchema = new mongoose.Schema(
       versionKey: false,
       transform: (_, ret) => {
         ret.id = ret._id.toString();
+        // Present pre-split admin grants correctly until each legacy record is
+        // next updated and migrated into `adminPro`.
+        if (!ret.adminPro && ret.isPro && ret.proPlatform === 'admin') {
+          ret.adminPro = true;
+        }
         // Expose the profile image as `avatarUrl` (single canonical field).
         ret.avatarUrl = ret.profileImageUrl ?? null;
         delete ret._id;
@@ -118,6 +151,16 @@ const userSchema = new mongoose.Schema(
         return ret;
       },
     },
+  }
+);
+
+// A Google purchase token may belong to only one Hamme account. The partial
+// index avoids indexing the many users whose token is null.
+userSchema.index(
+  { proPurchaseToken: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { proPurchaseToken: { $type: 'string' } },
   }
 );
 

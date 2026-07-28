@@ -68,6 +68,9 @@ app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 200,
+    // Pub/Sub authenticates this endpoint with a Google-signed OIDC token and
+    // may legitimately deliver bursts or retries.
+    skip: (req) => req.path === '/api/v1/billing/google-play/rtdn',
     standardHeaders: true,
     legacyHeaders: false,
     validate: {
