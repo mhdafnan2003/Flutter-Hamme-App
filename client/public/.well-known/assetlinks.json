@@ -5,21 +5,10 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.example.hamme_app",
-      "sha256_cert_fingerprints": [
-        "AA:BB:CC:DD:EE:FF:...:ZZ"
-      ]
-    }
-  },
-  {
-    "relation": [
-      "delegate_permission/common.handle_all_urls"
-    ],
-    "target": {
-      "namespace": "android_app",
       "package_name": "com.hamme.app",
       "sha256_cert_fingerprints": [
-        "B5:5A:6F:89:2D:78:2B:86:6E:BC:CE:CA:78:82:6A:DD:03:64:05:B0:80:16:B2:CB:98:5A:87:F5:82:F8:64:6F"
+        "B5:5A:6F:89:2D:78:2B:86:6E:BC:CE:CA:78:82:6A:DD:03:64:05:B0:80:16:B2:CB:98:5A:87:F5:82:F8:64:6F",
+        "35:F4:8B:2E:59:04:2F:E9:9C:2A:E0:99:D1:24:19:7F:EB:D0:66:95:21:7E:DF:D6:18:B1:85:7B:2D:76:DD:69"
       ]
     }
   }

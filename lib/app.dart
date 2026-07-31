@@ -21,7 +21,8 @@ class HammeApp extends ConsumerStatefulWidget {
 class _HammeAppState extends ConsumerState<HammeApp> {
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
-  final InstallReferrerService _installReferrerService = InstallReferrerService();
+  final InstallReferrerService _installReferrerService =
+      InstallReferrerService();
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
   bool _referrerChecked = false;
@@ -57,7 +58,8 @@ class _HammeAppState extends ConsumerState<HammeApp> {
     debugPrint('[DeepLink] Incoming: $uri');
     if (uri.scheme == 'hamme') {
       if (uri.host == 'reveal') {
-        final token = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+        final token =
+            uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
         if (token != null) {
           ref.read(deferredInteractionTokenProvider.notifier).state = token;
         }
@@ -81,11 +83,13 @@ class _HammeAppState extends ConsumerState<HammeApp> {
           ref.read(deferredInteractionTypeProvider.notifier).state = parsedType;
         }
 
-        debugPrint('[DeepLink] parsed open link: code=$shareCode type=$typeValue token=${token != null}');
+        debugPrint(
+          '[DeepLink] parsed open link: code=$shareCode type=$typeValue token=${token != null}',
+        );
       }
     }
 
-    if (uri.scheme == 'https' && uri.host == AppConstants.appHost) {
+    if (uri.scheme == 'https' && AppConstants.isAppHost(uri.host)) {
       final segments = uri.pathSegments;
       if (segments.length >= 2 && segments[0] == 'u') {
         final shareCode = segments[1];
@@ -109,7 +113,8 @@ class _HammeAppState extends ConsumerState<HammeApp> {
       // the user clears app data and polls again.
       final existingToken = ref.read(deferredInteractionTokenProvider);
       if (existingToken == null) {
-        ref.read(deferredInteractionTokenProvider.notifier).state = payload.token;
+        ref.read(deferredInteractionTokenProvider.notifier).state =
+            payload.token;
       }
     }
     if (payload.shareCode != null && payload.shareCode!.isNotEmpty) {

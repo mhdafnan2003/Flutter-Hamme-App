@@ -30,6 +30,11 @@ final class AppConstants {
 
   static String get appHost => dotenv.env['APP_HOST'] ?? 'app.hamme.link';
 
+  static const String legacyAppHost = 'client-sigma-beryl-15.vercel.app';
+
+  static bool isAppHost(String host) =>
+      host == appHost || host == legacyAppHost;
+
   /// Developer-only control for replaying onboarding from an authenticated
   /// account. This is always disabled in release builds, regardless of env.
   static bool get showDeveloperLogoutButton =>

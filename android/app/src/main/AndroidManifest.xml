@@ -46,7 +46,30 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="client-sigma-beryl-15.vercel.app" />
+
+                <!-- Primary verified Android App Links for Hamme share URLs. -->
+                <data
+                    android:scheme="https"
+                    android:host="www.hamme.app"
+                    android:pathPrefix="/u/" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Backward compatibility for previously shared Vercel URLs. -->
+                <data
+                    android:scheme="https"
+                    android:host="client-sigma-beryl-15.vercel.app"
+                    android:pathPrefix="/u/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Custom-scheme fallbacks must remain separate from HTTPS. -->
                 <data android:scheme="hamme" android:host="open" />
                 <data android:scheme="hamme" android:host="reveal" />
             </intent-filter>
