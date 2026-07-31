@@ -1,11 +1,11 @@
 {
-    "name": "hamme_app",
-    "short_name": "hamme_app",
+    "name": "Hamme",
+    "short_name": "Hamme",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#8C52FF",
+    "theme_color": "#8C52FF",
+    "description": "Hamme",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

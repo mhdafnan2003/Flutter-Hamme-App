@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.9+13
+version: 1.0.9+14
 
 environment:
   sdk: ^3.7.2
@@ -96,6 +96,7 @@ dependency_overrides:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -157,3 +158,21 @@ flutter:
     - family: Nunito
       fonts:
         - asset: assets/fonts/Nunito-VariableFont_wght.ttf
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/hamme_app_icon.png
+  adaptive_icon_background: assets/hamme_adaptive_background.png
+  adaptive_icon_foreground: assets/hamme_adaptive_foreground.png
+  adaptive_icon_foreground_inset: 0
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/hamme_app_icon.png
+    background_color: "#8C52FF"
+    theme_color: "#8C52FF"
+  windows:
+    generate: true
+    image_path: assets/hamme_app_icon.png
+    icon_size: 256
