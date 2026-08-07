@@ -41,12 +41,13 @@ class ProfileRemoteDataSource {
     }
 
     final response =
-        await _apiService.patch(
-              '/profiles/me',
-              body: body,
-              authenticated: true,
-            )
+        await _apiService.patch('/profiles/me', body: body, authenticated: true)
             as Map<String, dynamic>;
     return AppUser.fromJson(response['user'] as Map<String, dynamic>);
+  }
+
+  /// Permanently deletes the signed-in user's Hamme profile and its data.
+  Future<void> deleteMe() async {
+    await _apiService.delete('/profiles/me', authenticated: true);
   }
 }

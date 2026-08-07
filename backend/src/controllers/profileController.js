@@ -21,6 +21,11 @@ async function updateMe(req, res) {
   return res.status(200).json({ user: user.toJSON() });
 }
 
+async function deleteMe(req, res) {
+  await userService.deleteMe(req.auth.userId);
+  return res.status(200).json({ message: 'Account deleted permanently.' });
+}
+
 async function getPublicProfile(req, res) {
   const { user, matchedBy } = await userService.getPublicProfile(req.params.shareCode);
   return res.status(200).json({ user: toPublicProfile(user), matchedBy });
@@ -29,5 +34,6 @@ async function getPublicProfile(req, res) {
 module.exports = {
   getMe,
   updateMe,
+  deleteMe,
   getPublicProfile,
 };

@@ -148,6 +148,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isUploadingImage = false;
   bool _isSaving = false;
   bool _isLoggingOut = false;
+  bool _isDeletingAccount = false;
+
+  Future<void> _deleteAccount() async {
+    if (_isDeletingAccount) return;
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => CupertinoAlertDialog(
+            title: const Text('Delete account?'),
+            content: const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'This permanently deletes your profile, photo, matches, and interactions. This cannot be undone. Active App Store subscriptions are not cancelled automatically.',
+              ),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              CupertinoDialogAction(
+                isDestructiveAction: true,
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Delete account'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeletingAccount = true);
+    try {
+      await ref.read(authControllerProvider.notifier).deleteAccount();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not delete your account. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDeletingAccount = false);
+    }
+  }
 
   Future<void> _logoutForOnboardingPreview() async {
     if (_isLoggingOut) return;
@@ -579,6 +624,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
+
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _isDeletingAccount ? null : _deleteAccount,
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              child:
+                  _isDeletingAccount
+                      ? const CupertinoActivityIndicator()
+                      : const Text(
+                        'Delete account',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+            ),
 
             if (AppConstants.showDeveloperLogoutButton) ...[
               const SizedBox(height: 16),

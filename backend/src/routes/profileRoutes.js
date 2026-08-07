@@ -30,4 +30,8 @@ router.patch(
   profileController.updateMe
 );
 
+// Account deletion is deliberately initiated from the signed-in app, not by
+// email or support, so users can permanently remove their data themselves.
+router.delete('/me', authMiddleware, profileController.deleteMe);
+
 module.exports = router;

@@ -1,6 +1,47 @@
 const User = require('../models/User');
+const Interaction = require('../models/Interaction');
+const Match = require('../models/Match');
+const PendingInteraction = require('../models/PendingInteraction');
+const CardSession = require('../models/CardSession');
 const ApiError = require('../utils/ApiError');
 const buildDefaultAvatarUrl = require('../utils/defaultAvatar');
+const logger = require('../utils/logger');
+const { v2: cloudinary } = require('cloudinary');
+const env = require('../config/env');
+
+const cloudinaryEnabled =
+  Boolean(env.cloudinaryCloudName) &&
+  Boolean(env.cloudinaryApiKey) &&
+  Boolean(env.cloudinaryApiSecret);
+
+if (cloudinaryEnabled) {
+  cloudinary.config({
+    cloud_name: env.cloudinaryCloudName,
+    api_key: env.cloudinaryApiKey,
+    api_secret: env.cloudinaryApiSecret,
+  });
+}
+
+function cloudinaryPublicId(imageUrl) {
+  if (!imageUrl || !imageUrl.includes('res.cloudinary.com')) return null;
+  const match = imageUrl.match(/\/image\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?(?:\?.*)?$/i);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function deleteProfileImage(imageUrl, userId) {
+  const publicId = cloudinaryPublicId(imageUrl);
+  if (!cloudinaryEnabled || !publicId) return;
+  try {
+    await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+  } catch (error) {
+    // Deletion of the user record must never fail because an already-public
+    // image has disappeared. Keep a server-side audit trail for retry.
+    logger.error('Could not delete profile image during account deletion', {
+      userId: userId.toString(),
+      message: error.message,
+    });
+  }
+}
 
 async function getMe(userId) {
   const user = await User.findById(userId);
@@ -50,6 +91,23 @@ async function updateMe(userId, updates) {
   }
 
   return user;
+}
+
+/** Permanently removes a user and all app data that references that user. */
+async function deleteMe(userId) {
+  const user = await User.findById(userId).select('+profileImageUrl');
+  if (!user) {
+    throw new ApiError(404, 'Account not found.');
+  }
+
+  await Promise.all([
+    Interaction.deleteMany({ $or: [{ fromUser: user._id }, { toUser: user._id }] }),
+    Match.deleteMany({ $or: [{ userA: user._id }, { userB: user._id }, { triggeredBy: user._id }] }),
+    PendingInteraction.deleteMany({ targetUserId: user._id }),
+    CardSession.deleteMany({ userId: user._id }),
+  ]);
+  await User.deleteOne({ _id: user._id });
+  await deleteProfileImage(user.profileImageUrl, user._id);
 }
 
 async function getPublicProfile(identifier) {  const rawValue = (identifier || '').trim();
@@ -120,6 +178,7 @@ async function setProStatus(userId, isPro) {
 module.exports = {
   getMe,
   updateMe,
+  deleteMe,
   getPublicProfile,
   listUsers,
   setProStatus,

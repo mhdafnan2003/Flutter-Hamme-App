@@ -7,6 +7,7 @@ import '../features/auth/data/repositories/auth_repository_impl.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/auth/domain/usecases/login_use_case.dart';
 import '../features/auth/domain/usecases/sign_up_use_case.dart';
+import '../features/profile/data/datasources/profile_remote_data_source.dart';
 import '../models/auth_session.dart';
 import 'api_providers.dart';
 import 'deferred_interaction_provider.dart';
@@ -96,6 +97,29 @@ class AuthController extends AsyncNotifier<AuthSession?> {
   Future<void> logout() async {
     state = const AsyncLoading();
     await _repository.logout();
+    await _clearLocalSession();
+  }
+
+  /// Deletes the remote profile before clearing every locally stored trace of
+  /// the session. This must not call logout afterward: the account no longer
+  /// exists once deletion has succeeded.
+  Future<void> deleteAccount() async {
+    state = const AsyncLoading();
+    try {
+      await ProfileRemoteDataSource(ref.read(apiServiceProvider)).deleteMe();
+      await ref.read(secureStorageServiceProvider).clearTokens();
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool('pro_entitlement', false);
+      await _clearLocalSession();
+    } catch (_) {
+      // Preserve the authenticated state if deletion did not complete so the
+      // user can retry rather than being incorrectly told it was deleted.
+      state = AsyncData(await _repository.restoreSession());
+      rethrow;
+    }
+  }
+
+  Future<void> _clearLocalSession() async {
     await ref.read(onboardingDraftProvider.notifier).clear();
     ref.read(onboardingProfileImageProvider.notifier).state = null;
     await ref.read(onboardingCompletionProvider.notifier).reset();

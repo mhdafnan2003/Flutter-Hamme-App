@@ -89,6 +89,22 @@ class ApiService {
     return _decodeResponse(response);
   }
 
+  Future<dynamic> delete(
+    String path, {
+    Object? body,
+    bool authenticated = false,
+  }) async {
+    final uri = _buildUri(path);
+    final requestBody = body == null ? null : jsonEncode(body);
+    debugPrint('[Api] DELETE start: $uri auth=$authenticated');
+    final response = await _sendWithAuthRetry(
+      (headers) => _client.delete(uri, headers: headers, body: requestBody),
+      authenticated: authenticated,
+    );
+    debugPrint('[Api] DELETE done: $uri status=${response.statusCode}');
+    return _decodeResponse(response);
+  }
+
   Future<http.Response> _sendWithAuthRetry(
     Future<http.Response> Function(Map<String, String> headers) send, {
     required bool authenticated,
