@@ -17,6 +17,7 @@ import '../features/onboarding/presentation/screens/splash_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/shared/presentation/screens/main_shell.dart';
 import '../providers/auth_providers.dart';
+import '../providers/onboarding_providers.dart';
 
 class RouterTransitionNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -59,8 +60,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
       GoRoute(path: '/matches', builder: (_, _) => const MatchesScreen()),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) =>
-            MainShell(navigationShell: navigationShell),
+        builder:
+            (context, state, navigationShell) =>
+                MainShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -89,33 +91,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'This link could not be opened.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+    errorBuilder:
+        (context, state) => Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'This link could not be opened.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    state.error?.toString() ??
+                        'The requested page was not found.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: () => context.go('/home'),
+                    child: const Text('Go home'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                state.error?.toString() ?? 'The requested page was not found.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () => context.go('/home'),
-                child: const Text('Go home'),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
-    ),
     redirect: (_, state) {
       final authStatus = ref.read(authStatusProvider);
       final authState = ref.read(authControllerProvider);
@@ -123,6 +127,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final path = state.matchedLocation;
       final isOnboardingRoute = path.startsWith('/onboarding');
       final isAuthenticated = authStatus == AuthStatus.authenticated;
+      final hasPendingOnboardingImage =
+          ref.read(onboardingProfileImageProvider) != null;
 
       debugPrint(
         '[Router] redirect check: path=$path, isLoading=$isLoading, '
@@ -139,7 +145,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return isAuthenticated ? '/home' : '/onboarding/dob';
       }
 
-      if (!isLoading && isAuthenticated && isOnboardingRoute) {
+      // Guest registration makes the user authenticated before the selected
+      // photo can be uploaded (the upload endpoint requires that token). Do
+      // not dispose the onboarding screen in that small window, otherwise its
+      // upload continuation is cancelled before it can send the multipart POST.
+      if (!isLoading &&
+          isAuthenticated &&
+          isOnboardingRoute &&
+          !hasPendingOnboardingImage) {
         return '/home';
       }
 

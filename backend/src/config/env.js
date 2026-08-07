@@ -30,4 +30,9 @@ module.exports = {
   enableSockets:
     process.env.ENABLE_SOCKETS === 'true' && !process.env.VERCEL,
   adminApiKey: process.env.ADMIN_API_KEY || '',
+  appleIapIssuerId: process.env.APPLE_IAP_ISSUER_ID || '',
+  appleIapKeyId: process.env.APPLE_IAP_KEY_ID || '',
+  appleIapBundleId: process.env.APPLE_IAP_BUNDLE_ID || '',
+  appleIapAppId: process.env.APPLE_IAP_APP_ID || '',
+  appleIapPrivateKeyBase64: process.env.APPLE_IAP_PRIVATE_KEY_BASE64 || '',
 };

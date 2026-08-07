@@ -35,6 +35,8 @@ migrate_working_dir/
 .env
 backend/.env
 backend/node_modules/
+# Apple App Store Server API private keys must stay only in Railway variables.
+apple/*.p8
 **/.vercel/
 **/com.vercel.cli/
 

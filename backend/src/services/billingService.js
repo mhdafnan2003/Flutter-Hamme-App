@@ -1,9 +1,16 @@
 const { google } = require('googleapis');
 const mongoose = require('mongoose');
+const {
+  AppStoreServerAPIClient,
+  Environment,
+  ReceiptUtility,
+  Status,
+} = require('@apple/app-store-server-library');
 
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
+const env = require('../config/env');
 const {
   createAccessToken,
   createRefreshToken,
@@ -22,6 +29,7 @@ const ACTIVE_SUBSCRIPTION_STATES = new Set([
 
 let androidPublisherPromise = null;
 let oidcVerifier = null;
+const appleClients = new Map();
 
 function getConfiguredPackageName() {
   return (process.env.ANDROID_PACKAGE_NAME || '').trim();
@@ -165,18 +173,182 @@ async function fetchSubscription(purchaseToken, packageName) {
   }
 }
 
+function applePrivateKey() {
+  const encoded = env.appleIapPrivateKeyBase64.trim();
+  if (!encoded || !env.appleIapIssuerId || !env.appleIapKeyId || !env.appleIapBundleId) {
+    throw new ApiError(
+      503,
+      'Apple purchase verification is not configured on the server.'
+    );
+  }
+
+  let privateKey;
+  try {
+    privateKey = Buffer.from(encoded, 'base64').toString('utf8');
+  } catch (_) {
+    throw new ApiError(500, 'APPLE_IAP_PRIVATE_KEY_BASE64 is invalid.');
+  }
+  if (!privateKey.includes('BEGIN PRIVATE KEY')) {
+    throw new ApiError(500, 'APPLE_IAP_PRIVATE_KEY_BASE64 is invalid.');
+  }
+  return privateKey;
+}
+
+function getAppleClient(environment) {
+  const existing = appleClients.get(environment);
+  if (existing) return existing;
+
+  const client = new AppStoreServerAPIClient(
+    applePrivateKey(),
+    env.appleIapKeyId,
+    env.appleIapIssuerId,
+    env.appleIapBundleId,
+    environment
+  );
+  appleClients.set(environment, client);
+  return client;
+}
+
+function decodeAppleJwsPayload(jws) {
+  const parts = typeof jws === 'string' ? jws.split('.') : [];
+  if (parts.length !== 3) {
+    throw new ApiError(502, 'Apple returned invalid subscription data.');
+  }
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
+  } catch (_) {
+    throw new ApiError(502, 'Apple returned invalid subscription data.');
+  }
+}
+
+function extractAppleTransactionId(receiptOrJws) {
+  if (typeof receiptOrJws !== 'string' || !receiptOrJws.trim()) {
+    throw new ApiError(400, 'Apple purchase receipt is required.');
+  }
+
+  // StoreKit 2 sends a transaction JWS, while the default Flutter StoreKit
+  // implementation sends a base64 app receipt. Both are supported.
+  if (receiptOrJws.split('.').length === 3) {
+    const transactionId = decodeAppleJwsPayload(receiptOrJws).transactionId;
+    if (transactionId) return transactionId.toString();
+  }
+
+  try {
+    const transactionId = new ReceiptUtility().extractTransactionIdFromAppReceipt(
+      receiptOrJws
+    );
+    if (transactionId) return transactionId;
+  } catch (_) {
+    // The client-visible error below intentionally avoids receipt details.
+  }
+  throw new ApiError(402, 'Apple could not read this purchase receipt.');
+}
+
+function appleStatusIsActive(status, expiresAt, revoked) {
+  if (revoked || !expiresAt || expiresAt.getTime() <= Date.now()) return false;
+  return status === Status.ACTIVE || status === Status.BILLING_GRACE_PERIOD;
+}
+
+function appleSubscriptionSnapshot(statusResponse) {
+  if (statusResponse.bundleId !== env.appleIapBundleId) {
+    throw new ApiError(402, 'Apple purchase does not belong to this app.');
+  }
+  if (
+    statusResponse.environment === Environment.PRODUCTION &&
+    env.appleIapAppId &&
+    String(statusResponse.appAppleId || '') !== env.appleIapAppId.trim()
+  ) {
+    throw new ApiError(402, 'Apple purchase does not belong to this app.');
+  }
+
+  const candidates = [];
+  for (const group of statusResponse.data || []) {
+    for (const transaction of group.lastTransactions || []) {
+      if (!transaction.signedTransactionInfo) continue;
+      const decoded = decodeAppleJwsPayload(transaction.signedTransactionInfo);
+      if (!PRO_PRODUCT_IDS.includes(decoded.productId)) continue;
+      const expiryAt = decoded.expiresDate ? new Date(decoded.expiresDate) : null;
+      if (expiryAt && Number.isNaN(expiryAt.getTime())) continue;
+      const renewal = transaction.signedRenewalInfo
+        ? decodeAppleJwsPayload(transaction.signedRenewalInfo)
+        : null;
+      candidates.push({ transaction, decoded, expiryAt, renewal });
+    }
+  }
+
+  if (candidates.length === 0) {
+    throw new ApiError(402, 'The Apple purchase does not contain an approved Pro product.');
+  }
+  candidates.sort(
+    (a, b) => (b.expiryAt?.getTime() || 0) - (a.expiryAt?.getTime() || 0)
+  );
+  const latest = candidates[0];
+  const originalTransactionId =
+    latest.transaction.originalTransactionId || latest.decoded.originalTransactionId;
+  if (!originalTransactionId) {
+    throw new ApiError(502, 'Apple returned incomplete subscription data.');
+  }
+
+  return {
+    raw: latest.decoded,
+    productIds: [latest.decoded.productId],
+    productId: latest.decoded.productId,
+    state: `APPLE_${latest.transaction.status || 'UNKNOWN'}`,
+    expiryAt: latest.expiryAt,
+    active: appleStatusIsActive(
+      latest.transaction.status,
+      latest.expiryAt,
+      Boolean(latest.decoded.revocationDate)
+    ),
+    autoRenewing: latest.renewal?.autoRenewStatus === 1,
+    linkedPurchaseToken: null,
+    acknowledgementPending: false,
+    originalTransactionId: originalTransactionId.toString(),
+  };
+}
+
+async function fetchAppleSubscription(receiptOrJws) {
+  const transactionId = extractAppleTransactionId(receiptOrJws);
+  let lastError;
+  // App Review and TestFlight use Sandbox; production customers use Production.
+  // Querying both lets the receipt determine its environment without trusting
+  // a client-supplied environment field.
+  for (const environment of [Environment.PRODUCTION, Environment.SANDBOX]) {
+    try {
+      const statusResponse = await getAppleClient(environment)
+        .getAllSubscriptionStatuses(transactionId);
+      return appleSubscriptionSnapshot(statusResponse);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      lastError = error;
+    }
+  }
+
+  logger.error('Apple subscription lookup failed', {
+    message: lastError?.message,
+    status: lastError?.httpStatusCode,
+  });
+  throw new ApiError(402, 'Apple could not find an active purchase.');
+}
+
 function hasLegacyAdminGrant(user) {
   return user.adminPro || (user.proPlatform === 'admin' && user.isPro);
 }
 
-async function saveSubscriptionSnapshot(user, purchaseToken, snapshot) {
+async function saveSubscriptionSnapshot(
+  user,
+  purchaseToken,
+  snapshot,
+  platform = 'android'
+) {
   // Migrate an old admin grant into its dedicated field before overwriting
   // legacy proPlatform data with the store platform.
   user.adminPro = hasLegacyAdminGrant(user);
   user.storeProActive = snapshot.active;
   user.isPro = user.adminPro || user.storeProActive;
   user.proProductId = snapshot.productId;
-  user.proPlatform = 'android';
+  user.proPlatform = platform;
   user.proPurchaseToken = purchaseToken;
   user.proSubscriptionState = snapshot.state;
   user.proExpiryAt = snapshot.expiryAt;
@@ -261,9 +433,6 @@ async function acknowledgeSubscription(purchaseToken, productId, packageName) {
  */
 async function verifyPurchase(userId, payload) {
   const { platform = 'android', productId, purchaseToken } = payload || {};
-  if (platform !== 'android') {
-    throw new ApiError(503, 'iOS purchase verification is not configured.');
-  }
   if (!productId || !purchaseToken) {
     throw new ApiError(400, 'productId and purchaseToken are required.');
   }
@@ -271,10 +440,10 @@ async function verifyPurchase(userId, payload) {
     throw new ApiError(400, 'Unknown product id.');
   }
 
-  const snapshot = await fetchSubscription(
-    purchaseToken,
-    payload.packageName
-  );
+  const isIos = platform === 'ios';
+  const snapshot = isIos
+    ? await fetchAppleSubscription(purchaseToken)
+    : await fetchSubscription(purchaseToken, payload.packageName);
   // Never trust the product ID supplied by the device; require the verified
   // Google response to contain that same product.
   if (!snapshot.productIds.includes(productId)) {
@@ -292,15 +461,14 @@ async function verifyPurchase(userId, payload) {
     throw new ApiError(402, 'The subscription is not currently entitled to Pro.');
   }
 
-  await assertTokenOwnership(
-    userId,
-    purchaseToken,
-    snapshot.linkedPurchaseToken
-  );
+  const ownershipToken = isIos
+    ? snapshot.originalTransactionId
+    : purchaseToken;
+  await assertTokenOwnership(userId, ownershipToken, snapshot.linkedPurchaseToken);
 
   const user = await User.findById(userId).select('+proPurchaseToken');
   if (!user) throw new ApiError(404, 'User not found.');
-  await saveSubscriptionSnapshot(user, purchaseToken, snapshot);
+  await saveSubscriptionSnapshot(user, ownershipToken, snapshot, platform);
 
   if (snapshot.acknowledgementPending) {
     try {
@@ -331,9 +499,6 @@ async function verifyPurchase(userId, payload) {
  */
 async function restoreSessionFromPurchase(payload) {
   const { platform = 'android', productId, purchaseToken } = payload || {};
-  if (platform !== 'android') {
-    throw new ApiError(503, 'iOS purchase restoration is not configured.');
-  }
   if (!productId || !purchaseToken) {
     throw new ApiError(400, 'productId and purchaseToken are required.');
   }
@@ -341,10 +506,10 @@ async function restoreSessionFromPurchase(payload) {
     throw new ApiError(400, 'Unknown product id.');
   }
 
-  const snapshot = await fetchSubscription(
-    purchaseToken,
-    payload.packageName
-  );
+  const isIos = platform === 'ios';
+  const snapshot = isIos
+    ? await fetchAppleSubscription(purchaseToken)
+    : await fetchSubscription(purchaseToken, payload.packageName);
   if (!snapshot.productIds.includes(productId)) {
     throw new ApiError(402, 'Purchase token does not match the requested product.');
   }
@@ -352,7 +517,10 @@ async function restoreSessionFromPurchase(payload) {
     throw new ApiError(402, 'The subscription is not currently entitled to Pro.');
   }
 
-  let user = await User.findOne({ proPurchaseToken: purchaseToken }).select(
+  const ownershipToken = isIos
+    ? snapshot.originalTransactionId
+    : purchaseToken;
+  let user = await User.findOne({ proPurchaseToken: ownershipToken }).select(
     '+proPurchaseToken'
   );
   if (!user) {
@@ -378,7 +546,7 @@ async function restoreSessionFromPurchase(payload) {
     );
   }
 
-  await saveSubscriptionSnapshot(user, purchaseToken, snapshot);
+  await saveSubscriptionSnapshot(user, ownershipToken, snapshot, platform);
 
   if (snapshot.acknowledgementPending) {
     try {
@@ -430,8 +598,16 @@ async function syncUserSubscription(userId) {
   }
 
   try {
-    const snapshot = await fetchSubscription(user.proPurchaseToken);
-    return saveSubscriptionSnapshot(user, user.proPurchaseToken, snapshot);
+    const isIos = user.proPlatform === 'ios';
+    const snapshot = isIos
+      ? await fetchAppleSubscription(user.proPurchaseToken)
+      : await fetchSubscription(user.proPurchaseToken);
+    return saveSubscriptionSnapshot(
+      user,
+      isIos ? snapshot.originalTransactionId : user.proPurchaseToken,
+      snapshot,
+      isIos ? 'ios' : 'android'
+    );
   } catch (error) {
     if (error instanceof ApiError && error.statusCode === 402) {
       return markStoreSubscriptionInactive(
