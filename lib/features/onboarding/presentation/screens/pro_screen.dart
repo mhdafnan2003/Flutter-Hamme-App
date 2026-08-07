@@ -147,55 +147,8 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     }
 
     try {
-      final session = ref.read(authControllerProvider).value;
-      if (session == null) {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final age =
-            draft.birthday == null
-                ? 18
-                : (DateTime.now().difference(draft.birthday!).inDays / 365.25)
-                    .floor();
-        debugPrint('[Onboarding] guest register begin');
-        await ref
-            .read(authControllerProvider.notifier)
-            .guestRegister(
-              age: age.clamp(13, 100),
-              displayName: (draft.name ?? 'Guest').trim(),
-              username: (draft.username ?? 'user$now').trim(),
-              instagramId:
-                  draft.socialPlatform?.toLowerCase().contains('instagram') ==
-                          true
-                      ? draft.username?.trim()
-                      : null,
-              snapchatId:
-                  draft.socialPlatform?.toLowerCase().contains('snapchat') ==
-                          true
-                      ? draft.username?.trim()
-                      : null,
-              // A newly chosen photo is uploaded after this call, once we have an
-              // access token for the protected upload endpoint.
-              avatarUrl: draft.profileImageUrl,
-            );
-        if (!mounted) return;
-        final authState = ref.read(authControllerProvider);
-        if (authState.hasError || authState.value == null) {
-          throw authState.error ?? Exception('Guest registration failed');
-        }
-        debugPrint(
-          '[Onboarding] guest register success: user=${authState.value?.user.id}',
-        );
-      } else {
-        final dataSource = ProfileRemoteDataSource(
-          ref.read(apiServiceProvider),
-        );
-        await dataSource.updateMe(
-          name: draft.name?.trim(),
-          instagramId: draft.username?.trim(),
-          username: draft.username?.trim(),
-          avatarUrl: draft.profileImageUrl,
-        );
-        if (!mounted) return;
-        debugPrint('[Onboarding] existing session profile sync success');
+      if (ref.read(authControllerProvider).value == null) {
+        throw const AppException('Your account is still being created.');
       }
 
       // The photo is optional and can finish after Home has opened. Account

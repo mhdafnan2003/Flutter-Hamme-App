@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -22,6 +23,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final FocusNode _usernameFocusNode = FocusNode();
   bool _isInstagramSelected = true;
+  bool _isCreatingAccount = false;
 
   @override
   void initState() {
@@ -56,9 +58,12 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
               onBack: () => context.go('/onboarding/profile_upload'),
               progress: 1.0,
               trailing: GestureDetector(
-                onTap: () {
-                  context.go('/onboarding/pro');
-                },
+                onTap:
+                    _isCreatingAccount
+                        ? null
+                        : () => _createAccountAndOpenPro(
+                          'user${DateTime.now().millisecondsSinceEpoch}',
+                        ),
                 child: const Text(
                   TTexts.skipAction,
                   style: TextStyle(
@@ -231,16 +236,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                     );
                     return;
                   }
-                  ref
-                      .read(onboardingDraftProvider.notifier)
-                      .setSocial(
-                        platform:
-                            _isInstagramSelected
-                                ? TTexts.socialInstagram
-                                : TTexts.socialSnapchat,
-                        username: username,
-                      );
-                  context.go('/onboarding/pro');
+                  await _createAccountAndOpenPro(username);
                 },
               ),
             ),
@@ -248,6 +244,49 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _createAccountAndOpenPro(String username) async {
+    if (_isCreatingAccount) return;
+    setState(() => _isCreatingAccount = true);
+
+    try {
+      final platform =
+          _isInstagramSelected ? TTexts.socialInstagram : TTexts.socialSnapchat;
+      await ref
+          .read(onboardingDraftProvider.notifier)
+          .setSocial(platform: platform, username: username);
+
+      final draft = ref.read(onboardingDraftProvider).value;
+      if (draft == null) throw Exception('Onboarding data is missing.');
+
+      final age =
+          draft.birthday == null
+              ? 18
+              : (DateTime.now().difference(draft.birthday!).inDays / 365.25)
+                  .floor();
+      await ref
+          .read(authControllerProvider.notifier)
+          .guestRegister(
+            age: age.clamp(13, 100),
+            displayName: (draft.name ?? 'Guest').trim(),
+            username: username,
+            instagramId: platform == TTexts.socialInstagram ? username : null,
+            snapchatId: platform == TTexts.socialSnapchat ? username : null,
+          );
+
+      final auth = ref.read(authControllerProvider);
+      if (auth.hasError || auth.value == null) {
+        throw auth.error ?? Exception('Could not create account.');
+      }
+      if (mounted) context.go('/onboarding/pro');
+    } catch (_) {
+      if (mounted) {
+        await _showUsernameError('Could not create your account. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isCreatingAccount = false);
+    }
   }
 
   Future<void> _showUsernameError(String message) async {
