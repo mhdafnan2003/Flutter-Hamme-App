@@ -57,7 +57,17 @@ class _ProScreenState extends ConsumerState<ProScreen> {
 
   Future<void> _uploadSelectedProfileImage() async {
     final selectedImage = ref.read(onboardingProfileImageProvider);
-    if (selectedImage == null) return;
+    if (selectedImage == null) {
+      debugPrint(
+        '[Onboarding] profile image upload skipped: no image selected',
+      );
+      return;
+    }
+
+    debugPrint(
+      '[Onboarding] profile image upload begin: ${selectedImage.filename} '
+      '(${selectedImage.bytes.length} bytes)',
+    );
 
     final apiService = ref.read(apiServiceProvider);
     final imageUrl = await UploadRemoteDataSource(
@@ -71,6 +81,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
         .read(onboardingDraftProvider.notifier)
         .setProfileImageUrl(imageUrl);
     ref.read(onboardingProfileImageProvider.notifier).state = null;
+    debugPrint('[Onboarding] profile image upload success');
   }
 
   Future<void> _restoreProProfile() async {

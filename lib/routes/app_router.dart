@@ -17,7 +17,6 @@ import '../features/onboarding/presentation/screens/splash_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/shared/presentation/screens/main_shell.dart';
 import '../providers/auth_providers.dart';
-import '../providers/onboarding_providers.dart';
 
 class RouterTransitionNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -127,8 +126,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final path = state.matchedLocation;
       final isOnboardingRoute = path.startsWith('/onboarding');
       final isAuthenticated = authStatus == AuthStatus.authenticated;
-      final hasPendingOnboardingImage =
-          ref.read(onboardingProfileImageProvider) != null;
 
       debugPrint(
         '[Router] redirect check: path=$path, isLoading=$isLoading, '
@@ -136,25 +133,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         'authStatus=$authStatus',
       );
 
-      // While bootstrapping auth/onboarding state, never leave splash.
+      // Initial boot uses the splash screen, but guest registration happens
+      // *inside* onboarding. Sending an active onboarding route to splash
+      // while that request is loading disposes ProScreen before it can upload
+      // the selected image after receiving its access token.
       if (isLoading) {
-        return path == '/splash' ? null : '/splash';
+        return path == '/splash' || isOnboardingRoute ? null : '/splash';
       }
 
       if (path == '/splash') {
         return isAuthenticated ? '/home' : '/onboarding/dob';
       }
 
-      // Guest registration makes the user authenticated before the selected
-      // photo can be uploaded (the upload endpoint requires that token). Do
-      // not dispose the onboarding screen in that small window, otherwise its
-      // upload continuation is cancelled before it can send the multipart POST.
-      if (!isLoading &&
-          isAuthenticated &&
-          isOnboardingRoute &&
-          !hasPendingOnboardingImage) {
-        return '/home';
-      }
+      // The onboarding flow intentionally registers the account before
+      // uploading a selected photo, because uploads require an access token.
+      // Do not redirect midway through that flow: ProScreen explicitly goes
+      // to Home after the optional upload and profile update finish.
 
       if (!isLoading && !isAuthenticated && !isOnboardingRoute) {
         return '/onboarding/dob';
