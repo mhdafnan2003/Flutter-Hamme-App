@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -163,6 +165,7 @@ class _EditNameDialogState extends State<_EditNameDialog> {
 class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
   static const int _maxImageBytes = 10 * 1024 * 1024;
   static const Set<String> _allowedExtensions = {'jpeg', 'jpg', 'png', 'webp'};
+  Uint8List? _lastLocalAvatarBytes;
 
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploading = false;
@@ -285,6 +288,13 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
     final profileImageUrl = draft.profileImageUrl;
     final hasProfileImage =
         profileImageUrl != null && profileImageUrl.isNotEmpty;
+    // During onboarding, show the image the user just selected immediately.
+    // The Cloudinary URL replaces this preview after the background upload
+    // finishes.
+    final selectedOnboardingImage = ref.watch(onboardingProfileImageProvider);
+    if (selectedOnboardingImage != null) {
+      _lastLocalAvatarBytes = selectedOnboardingImage.bytes;
+    }
 
     return Stack(
       clipBehavior: Clip.none,
@@ -375,13 +385,49 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                   color: TColors.hammeSurface,
                 ),
                 child:
-                    hasProfileImage
+                    selectedOnboardingImage != null
+                        ? ClipOval(
+                          child: Image.memory(
+                            selectedOnboardingImage.bytes,
+                            fit: BoxFit.cover,
+                            width: 120,
+                            height: 120,
+                          ),
+                        )
+                        : hasProfileImage
                         ? ClipOval(
                           child: Image.network(
                             profileImageUrl,
                             fit: BoxFit.cover,
                             width: 120,
                             height: 120,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress != null &&
+                                  _lastLocalAvatarBytes != null) {
+                                return Image.memory(
+                                  _lastLocalAvatarBytes!,
+                                  fit: BoxFit.cover,
+                                  width: 120,
+                                  height: 120,
+                                );
+                              }
+                              return child;
+                            },
+                            frameBuilder: (context, child, frame, _) {
+                              if (frame != null &&
+                                  _lastLocalAvatarBytes != null) {
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  if (mounted) {
+                                    setState(
+                                      () => _lastLocalAvatarBytes = null,
+                                    );
+                                  }
+                                });
+                              }
+                              return child;
+                            },
                           ),
                         )
                         : const Icon(

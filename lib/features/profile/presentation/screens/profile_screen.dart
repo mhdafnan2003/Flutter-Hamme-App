@@ -152,30 +152,61 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _deleteAccount() async {
     if (_isDeletingAccount) return;
-    final confirmed = await showCupertinoDialog<bool>(
-      context: context,
-      builder:
-          (dialogContext) => CupertinoAlertDialog(
-            title: const Text('Delete account?'),
-            content: const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                'This permanently deletes your profile, photo, matches, and interactions. This cannot be undone. Active App Store subscriptions are not cancelled automatically.',
-              ),
-            ),
-            actions: [
-              CupertinoDialogAction(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
-              ),
-              CupertinoDialogAction(
-                isDestructiveAction: true,
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('Delete account'),
-              ),
-            ],
-          ),
-    );
+    const deleteMessage =
+        'This permanently deletes your profile, photo, matches, and interactions. This cannot be undone. Active App Store subscriptions are not cancelled automatically.';
+    final isCupertino =
+        Theme.of(context).platform == TargetPlatform.iOS ||
+        Theme.of(context).platform == TargetPlatform.macOS;
+    final confirmed =
+        isCupertino
+            ? await showCupertinoDialog<bool>(
+              context: context,
+              builder:
+                  (dialogContext) => CupertinoAlertDialog(
+                    title: const Text('Delete account?'),
+                    content: const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(deleteMessage),
+                    ),
+                    actions: [
+                      CupertinoDialogAction(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      CupertinoDialogAction(
+                        isDestructiveAction: true,
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        child: const Text('Delete account'),
+                      ),
+                    ],
+                  ),
+            )
+            : await showDialog<bool>(
+              context: context,
+              builder:
+                  (dialogContext) => AlertDialog(
+                    icon: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.redAccent,
+                    ),
+                    title: const Text('Delete account?'),
+                    content: const Text(deleteMessage),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        child: const Text('Delete account'),
+                      ),
+                    ],
+                  ),
+            );
     if (confirmed != true || !mounted) return;
 
     setState(() => _isDeletingAccount = true);
@@ -442,10 +473,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     border: Border.all(color: TColors.hammePrimary, width: 3),
                     color: TColors.hammeSurface,
                   ),
-                  clipBehavior: Clip.antiAlias,
                   child:
                       hasProfileImage
-                          ? Image.network(profileImageUrl, fit: BoxFit.cover)
+                          ? Padding(
+                            padding: const EdgeInsets.all(3),
+                            child: ClipOval(
+                              child: Transform.scale(
+                                scale: 1.08,
+                                child: Image.network(
+                                  profileImageUrl,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          )
                           : const Icon(
                             CupertinoIcons.person_solid,
                             size: 56,
