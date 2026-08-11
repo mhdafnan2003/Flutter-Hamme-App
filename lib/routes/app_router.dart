@@ -17,6 +17,7 @@ import '../features/onboarding/presentation/screens/splash_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/shared/presentation/screens/main_shell.dart';
 import '../providers/auth_providers.dart';
+import '../providers/onboarding_providers.dart';
 
 class RouterTransitionNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -25,7 +26,41 @@ class RouterTransitionNotifier extends ChangeNotifier {
     _ref.listen<AuthStatus>(authStatusProvider, (_, __) {
       notifyListeners();
     });
+    _ref.listen<AsyncValue<bool>>(onboardingCompletionProvider, (_, __) {
+      notifyListeners();
+    });
   }
+}
+
+String? resolveAuthRedirect({
+  required AuthStatus authStatus,
+  required bool onboardingComplete,
+  required String path,
+}) {
+  final isLoading = authStatus == AuthStatus.loading;
+  final isOnboardingRoute = path.startsWith('/onboarding');
+  final isAuthenticated = authStatus == AuthStatus.authenticated;
+
+  if (isLoading) {
+    return path == '/splash' || isOnboardingRoute ? null : '/splash';
+  }
+
+  if (path == '/splash') {
+    return isAuthenticated ? '/home' : '/onboarding/dob';
+  }
+
+  if (isAuthenticated && isOnboardingRoute) {
+    final isAccountCreationHandoff =
+        !onboardingComplete &&
+        (path == '/onboarding/social_media' || path == '/onboarding/pro');
+    return isAccountCreationHandoff ? null : '/home';
+  }
+
+  if (!isAuthenticated && !isOnboardingRoute) {
+    return '/onboarding/dob';
+  }
+
+  return null;
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -122,39 +157,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (_, state) {
       final authStatus = ref.read(authStatusProvider);
       final authState = ref.read(authControllerProvider);
+      final onboardingComplete =
+          ref.read(onboardingCompletionProvider).value ?? false;
       final isLoading = authStatus == AuthStatus.loading;
       final path = state.matchedLocation;
-      final isOnboardingRoute = path.startsWith('/onboarding');
-      final isAuthenticated = authStatus == AuthStatus.authenticated;
 
       debugPrint(
         '[Router] redirect check: path=$path, isLoading=$isLoading, '
         'hasSession=${authState.value != null}, '
-        'authStatus=$authStatus',
+        'authStatus=$authStatus, onboardingComplete=$onboardingComplete',
       );
 
-      // Initial boot uses the splash screen, but guest registration happens
-      // *inside* onboarding. Sending an active onboarding route to splash
-      // while that request is loading disposes ProScreen before it can upload
-      // the selected image after receiving its access token.
-      if (isLoading) {
-        return path == '/splash' || isOnboardingRoute ? null : '/splash';
-      }
-
-      if (path == '/splash') {
-        return isAuthenticated ? '/home' : '/onboarding/dob';
-      }
-
-      // The onboarding flow intentionally registers the account before
-      // uploading a selected photo, because uploads require an access token.
-      // Do not redirect midway through that flow: ProScreen explicitly goes
-      // to Home after the optional upload and profile update finish.
-
-      if (!isLoading && !isAuthenticated && !isOnboardingRoute) {
-        return '/onboarding/dob';
-      }
-
-      return null;
+      return resolveAuthRedirect(
+        authStatus: authStatus,
+        onboardingComplete: onboardingComplete,
+        path: path,
+      );
     },
   );
 });

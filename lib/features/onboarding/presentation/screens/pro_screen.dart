@@ -155,7 +155,8 @@ class _ProScreenState extends ConsumerState<ProScreen> {
       // creation is still awaited because the protected upload needs its token.
       unawaited(_uploadSelectedProfileImageInBackground());
 
-      debugPrint('[Onboarding] onboarding completion handled by auth flow');
+      await ref.read(onboardingCompletionProvider.notifier).markComplete();
+      debugPrint('[Onboarding] onboarding marked complete');
       if (!mounted) return;
       context.go('/home');
     } catch (e) {

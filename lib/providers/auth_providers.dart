@@ -62,10 +62,14 @@ class AuthController extends AsyncNotifier<AuthSession?> {
       // Existing installations already have onboarding state. A new iOS
       // install can still have an old Keychain token, but it must not restore
       // a profile automatically; only the Pro Restore action may use it.
+      // Android secure storage follows the app installation lifecycle, so it
+      // should always attempt to restore a valid saved session.
       final isExistingInstallation = preferences.containsKey(
         _onboardingCompleteKey,
       );
-      if (!isExistingInstallation) {
+      final shouldProtectFreshIosInstall =
+          !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+      if (!isExistingInstallation && shouldProtectFreshIosInstall) {
         debugPrint(
           '[Auth] fresh installation: automatic session restore skipped',
         );
@@ -84,14 +88,24 @@ class AuthController extends AsyncNotifier<AuthSession?> {
       '[Auth] restoreSession complete: hasSession=${restored != null}, '
       'user=${restored?.user.id}',
     );
+    if (restored != null) {
+      await _markOnboardingComplete();
+    }
     return restored;
   }
 
   Future<void> login({required String email, required String password}) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(loginUseCaseProvider)(email: email, password: password),
-    );
+    try {
+      final session = await ref.read(loginUseCaseProvider)(
+        email: email,
+        password: password,
+      );
+      await _markOnboardingComplete();
+      state = AsyncData(session);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
   }
 
   Future<void> logout() async {
@@ -138,15 +152,19 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     String? avatarUrl,
   }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(signUpUseCaseProvider)(
+    try {
+      final session = await ref.read(signUpUseCaseProvider)(
         name: name,
         email: email,
         password: password,
         instagramId: instagramId,
         avatarUrl: avatarUrl,
-      ),
-    );
+      );
+      await _markOnboardingComplete();
+      state = AsyncData(session);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
   }
 
   Future<void> refreshUser() async {
@@ -166,6 +184,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
   Future<bool> restoreProProfile() async {
     final session = await _repository.restoreProSession();
     if (session == null) return false;
+    await _markOnboardingComplete();
     state = AsyncData(session);
     return true;
   }
@@ -180,8 +199,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
           accessToken: session.accessToken,
           refreshToken: session.refreshToken,
         );
-    await ref.read(onboardingCompletionProvider.notifier).markComplete();
-    ref.invalidate(onboardingCompletionProvider);
+    await _markOnboardingComplete();
     state = AsyncData(session);
   }
 
@@ -210,15 +228,15 @@ class AuthController extends AsyncNotifier<AuthSession?> {
         deviceId: deviceId,
       );
       debugPrint('[Auth] guestRegister success: token received and saved');
-      debugPrint('[Auth] onboardingComplete save trigger');
-      await ref.read(onboardingCompletionProvider.notifier).markComplete();
-      ref.invalidate(onboardingCompletionProvider);
-      debugPrint('[Auth] onboardingComplete provider invalidated');
       state = AsyncData(session);
     } catch (e, st) {
       debugPrint('[Auth] guestRegister failed: $e');
       debugPrint('[Auth] guestRegister stacktrace: $st');
       state = AsyncError(e, st);
     }
+  }
+
+  Future<void> _markOnboardingComplete() {
+    return ref.read(onboardingCompletionProvider.notifier).markComplete();
   }
 }
