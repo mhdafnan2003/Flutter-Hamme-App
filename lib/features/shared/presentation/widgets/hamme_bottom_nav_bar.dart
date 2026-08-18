@@ -88,18 +88,20 @@ class HammeBottomNavBar extends StatelessWidget {
                 ),
               ),
             ),
-            Expanded(
-              child: _HammeNavItem(
-                label: TTexts.navInbox,
-                selected: currentIndex == 2,
-                onTap: () => onTap(2),
-                icon: Image.asset(
-                  'assets/icons/Open Mailbox With Raised Flag.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-            ),
+            // Inbox is intentionally hidden from the bottom navigation for now.
+            // The InboxScreen and /inbox route are kept intact for future use.
+            // Expanded(
+            //   child: _HammeNavItem(
+            //     label: TTexts.navInbox,
+            //     selected: currentIndex == 2,
+            //     onTap: () => onTap(2),
+            //     icon: Image.asset(
+            //       'assets/icons/Open Mailbox With Raised Flag.png',
+            //       width: 24,
+            //       height: 24,
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),
