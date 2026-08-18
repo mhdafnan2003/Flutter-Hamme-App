@@ -227,7 +227,7 @@ module.exports = `<!doctype html>
   function personHtml(person, id) {
     person = person || {};
     var avatar = person.avatarUrl
-      ? '<img class="avatar" src="' + escapeHtml(person.avatarUrl) + '" onerror="this.style.visibility=\'hidden\'"/>'
+      ? '<img class="avatar" src="' + escapeHtml(person.avatarUrl) + '" onerror="this.style.visibility=\\'hidden\\'"/>'
       : '<div class="avatar"></div>';
     var handle = person.username ? '@' + person.username : person.email || person.shareCode || '';
     return '<div class="report-person">' + avatar + '<div><div>' + escapeHtml(person.name || 'Unknown user') +

@@ -129,6 +129,12 @@ const userSchema = new mongoose.Schema(
       default: [],
       select: false,
     },
+    blockedUsers: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
+      select: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -146,6 +152,7 @@ const userSchema = new mongoose.Schema(
         delete ret._id;
         delete ret.passwordHash;
         delete ret.refreshTokens;
+        delete ret.blockedUsers;
         delete ret.profileImageUrl;
         delete ret.proPurchaseToken;
         return ret;

@@ -222,46 +222,26 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
             ? interaction.fromUserUsername!.trim()
             : 'This user';
 
-    final confirmed =
-        Platform.isIOS
-            ? await showCupertinoDialog<bool>(
-              context: context,
-              builder:
-                  (dialogContext) => CupertinoAlertDialog(
-                    content: Text('Are you sure you want to report $name?'),
-                    actions: [
-                      CupertinoDialogAction(
-                        onPressed: () => Navigator.of(dialogContext).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      CupertinoDialogAction(
-                        isDestructiveAction: true,
-                        onPressed: () => Navigator.of(dialogContext).pop(true),
-                        child: const Text('Report'),
-                      ),
-                    ],
-                  ),
-            )
-            : await showDialog<bool>(
-              context: context,
-              builder:
-                  (dialogContext) => AlertDialog(
-                    content: Text('Are you sure you want to report $name?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(true),
-                        child: const Text(
-                          'Report',
-                          style: TextStyle(color: TColors.error),
-                        ),
-                      ),
-                    ],
-                  ),
-            );
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => CupertinoAlertDialog(
+            content: const Text(
+              'Are you sure you want to block and report this user?',
+            ),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              CupertinoDialogAction(
+                isDestructiveAction: true,
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Yes'),
+              ),
+            ],
+          ),
+    );
     if (confirmed != true || !mounted) return;
 
     try {
@@ -270,35 +250,19 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
           .reportInteraction(interaction.id);
       if (!mounted) return;
 
-      if (Platform.isIOS) {
-        await showCupertinoDialog<void>(
-          context: context,
-          builder:
-              (dialogContext) => CupertinoAlertDialog(
-                content: Text('$name has been reported.'),
-                actions: [
-                  CupertinoDialogAction(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Back'),
-                  ),
-                ],
-              ),
-        );
-      } else {
-        await showDialog<void>(
-          context: context,
-          builder:
-              (dialogContext) => AlertDialog(
-                content: Text('$name has been reported.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Back'),
-                  ),
-                ],
-              ),
-        );
-      }
+      await showCupertinoDialog<void>(
+        context: context,
+        builder:
+            (dialogContext) => CupertinoAlertDialog(
+              content: Text("'$name' has been blocked and reported."),
+              actions: [
+                CupertinoDialogAction(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Back'),
+                ),
+              ],
+            ),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -30,6 +30,11 @@ async function createReport({ reporterId, interactionId }) {
     throw new ApiError(404, 'User not found.');
   }
 
+  await User.updateOne(
+    { _id: reporter._id },
+    { $addToSet: { blockedUsers: reportedUser._id } }
+  );
+
   try {
     const report = await UserReport.create({
       reporter: reporter._id,
@@ -42,7 +47,10 @@ async function createReport({ reporterId, interactionId }) {
     return report;
   } catch (error) {
     if (error?.code === 11000) {
-      throw new ApiError(409, 'You have already reported this user.');
+      return UserReport.findOne({
+        reporter: reporter._id,
+        reportedUser: reportedUser._id,
+      });
     }
     throw error;
   }

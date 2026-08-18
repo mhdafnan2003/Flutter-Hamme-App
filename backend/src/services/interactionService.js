@@ -17,6 +17,19 @@ const PENDING_TTL_MS = pendingTtlSeconds * 1000;
 const REVEAL_EXTEND_MS = 5 * 60 * 1000; // 5 min grace after user taps Reveal
 const VISIBLE_MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+async function assertUsersCanInteract(fromUserId, targetUser) {
+  const targetBlockedSender = (targetUser.blockedUsers || []).some(
+    (blockedId) => blockedId.toString() === fromUserId.toString()
+  );
+  const senderBlockedTarget = await User.exists({
+    _id: fromUserId,
+    blockedUsers: targetUser._id,
+  });
+  if (targetBlockedSender || senderBlockedTarget) {
+    throw new ApiError(403, 'Interaction is unavailable.');
+  }
+}
+
 function buildCanonicalPair(firstUserId, secondUserId) {
   const [userA, userB] = [firstUserId.toString(), secondUserId.toString()].sort();
   return { userA, userB };
@@ -94,7 +107,7 @@ function serializeAnonymousMatch(interaction) {
 
 async function createInteraction({ fromUserId, shareCode, type }) {
   const normalizedType = normalizeType(type);
-  const targetUser = await User.findOne({ shareCode });
+  const targetUser = await User.findOne({ shareCode }).select('+blockedUsers');
   if (!targetUser) {
     throw new ApiError(404, 'Target profile not found.');
   }
@@ -102,6 +115,7 @@ async function createInteraction({ fromUserId, shareCode, type }) {
   if (targetUser.id.toString() === fromUserId.toString()) {
     throw new ApiError(400, 'You cannot interact with your own profile.');
   }
+  await assertUsersCanInteract(fromUserId, targetUser);
 
   let interaction;
   try {
@@ -156,9 +170,15 @@ async function createInteraction({ fromUserId, shareCode, type }) {
 
 async function getMatchesForUser(userId) {
   const visibleSince = new Date(Date.now() - VISIBLE_MATCH_WINDOW_MS);
+  const currentUser = await User.findById(userId).select('+blockedUsers');
+  const blockedUserIds = currentUser?.blockedUsers || [];
   const matches = await Match.find({
     createdAt: { $gte: visibleSince },
     $or: [{ userA: userId }, { userB: userId }],
+    $nor: [
+      { userA: { $in: blockedUserIds } },
+      { userB: { $in: blockedUserIds } },
+    ],
   })
     .sort({ createdAt: -1 })
     .populate('userA userB');
@@ -288,13 +308,14 @@ async function createInteractionByTargetId({
   }
 
   const normalizedType = normalizeType(type);
-  const targetUser = await User.findById(targetUserId);
+  const targetUser = await User.findById(targetUserId).select('+blockedUsers');
   if (!targetUser) {
     throw new ApiError(404, 'Target profile not found.');
   }
   if (targetUser.id.toString() === fromUserId.toString()) {
     throw new ApiError(400, 'You cannot interact with your own profile.');
   }
+  await assertUsersCanInteract(fromUserId, targetUser);
 
   let interaction;
   try {
@@ -446,7 +467,12 @@ async function createAnonymousInteraction({ targetUserId, type, source = 'web' }
 }
 
 async function getReceivedInteractions(userId) {
-  const interactions = await Interaction.find({ toUser: userId })
+  const currentUser = await User.findById(userId).select('+blockedUsers');
+  const blockedUserIds = currentUser?.blockedUsers || [];
+  const interactions = await Interaction.find({
+    toUser: userId,
+    fromUser: { $nin: blockedUserIds },
+  })
     .sort({ createdAt: -1 })
     .populate('fromUser', 'name username instagramId snapchatId profileImageUrl shareCode');
 
@@ -624,6 +650,14 @@ async function finalizePendingInteraction({ token, currentUserId }) {
   if (pending.targetUserId.toString() === currentUserId.toString()) {
     throw new ApiError(400, 'You cannot reveal an interaction sent to yourself.');
   }
+
+  const targetUser = await User.findById(pending.targetUserId).select(
+    '+blockedUsers'
+  );
+  if (!targetUser) {
+    throw new ApiError(404, 'Target profile not found.');
+  }
+  await assertUsersCanInteract(currentUserId, targetUser);
 
   // Attribute the interaction FIRST and only mark the pending finalized once that
   // succeeds. This prevents a failure (e.g. duplicate key) from permanently

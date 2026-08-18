@@ -105,6 +105,10 @@ async function deleteMe(userId) {
     Match.deleteMany({ $or: [{ userA: user._id }, { userB: user._id }, { triggeredBy: user._id }] }),
     PendingInteraction.deleteMany({ targetUserId: user._id }),
     CardSession.deleteMany({ userId: user._id }),
+    User.updateMany(
+      { blockedUsers: user._id },
+      { $pull: { blockedUsers: user._id } }
+    ),
   ]);
   await User.deleteOne({ _id: user._id });
   await deleteProfileImage(user.profileImageUrl, user._id);

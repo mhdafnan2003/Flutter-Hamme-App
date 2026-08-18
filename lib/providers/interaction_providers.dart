@@ -228,6 +228,9 @@ class InteractionController extends AsyncNotifier<void> {
     state = const AsyncLoading();
     try {
       await _repository.reportInteraction(interactionId);
+      ref.invalidate(matchesProvider);
+      ref.invalidate(receivedInteractionsProvider);
+      ref.invalidate(pendingPlayInteractionsProvider);
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
