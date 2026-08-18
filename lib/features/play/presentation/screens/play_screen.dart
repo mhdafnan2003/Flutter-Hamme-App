@@ -268,6 +268,15 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
             Expanded(
               child: limitStatus.when(
                 data: (status) {
+                  if (_lastResult != null && !_lastResult!.matched) {
+                    return _NotAMatchView(
+                      result: _lastResult!,
+                      remainingCount: (pending.value?.length ?? 0),
+                      onSeeNext: _onDismiss,
+                      onRewind: _triggerRewind,
+                    );
+                  }
+
                   // Show cooldown wall for free users who hit the limit
                   if (status.limited) {
                     return SingleChildScrollView(
@@ -278,112 +287,107 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                     );
                   }
 
-                  return _lastResult != null && !_lastResult!.matched
-                      ? _NotAMatchView(
-                        result: _lastResult!,
-                        remainingCount: (pending.value?.length ?? 0),
-                        onSeeNext: _onDismiss,
-                        onRewind: _triggerRewind,
-                      )
-                      : pending.when(
-                        data: (items) {
-                          final effectiveItem =
-                              _rewoundItem ??
-                              (items.isEmpty ? null : items.first);
-                          if (effectiveItem == null) {
-                            return const _CompletedQueueView();
+                  return pending.when(
+                    data: (items) {
+                      final effectiveItem =
+                          _rewoundItem ?? (items.isEmpty ? null : items.first);
+                      if (effectiveItem == null) {
+                        return const _CompletedQueueView();
+                      }
+                      return _PlayQueue(
+                        item: effectiveItem,
+                        remainingCount: items.length,
+                        isSubmitting: controller.isLoading,
+                        onSelect: (type) async {
+                          final targetUserId = effectiveItem.fromUser;
+                          if (targetUserId == null || targetUserId.isEmpty) {
+                            return;
                           }
-                          return _PlayQueue(
-                            item: effectiveItem,
-                            remainingCount: items.length,
-                            isSubmitting: controller.isLoading,
-                            onSelect: (type) async {
-                              final targetUserId = effectiveItem.fromUser;
-                              if (targetUserId == null ||
-                                  targetUserId.isEmpty) {
-                                return;
-                              }
-                              _lastVotedItem = effectiveItem;
-                              setState(() => _rewoundItem = null);
-                              try {
-                                final result = await ref
-                                    .read(
-                                      interactionControllerProvider.notifier,
-                                    )
-                                    .respondToUser(
-                                      targetUserId: targetUserId,
-                                      type: type,
-                                    );
-                                if (!mounted) return;
-                                // Refresh limit status after each vote
-                                ref.invalidate(playLimitStatusProvider);
-
-                                final mergedResult = result.copyWith(
-                                  interaction: result.interaction.copyWith(
-                                    fromUserName:
-                                        result.interaction.fromUserName ??
-                                        effectiveItem.fromUserName,
-                                    fromUserUsername:
-                                        result.interaction.fromUserUsername ??
-                                        effectiveItem.fromUserUsername,
-                                    fromUserProfileImageUrl:
-                                        result
-                                            .interaction
-                                            .fromUserProfileImageUrl ??
-                                        effectiveItem.fromUserProfileImageUrl,
-                                    fromUserInstagramId:
-                                        result
-                                            .interaction
-                                            .fromUserInstagramId ??
-                                        effectiveItem.fromUserInstagramId,
-                                    fromUserSnapchatId:
-                                        result.interaction.fromUserSnapchatId ??
-                                        effectiveItem.fromUserSnapchatId,
-                                  ),
+                          _lastVotedItem = effectiveItem;
+                          setState(() => _rewoundItem = null);
+                          try {
+                            final result = await ref
+                                .read(interactionControllerProvider.notifier)
+                                .respondToUser(
+                                  targetUserId: targetUserId,
+                                  type: type,
                                 );
+                            if (!mounted) return;
+                            // Refresh limit status after each vote
+                            ref.invalidate(playLimitStatusProvider);
 
-                                if (mergedResult.matched) {
-                                  await _showMatchOverlay(mergedResult);
-                                  if (!mounted) return;
-                                  _refreshPlayData();
-                                } else {
-                                  setState(() => _lastResult = mergedResult);
-                                }
-                              } catch (error) {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Could not save response: $error',
-                                    ),
-                                    backgroundColor: TColors.error,
-                                  ),
-                                );
-                              }
-                            },
-                          );
+                            final mergedResult = result.copyWith(
+                              interaction: result.interaction.copyWith(
+                                fromUserName:
+                                    result.interaction.fromUserName ??
+                                    effectiveItem.fromUserName,
+                                fromUserUsername:
+                                    result.interaction.fromUserUsername ??
+                                    effectiveItem.fromUserUsername,
+                                fromUserProfileImageUrl:
+                                    result
+                                        .interaction
+                                        .fromUserProfileImageUrl ??
+                                    effectiveItem.fromUserProfileImageUrl,
+                                fromUserInstagramId:
+                                    result.interaction.fromUserInstagramId ??
+                                    effectiveItem.fromUserInstagramId,
+                                fromUserSnapchatId:
+                                    result.interaction.fromUserSnapchatId ??
+                                    effectiveItem.fromUserSnapchatId,
+                              ),
+                            );
+
+                            if (mergedResult.matched) {
+                              await _showMatchOverlay(mergedResult);
+                              if (!mounted) return;
+                              _refreshPlayData();
+                            } else {
+                              setState(() => _lastResult = mergedResult);
+                            }
+                          } catch (error) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Could not save response: $error',
+                                ),
+                                backgroundColor: TColors.error,
+                              ),
+                            );
+                          }
                         },
-                        loading:
-                            () => const Center(
+                      );
+                    },
+                    loading:
+                        () => const Center(
+                          child: CircularProgressIndicator(
+                            color: TColors.hammePrimary,
+                          ),
+                        ),
+                    error:
+                        (error, _) => Center(
+                          child: Text(
+                            'Could not load voters.\n$error',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                  );
+                },
+                loading:
+                    () =>
+                        _lastResult != null && !_lastResult!.matched
+                            ? _NotAMatchView(
+                              result: _lastResult!,
+                              remainingCount: (pending.value?.length ?? 0),
+                              onSeeNext: _onDismiss,
+                              onRewind: _triggerRewind,
+                            )
+                            : const Center(
                               child: CircularProgressIndicator(
                                 color: TColors.hammePrimary,
                               ),
                             ),
-                        error:
-                            (error, _) => Center(
-                              child: Text(
-                                'Could not load voters.\n$error',
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                      );
-                },
-                loading:
-                    () => const Center(
-                      child: CircularProgressIndicator(
-                        color: TColors.hammePrimary,
-                      ),
-                    ),
                 error:
                     (_, __) =>
                         _lastResult != null && !_lastResult!.matched
