@@ -13,6 +13,7 @@ abstract class MatchRecord with _$MatchRecord {
     required InteractionType type,
     required AppUser matchedUser,
     required DateTime createdAt,
+    @Default(false) bool anonymous,
   }) = _MatchRecord;
 
   factory MatchRecord.fromJson(Map<String, dynamic> json) =>

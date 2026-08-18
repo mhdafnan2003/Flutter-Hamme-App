@@ -58,6 +58,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   void _refreshPlayData() {
     ref.invalidate(receivedInteractionsProvider);
     ref.invalidate(pendingPlayInteractionsProvider);
+    ref.invalidate(matchesProvider);
     ref.invalidate(playLimitStatusProvider);
   }
 
@@ -300,7 +301,10 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                         isSubmitting: controller.isLoading,
                         onSelect: (type) async {
                           final targetUserId = effectiveItem.fromUser;
-                          if (targetUserId == null || targetUserId.isEmpty) {
+                          final isAnonymous =
+                              effectiveItem.metadata?['anonymous'] == true;
+                          if (!isAnonymous &&
+                              (targetUserId == null || targetUserId.isEmpty)) {
                             return;
                           }
                           _lastVotedItem = effectiveItem;
@@ -308,8 +312,11 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                           try {
                             final result = await ref
                                 .read(interactionControllerProvider.notifier)
-                                .respondToUser(
-                                  targetUserId: targetUserId,
+                                .respondToInteraction(
+                                  targetUserId:
+                                      isAnonymous ? null : targetUserId,
+                                  interactionId:
+                                      isAnonymous ? effectiveItem.id : null,
                                   type: type,
                                 );
                             if (!mounted) return;
@@ -411,8 +418,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                   isSubmitting: controller.isLoading,
                                   onSelect: (type) async {
                                     final targetUserId = effectiveItem.fromUser;
-                                    if (targetUserId == null ||
-                                        targetUserId.isEmpty) {
+                                    final isAnonymous =
+                                        effectiveItem.metadata?['anonymous'] ==
+                                        true;
+                                    if (!isAnonymous &&
+                                        (targetUserId == null ||
+                                            targetUserId.isEmpty)) {
                                       return;
                                     }
                                     _lastVotedItem = effectiveItem;
@@ -423,8 +434,15 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                             interactionControllerProvider
                                                 .notifier,
                                           )
-                                          .respondToUser(
-                                            targetUserId: targetUserId,
+                                          .respondToInteraction(
+                                            targetUserId:
+                                                isAnonymous
+                                                    ? null
+                                                    : targetUserId,
+                                            interactionId:
+                                                isAnonymous
+                                                    ? effectiveItem.id
+                                                    : null,
                                             type: type,
                                           );
                                       if (!mounted) return;
@@ -1482,6 +1500,7 @@ class _PlayQueue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAnonymous = item.metadata?['anonymous'] == true;
     final avatarUrl = item.fromUserProfileImageUrl;
     final name =
         (item.fromUserName?.trim().isNotEmpty == true
@@ -1645,15 +1664,21 @@ class _PlayQueue extends StatelessWidget {
                                         padding: const EdgeInsets.only(
                                           bottom: 16,
                                         ),
-                                        child: Text(
-                                          name,
-                                          style: const TextStyle(
-                                            fontFamily: TFonts.nunito,
-                                            fontWeight: FontWeight.w900,
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                          ),
-                                        ),
+                                        child:
+                                            isAnonymous
+                                                ? const _BlurredAnonymousName(
+                                                  color: Colors.white,
+                                                  fontSize: 20,
+                                                )
+                                                : Text(
+                                                  name,
+                                                  style: const TextStyle(
+                                                    fontFamily: TFonts.nunito,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.white,
+                                                    fontSize: 20,
+                                                  ),
+                                                ),
                                       ),
                                     ),
                                   ],
@@ -1695,27 +1720,46 @@ class _PlayQueue extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            child: CircleAvatar(
-                              radius: avatarRadius,
-                              backgroundColor: const Color(0xFFAEE5F2),
-                              backgroundImage:
-                                  avatarUrl != null && avatarUrl.isNotEmpty
-                                      ? NetworkImage(avatarUrl)
-                                      : null,
-                              child:
-                                  avatarUrl == null || avatarUrl.isEmpty
-                                      ? Text(
-                                        name.characters.first.toUpperCase(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 28,
+                            child:
+                                isAnonymous
+                                    ? ImageFiltered(
+                                      imageFilter: ui.ImageFilter.blur(
+                                        sigmaX: 3,
+                                        sigmaY: 3,
+                                      ),
+                                      child: const CircleAvatar(
+                                        radius: avatarRadius,
+                                        backgroundColor: Color(0xFFD7D7D7),
+                                        child: Icon(
+                                          CupertinoIcons.person_fill,
+                                          color: Color(0xFFAAAAAA),
+                                          size: 58,
                                         ),
-                                      )
-                                      : null,
-                            ),
+                                      ),
+                                    )
+                                    : CircleAvatar(
+                                      radius: avatarRadius,
+                                      backgroundColor: const Color(0xFFAEE5F2),
+                                      backgroundImage:
+                                          avatarUrl != null &&
+                                                  avatarUrl.isNotEmpty
+                                              ? NetworkImage(avatarUrl)
+                                              : null,
+                                      child:
+                                          avatarUrl == null || avatarUrl.isEmpty
+                                              ? Text(
+                                                name.characters.first
+                                                    .toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 28,
+                                                ),
+                                              )
+                                              : null,
+                                    ),
                           ),
-                          if (socialIcon != null)
+                          if (!isAnonymous && socialIcon != null)
                             Positioned(
                               right: -4,
                               bottom: -4,
@@ -1779,6 +1823,29 @@ class _PlayQueue extends StatelessWidget {
     if (insta.isNotEmpty) return TImages.instagramIcon;
     if (snap.isNotEmpty) return TImages.snapchatIcon;
     return null;
+  }
+}
+
+class _BlurredAnonymousName extends StatelessWidget {
+  const _BlurredAnonymousName({required this.color, required this.fontSize});
+
+  final Color color;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return ImageFiltered(
+      imageFilter: ui.ImageFilter.blur(sigmaX: 4.5, sigmaY: 4.5),
+      child: Text(
+        'Anonymous voter',
+        style: TextStyle(
+          fontFamily: TFonts.nunito,
+          fontWeight: FontWeight.w900,
+          color: color,
+          fontSize: fontSize,
+        ),
+      ),
+    );
   }
 }
 

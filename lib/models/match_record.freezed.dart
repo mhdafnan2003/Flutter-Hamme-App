@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MatchRecord {
 
- String get id; InteractionType get type; AppUser get matchedUser; DateTime get createdAt;
+ String get id; InteractionType get type; AppUser get matchedUser; DateTime get createdAt; bool get anonymous;
 /// Create a copy of MatchRecord
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $MatchRecordCopyWith<MatchRecord> get copyWith => _$MatchRecordCopyWithImpl<Matc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MatchRecord&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.matchedUser, matchedUser) || other.matchedUser == matchedUser)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MatchRecord&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.matchedUser, matchedUser) || other.matchedUser == matchedUser)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.anonymous, anonymous) || other.anonymous == anonymous));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,type,matchedUser,createdAt);
+int get hashCode => Object.hash(runtimeType,id,type,matchedUser,createdAt,anonymous);
 
 @override
 String toString() {
-  return 'MatchRecord(id: $id, type: $type, matchedUser: $matchedUser, createdAt: $createdAt)';
+  return 'MatchRecord(id: $id, type: $type, matchedUser: $matchedUser, createdAt: $createdAt, anonymous: $anonymous)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $MatchRecordCopyWith<$Res>  {
   factory $MatchRecordCopyWith(MatchRecord value, $Res Function(MatchRecord) _then) = _$MatchRecordCopyWithImpl;
 @useResult
 $Res call({
- String id, InteractionType type, AppUser matchedUser, DateTime createdAt
+ String id, InteractionType type, AppUser matchedUser, DateTime createdAt, bool anonymous
 });
 
 
@@ -65,13 +65,14 @@ class _$MatchRecordCopyWithImpl<$Res>
 
 /// Create a copy of MatchRecord
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? matchedUser = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? matchedUser = null,Object? createdAt = null,Object? anonymous = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as InteractionType,matchedUser: null == matchedUser ? _self.matchedUser : matchedUser // ignore: cast_nullable_to_non_nullable
 as AppUser,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,anonymous: null == anonymous ? _self.anonymous : anonymous // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of MatchRecord
@@ -165,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  InteractionType type,  AppUser matchedUser,  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  InteractionType type,  AppUser matchedUser,  DateTime createdAt,  bool anonymous)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MatchRecord() when $default != null:
-return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt);case _:
+return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt,_that.anonymous);case _:
   return orElse();
 
 }
@@ -186,10 +187,10 @@ return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  InteractionType type,  AppUser matchedUser,  DateTime createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  InteractionType type,  AppUser matchedUser,  DateTime createdAt,  bool anonymous)  $default,) {final _that = this;
 switch (_that) {
 case _MatchRecord():
-return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt);case _:
+return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt,_that.anonymous);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +207,10 @@ return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  InteractionType type,  AppUser matchedUser,  DateTime createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  InteractionType type,  AppUser matchedUser,  DateTime createdAt,  bool anonymous)?  $default,) {final _that = this;
 switch (_that) {
 case _MatchRecord() when $default != null:
-return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt);case _:
+return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt,_that.anonymous);case _:
   return null;
 
 }
@@ -221,13 +222,14 @@ return $default(_that.id,_that.type,_that.matchedUser,_that.createdAt);case _:
 @JsonSerializable()
 
 class _MatchRecord implements MatchRecord {
-  const _MatchRecord({required this.id, required this.type, required this.matchedUser, required this.createdAt});
+  const _MatchRecord({required this.id, required this.type, required this.matchedUser, required this.createdAt, this.anonymous = false});
   factory _MatchRecord.fromJson(Map<String, dynamic> json) => _$MatchRecordFromJson(json);
 
 @override final  String id;
 @override final  InteractionType type;
 @override final  AppUser matchedUser;
 @override final  DateTime createdAt;
+@override@JsonKey() final  bool anonymous;
 
 /// Create a copy of MatchRecord
 /// with the given fields replaced by the non-null parameter values.
@@ -242,16 +244,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MatchRecord&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.matchedUser, matchedUser) || other.matchedUser == matchedUser)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MatchRecord&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.matchedUser, matchedUser) || other.matchedUser == matchedUser)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.anonymous, anonymous) || other.anonymous == anonymous));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,type,matchedUser,createdAt);
+int get hashCode => Object.hash(runtimeType,id,type,matchedUser,createdAt,anonymous);
 
 @override
 String toString() {
-  return 'MatchRecord(id: $id, type: $type, matchedUser: $matchedUser, createdAt: $createdAt)';
+  return 'MatchRecord(id: $id, type: $type, matchedUser: $matchedUser, createdAt: $createdAt, anonymous: $anonymous)';
 }
 
 
@@ -262,7 +264,7 @@ abstract mixin class _$MatchRecordCopyWith<$Res> implements $MatchRecordCopyWith
   factory _$MatchRecordCopyWith(_MatchRecord value, $Res Function(_MatchRecord) _then) = __$MatchRecordCopyWithImpl;
 @override @useResult
 $Res call({
- String id, InteractionType type, AppUser matchedUser, DateTime createdAt
+ String id, InteractionType type, AppUser matchedUser, DateTime createdAt, bool anonymous
 });
 
 
@@ -279,13 +281,14 @@ class __$MatchRecordCopyWithImpl<$Res>
 
 /// Create a copy of MatchRecord
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? matchedUser = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? matchedUser = null,Object? createdAt = null,Object? anonymous = null,}) {
   return _then(_MatchRecord(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as InteractionType,matchedUser: null == matchedUser ? _self.matchedUser : matchedUser // ignore: cast_nullable_to_non_nullable
 as AppUser,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,anonymous: null == anonymous ? _self.anonymous : anonymous // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

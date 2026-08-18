@@ -12,7 +12,17 @@ router.post(
   '/respond',
   authMiddleware,
   [
-    body('targetUserId').trim().notEmpty(),
+    body('targetUserId').optional({ values: 'falsy' }).trim().isMongoId(),
+    body('interactionId').optional({ values: 'falsy' }).trim().isMongoId(),
+    body().custom((value) => {
+      if (!value.targetUserId && !value.interactionId) {
+        throw new Error('targetUserId or interactionId is required.');
+      }
+      if (value.targetUserId && value.interactionId) {
+        throw new Error('Provide only one of targetUserId or interactionId.');
+      }
+      return true;
+    }),
     body('type').isIn(['crush', 'friend', 'frenemy']),
     body('senderUserId').optional({ values: 'falsy' }).trim(),
     body('source').optional({ values: 'falsy' }).trim(),

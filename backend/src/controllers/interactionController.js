@@ -17,7 +17,7 @@ async function getMatches(req, res) {
 }
 
 async function respondInteraction(req, res) {
-  const { senderUserId, targetUserId, type, source } = req.body;
+  const { senderUserId, targetUserId, interactionId, type, source } = req.body;
   const authUserId = req.auth?.userId;
 
   if (senderUserId && authUserId && senderUserId !== authUserId) {
@@ -29,6 +29,14 @@ async function respondInteraction(req, res) {
   }
 
   if (authUserId) {
+    if (interactionId) {
+      const result = await interactionService.respondToAnonymousInteraction({
+        currentUserId: authUserId,
+        interactionId,
+        type,
+      });
+      return res.status(201).json(result);
+    }
     const result = await interactionService.createInteractionByTargetId({
       fromUserId: authUserId,
       targetUserId,

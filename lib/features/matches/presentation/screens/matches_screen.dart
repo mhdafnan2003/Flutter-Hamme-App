@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +21,14 @@ class MatchesScreen extends ConsumerStatefulWidget {
 
 class _MatchesScreenState extends ConsumerState<MatchesScreen> {
   final Set<String> _dismissedIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(matchesProvider);
+    });
+  }
 
   void _dismissMatch(String matchId) {
     setState(() {
@@ -148,6 +158,7 @@ class _MatchTile extends StatelessWidget {
   final VoidCallback onDismiss;
 
   Future<void> _openSocial() async {
+    if (match.anonymous) return;
     final user = match.matchedUser;
     final handle = (user.instagramId.isNotEmpty
             ? user.instagramId
@@ -185,6 +196,7 @@ class _MatchTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = match.matchedUser;
+    final isAnonymous = match.anonymous;
     final name = user.name.trim().isNotEmpty ? user.name.trim() : 'Someone';
     final handle =
         user.instagramId.isNotEmpty ? user.instagramId : '@${user.shareCode}';
@@ -194,7 +206,7 @@ class _MatchTile extends StatelessWidget {
     final platformLabel = isSnap ? 'snap' : 'ig';
 
     return GestureDetector(
-      onTap: _openSocial,
+      onTap: isAnonymous ? null : _openSocial,
       behavior: HitTestBehavior.opaque,
       child: Row(
         children: [
@@ -208,7 +220,19 @@ class _MatchTile extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child:
-                user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                isAnonymous
+                    ? ImageFiltered(
+                      imageFilter: ui.ImageFilter.blur(
+                        sigmaX: 2.5,
+                        sigmaY: 2.5,
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.person_fill,
+                        size: 42,
+                        color: Color(0xFFB8B8B8),
+                      ),
+                    )
+                    : user.avatarUrl != null && user.avatarUrl!.isNotEmpty
                     ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
                     : Center(
                       child: Text(
@@ -229,24 +253,51 @@ class _MatchTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    color: Colors.black,
+                if (isAnonymous) ...[
+                  ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                    child: const Text(
+                      'Anonymous voter',
+                      style: TextStyle(
+                        fontFamily: TFonts.nunito,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
+                    ),
                   ),
-                ),
-                Text(
-                  '$platformLabel: $handle',
-                  style: const TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: Colors.black,
+                  ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                    child: const Text(
+                      'ig: @anonymous',
+                      style: TextStyle(
+                        fontFamily: TFonts.nunito,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
+                    ),
                   ),
-                ),
+                ] else ...[
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Text(
+                    '$platformLabel: $handle',
+                    style: const TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

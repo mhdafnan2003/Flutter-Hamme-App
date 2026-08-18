@@ -30,12 +30,15 @@ final matchesProvider = FutureProvider<List<MatchRecord>>((ref) async {
   if (session == null) {
     throw const AppException('You need to sign in to view matches.');
   }
-  final allMatches = await ref.watch(interactionRepositoryProvider).getMatches();
+  final allMatches =
+      await ref.watch(interactionRepositoryProvider).getMatches();
   final cutoff = DateTime.now().subtract(const Duration(hours: 24));
   return allMatches.where((m) => m.createdAt.isAfter(cutoff)).toList();
 });
 
-final receivedInteractionsProvider = FutureProvider<List<InteractionRecord>>((ref) async {
+final receivedInteractionsProvider = FutureProvider<List<InteractionRecord>>((
+  ref,
+) async {
   debugPrint('[Inbox] fetch start');
   final session = await ref.watch(authControllerProvider.future);
   if (session == null) {
@@ -43,7 +46,8 @@ final receivedInteractionsProvider = FutureProvider<List<InteractionRecord>>((re
     throw const AppException('You need to sign in to view interactions.');
   }
 
-  final items = await ref.watch(interactionRepositoryProvider).getReceivedInteractions();
+  final items =
+      await ref.watch(interactionRepositoryProvider).getReceivedInteractions();
   debugPrint('[Inbox] API success');
   debugPrint('[Inbox] interactions received=${items.length}');
 
@@ -60,17 +64,21 @@ final receivedInteractionsProvider = FutureProvider<List<InteractionRecord>>((re
   return items;
 });
 
-final pendingPlayInteractionsProvider = FutureProvider<List<InteractionRecord>>((ref) async {
-  final items = await ref.watch(receivedInteractionsProvider.future);
-  return items
-      .where(
-        (item) =>
-            item.fromUser != null &&
-            item.fromUser!.isNotEmpty &&
-            !item.respondedByCurrentUser,
-      )
-      .toList();
-});
+bool isActionablePlayInteraction(InteractionRecord item) {
+  final hasRegisteredVoter = item.fromUser != null && item.fromUser!.isNotEmpty;
+  final anonymousVoteBackEnabled =
+      item.metadata?['anonymous'] == true &&
+      item.metadata?['anonymousVoteBackEnabled'] == true;
+  return (hasRegisteredVoter || anonymousVoteBackEnabled) &&
+      !item.respondedByCurrentUser;
+}
+
+final pendingPlayInteractionsProvider = FutureProvider<List<InteractionRecord>>(
+  (ref) async {
+    final items = await ref.watch(receivedInteractionsProvider.future);
+    return items.where(isActionablePlayInteraction).toList();
+  },
+);
 
 final interactionControllerProvider =
     AsyncNotifierProvider<InteractionController, void>(
@@ -89,7 +97,8 @@ final Set<String> _deferredFinalizeProcessed = <String>{};
 // should let the user install/sign up, but must never create a reaction by itself.
 final deferredInteractionFinalizerProvider = Provider<void>((ref) {
   final authStatus = ref.watch(authStatusProvider);
-  final onboardingComplete = ref.watch(onboardingCompletionProvider).value ?? false;
+  final onboardingComplete =
+      ref.watch(onboardingCompletionProvider).value ?? false;
   final token = ref.watch(deferredInteractionTokenProvider);
 
   if (authStatus != AuthStatus.authenticated || !onboardingComplete) {
@@ -108,13 +117,16 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
   debugPrint('[DeferredInteraction] Auto-finalizing token: $token');
   Future.microtask(() async {
     try {
-      await ref.read(interactionControllerProvider.notifier).finalizeInteraction(token);
+      await ref
+          .read(interactionControllerProvider.notifier)
+          .finalizeInteraction(token);
       _deferredFinalizeProcessed.add(token);
       ref.read(deferredInteractionTokenProvider.notifier).state = null;
     } catch (e) {
       debugPrint('[DeferredInteraction] Finalize failed: $e');
-      ref.read(deferredInteractionErrorProvider.notifier).state =
-          _friendlyDeferredError(e);
+      ref
+          .read(deferredInteractionErrorProvider.notifier)
+          .state = _friendlyDeferredError(e);
       if (e is AppException &&
           e.statusCode != null &&
           e.statusCode! >= 400 &&
@@ -129,8 +141,11 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
         // "Already used" means the install referrer replayed a stale token
         // (e.g. same phone, data cleared, new account). No real user hits this
         // in a legitimate flow — show nothing.
-        final msg = e.message ?? '';
-        if (msg.contains('already been used') || msg.contains('already been sent')) return;
+        final msg = e.message;
+        if (msg.contains('already been used') ||
+            msg.contains('already been sent')) {
+          return;
+        }
       }
     } finally {
       _deferredFinalizeInFlight.remove(token);
@@ -140,8 +155,7 @@ final deferredInteractionFinalizerProvider = Provider<void>((ref) {
 
 String _friendlyDeferredError(Object error) {
   final message = error is AppException ? error.message : error.toString();
-  if (message.contains('sent to yourself') ||
-      message.contains('own profile')) {
+  if (message.contains('sent to yourself') || message.contains('own profile')) {
     return "You can't reveal or respond to your own link.";
   }
   if (message.contains('expired')) {
@@ -187,14 +201,16 @@ class InteractionController extends AsyncNotifier<void> {
     }
   }
 
-  Future<InteractionResult> respondToUser({
-    required String targetUserId,
+  Future<InteractionResult> respondToInteraction({
+    String? targetUserId,
+    String? interactionId,
     required InteractionType type,
   }) async {
     state = const AsyncLoading();
     try {
-      final result = await _repository.respondToUser(
+      final result = await _repository.respondToInteraction(
         targetUserId: targetUserId,
+        interactionId: interactionId,
         type: type,
       );
       ref.invalidate(matchesProvider);

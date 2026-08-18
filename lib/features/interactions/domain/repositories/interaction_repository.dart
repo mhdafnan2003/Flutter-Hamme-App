@@ -9,8 +9,9 @@ abstract interface class InteractionRepository {
     required InteractionType type,
   });
 
-  Future<InteractionResult> respondToUser({
-    required String targetUserId,
+  Future<InteractionResult> respondToInteraction({
+    String? targetUserId,
+    String? interactionId,
     required InteractionType type,
   });
 

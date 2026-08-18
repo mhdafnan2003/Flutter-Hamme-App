@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
@@ -86,6 +88,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
   Future<void> _openSocial() async {
     final interaction = widget.result.interaction;
     final match = widget.result.match;
+    if (match?.anonymous == true) return;
     final otherInstagram =
         match?.matchedUser.instagramId ?? interaction.fromUserInstagramId ?? '';
     final otherSnap = interaction.fromUserSnapchatId ?? '';
@@ -120,6 +123,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
   Widget build(BuildContext context) {
     final interaction = widget.result.interaction;
     final match = widget.result.match;
+    final isAnonymous = match?.anonymous == true;
 
     final otherName =
         match?.matchedUser.name.trim() ??
@@ -210,6 +214,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                               ? 'Someone'
                                               : otherName,
                                       choiceText: theme.choiceText,
+                                      anonymous: isAnonymous,
                                     ),
                                   ],
                                 ),
@@ -232,6 +237,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                   emoji: theme.emoji,
                                   size: 36,
                                 ),
+                                blurOtherAvatar: isAnonymous,
                               ),
                             ),
                           ],
@@ -239,126 +245,140 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
 
                         const SizedBox(height: 48),
 
-                        // Social Platform Switcher
-                        Container(
-                          width: 84,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(19),
-                          ),
-                          child: Stack(
-                            children: [
-                              AnimatedAlign(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeOutBack,
-                                alignment:
-                                    _isInstagramSelected
-                                        ? Alignment.centerLeft
-                                        : Alignment.centerRight,
-                                child: Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: theme.socialPillColor,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                left: 9,
-                                top: 9,
-                                child: IgnorePointer(
-                                  child: Image.asset(
-                                    'assets/icons/insta-outline.png',
-                                    width: 20,
-                                    height: 20,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                right: 9,
-                                top: 9.5,
-                                child: IgnorePointer(
-                                  child: Image.asset(
-                                    'assets/icons/snap-fill.png',
-                                    width: 20,
-                                    height: 19,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              Positioned.fill(
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap:
-                                            () => setState(
-                                              () => _isInstagramSelected = true,
-                                            ),
-                                        child: const SizedBox.expand(),
-                                      ),
+                        // Anonymous voters do not have a social account to open.
+                        if (!isAnonymous) ...[
+                          Container(
+                            width: 84,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(19),
+                            ),
+                            child: Stack(
+                              children: [
+                                AnimatedAlign(
+                                  duration: const Duration(milliseconds: 250),
+                                  curve: Curves.easeOutBack,
+                                  alignment:
+                                      _isInstagramSelected
+                                          ? Alignment.centerLeft
+                                          : Alignment.centerRight,
+                                  child: Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: theme.socialPillColor,
                                     ),
-                                    Expanded(
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap:
-                                            () => setState(
-                                              () =>
-                                                  _isInstagramSelected = false,
-                                            ),
-                                        child: const SizedBox.expand(),
-                                      ),
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 9,
+                                  top: 9,
+                                  child: IgnorePointer(
+                                    child: Image.asset(
+                                      'assets/icons/insta-outline.png',
+                                      width: 20,
+                                      height: 20,
+                                      color: Colors.white,
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Positioned(
+                                  right: 9,
+                                  top: 9.5,
+                                  child: IgnorePointer(
+                                    child: Image.asset(
+                                      'assets/icons/snap-fill.png',
+                                      width: 20,
+                                      height: 19,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Positioned.fill(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap:
+                                              () => setState(
+                                                () =>
+                                                    _isInstagramSelected = true,
+                                              ),
+                                          child: const SizedBox.expand(),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap:
+                                              () => setState(
+                                                () =>
+                                                    _isInstagramSelected =
+                                                        false,
+                                              ),
+                                          child: const SizedBox.expand(),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
 
-                        const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                        // Reply Button
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 62,
-                            child: ElevatedButton.icon(
-                              onPressed: _openSocial,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.black,
-                                side: BorderSide.none,
-                                padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(22),
+                          // Reply Button
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 62,
+                              child: ElevatedButton.icon(
+                                onPressed: _openSocial,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  side: BorderSide.none,
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                  elevation: 0,
                                 ),
-                                elevation: 0,
-                              ),
-                              icon: Image.asset(
-                                _isInstagramSelected
-                                    ? 'assets/icons/insta-outline.png'
-                                    : 'assets/icons/snap-fill.png',
-                                width: 24,
-                                height: _isInstagramSelected ? 24 : 22.8,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Reply',
-                                style: TextStyle(
-                                  fontFamily: TFonts.nunito,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
+                                icon: Image.asset(
+                                  _isInstagramSelected
+                                      ? 'assets/icons/insta-outline.png'
+                                      : 'assets/icons/snap-fill.png',
+                                  width: 24,
+                                  height: _isInstagramSelected ? 24 : 22.8,
                                   color: Colors.white,
+                                ),
+                                label: const Text(
+                                  'Reply',
+                                  style: TextStyle(
+                                    fontFamily: TFonts.nunito,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                        ] else
+                          const Text(
+                            'This anonymous match has no social profile to open.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: TFonts.nunito,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -373,10 +393,15 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
 }
 
 class _MatchDescription extends StatelessWidget {
-  const _MatchDescription({required this.otherName, required this.choiceText});
+  const _MatchDescription({
+    required this.otherName,
+    required this.choiceText,
+    required this.anonymous,
+  });
 
   final String otherName;
   final String choiceText;
+  final bool anonymous;
 
   static const _style = TextStyle(
     fontFamily: TFonts.nunito,
@@ -395,11 +420,26 @@ class _MatchDescription extends StatelessWidget {
           height: 22.4,
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
-              '$otherName also chose $choiceText.',
-              maxLines: 1,
-              style: _style,
-            ),
+            child:
+                anonymous
+                    ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ImageFiltered(
+                          imageFilter: ui.ImageFilter.blur(
+                            sigmaX: 4,
+                            sigmaY: 4,
+                          ),
+                          child: const Text('Anonymous', style: _style),
+                        ),
+                        Text(' also chose $choiceText.', style: _style),
+                      ],
+                    )
+                    : Text(
+                      '$otherName also chose $choiceText.',
+                      maxLines: 1,
+                      style: _style,
+                    ),
           ),
         ),
         const Text(
@@ -424,6 +464,7 @@ class MatchAvatarPair extends StatefulWidget {
     required this.otherFallbackText,
     required this.ringColor,
     required this.centerIcon,
+    this.blurOtherAvatar = false,
   });
 
   final String? currentUserImageUrl;
@@ -432,6 +473,7 @@ class MatchAvatarPair extends StatefulWidget {
   final String otherFallbackText;
   final Color ringColor;
   final Widget centerIcon;
+  final bool blurOtherAvatar;
 
   @override
   State<MatchAvatarPair> createState() => _MatchAvatarPairState();
@@ -501,12 +543,18 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
                   offset: Offset(190 * (1 - arrival), 0),
                   child: Transform.scale(
                     scale: 0.86 + (0.14 * arrival),
-                    child: _GlossyMatchAvatar(
-                      glazeProgress: (_glazeController.value + 0.5) % 1,
-                      avatar: MatchAvatar(
-                        imageUrl: widget.otherImageUrl,
-                        fallbackText: widget.otherFallbackText,
-                        ringColor: widget.ringColor,
+                    child: ImageFiltered(
+                      imageFilter: ui.ImageFilter.blur(
+                        sigmaX: widget.blurOtherAvatar ? 3 : 0,
+                        sigmaY: widget.blurOtherAvatar ? 3 : 0,
+                      ),
+                      child: _GlossyMatchAvatar(
+                        glazeProgress: (_glazeController.value + 0.5) % 1,
+                        avatar: MatchAvatar(
+                          imageUrl: widget.otherImageUrl,
+                          fallbackText: widget.otherFallbackText,
+                          ringColor: widget.ringColor,
+                        ),
                       ),
                     ),
                   ),
