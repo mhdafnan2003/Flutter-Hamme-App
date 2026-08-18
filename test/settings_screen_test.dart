@@ -15,7 +15,9 @@ void main() {
   testWidgets('settings lists preference and external link options', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: SettingsScreen())),
+    );
 
     expect(find.text('Preferences'), findsOneWidget);
     expect(find.text('Notifications'), findsOneWidget);
@@ -24,6 +26,7 @@ void main() {
     expect(find.text('Safety resources'), findsOneWidget);
     expect(find.text('Terms of use'), findsOneWidget);
     expect(find.text('Privacy policy'), findsOneWidget);
+    expect(find.text('Delete account'), findsOneWidget);
   });
 
   testWidgets('notification controls can be changed', (tester) async {
@@ -40,6 +43,26 @@ void main() {
 
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getBool('settings_match_notifications'), isFalse);
+  });
+
+  testWidgets('delete account asks for confirmation', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: SettingsScreen())),
+    );
+
+    await tester.ensureVisible(find.text('Delete account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete account?'), findsOneWidget);
+    expect(
+      find.textContaining('This permanently deletes your profile'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete account?'), findsNothing);
   });
 
   testWidgets('appearance control changes the selected theme', (tester) async {

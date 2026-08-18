@@ -148,82 +148,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isUploadingImage = false;
   bool _isSaving = false;
   bool _isLoggingOut = false;
-  bool _isDeletingAccount = false;
-
-  Future<void> _deleteAccount() async {
-    if (_isDeletingAccount) return;
-    const deleteMessage =
-        'This permanently deletes your profile, photo, matches, and interactions. This cannot be undone. Active App Store subscriptions are not cancelled automatically.';
-    final isCupertino =
-        Theme.of(context).platform == TargetPlatform.iOS ||
-        Theme.of(context).platform == TargetPlatform.macOS;
-    final confirmed =
-        isCupertino
-            ? await showCupertinoDialog<bool>(
-              context: context,
-              builder:
-                  (dialogContext) => CupertinoAlertDialog(
-                    title: const Text('Delete account?'),
-                    content: const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(deleteMessage),
-                    ),
-                    actions: [
-                      CupertinoDialogAction(
-                        onPressed: () => Navigator.of(dialogContext).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      CupertinoDialogAction(
-                        isDestructiveAction: true,
-                        onPressed: () => Navigator.of(dialogContext).pop(true),
-                        child: const Text('Delete account'),
-                      ),
-                    ],
-                  ),
-            )
-            : await showDialog<bool>(
-              context: context,
-              builder:
-                  (dialogContext) => AlertDialog(
-                    icon: const Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.redAccent,
-                    ),
-                    title: const Text('Delete account?'),
-                    content: const Text(deleteMessage),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () => Navigator.of(dialogContext).pop(true),
-                        child: const Text('Delete account'),
-                      ),
-                    ],
-                  ),
-            );
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _isDeletingAccount = true);
-    try {
-      await ref.read(authControllerProvider.notifier).deleteAccount();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not delete your account. Please try again.'),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isDeletingAccount = false);
-    }
-  }
 
   Future<void> _logoutForOnboardingPreview() async {
     if (_isLoggingOut) return;
@@ -676,19 +600,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
-
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: _isDeletingAccount ? null : _deleteAccount,
-              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-              child:
-                  _isDeletingAccount
-                      ? const CupertinoActivityIndicator()
-                      : const Text(
-                        'Delete account',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-            ),
 
             if (AppConstants.showDeveloperLogoutButton) ...[
               const SizedBox(height: 16),

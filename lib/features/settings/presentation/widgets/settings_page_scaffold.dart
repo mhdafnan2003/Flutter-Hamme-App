@@ -106,6 +106,7 @@ class SettingsTile extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.trailing,
+    this.foregroundColor,
     super.key,
   });
 
@@ -114,6 +115,7 @@ class SettingsTile extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTap;
   final Widget? trailing;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -132,14 +134,15 @@ class SettingsTile extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
-        child: Icon(icon, size: 24),
+        child: Icon(icon, size: 24, color: foregroundColor),
       ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: TFonts.nunito,
           fontWeight: FontWeight.w900,
           fontSize: 18,
+          color: foregroundColor,
         ),
       ),
       subtitle:
