@@ -67,7 +67,8 @@ app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 200,
+    limit: env.apiRateLimit,
+    message: { message: 'Too many requests. Please try again shortly.' },
     // Pub/Sub authenticates this endpoint with a Google-signed OIDC token and
     // may legitimately deliver bursts or retries.
     skip: (req) => req.path === '/api/v1/billing/google-play/rtdn',
