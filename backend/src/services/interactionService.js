@@ -270,7 +270,23 @@ async function createAnonymousResponse({
   };
 }
 
-async function createInteractionByTargetId({ fromUserId, targetUserId, type }) {
+async function createInteractionByTargetId({
+  fromUserId,
+  targetUserId,
+  type,
+  enforceCardLimit = true,
+}) {
+  if (enforceCardLimit) {
+    const limitStatus = await appConfigService.getCardLimitStatus(fromUserId);
+    if (limitStatus.limited) {
+      throw new ApiError(
+        429,
+        'Card limit reached. Please wait for the cooldown.',
+        { cardLimitStatus: limitStatus }
+      );
+    }
+  }
+
   const normalizedType = normalizeType(type);
   const targetUser = await User.findById(targetUserId);
   if (!targetUser) {
@@ -343,6 +359,15 @@ async function createInteractionByTargetId({ fromUserId, targetUserId, type }) {
 async function respondToAnonymousInteraction({ currentUserId, interactionId, type }) {
   if (!env.anonymousVoteBackEnabled) {
     throw new ApiError(403, 'Anonymous vote-back is currently disabled.');
+  }
+
+  const limitStatus = await appConfigService.getCardLimitStatus(currentUserId);
+  if (limitStatus.limited) {
+    throw new ApiError(
+      429,
+      'Card limit reached. Please wait for the cooldown.',
+      { cardLimitStatus: limitStatus }
+    );
   }
 
   const normalizedType = normalizeType(type);
@@ -663,6 +688,7 @@ async function finalizePendingInteraction({ token, currentUserId }) {
       fromUserId: currentUserId,
       targetUserId: pending.targetUserId,
       type: pending.type,
+      enforceCardLimit: false,
     });
   } else {
     // Backward compatibility for records created before pendingToken metadata existed.

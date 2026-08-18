@@ -33,6 +33,7 @@ module.exports = {
   // and matching answers are exposed as anonymous (blurred) matches.
   anonymousVoteBackEnabled:
     process.env.ANONYMOUS_VOTE_BACK_ENABLED === 'true',
+  apiRateLimit: Math.max(200, Number(process.env.API_RATE_LIMIT || 1000)),
   adminApiKey: process.env.ADMIN_API_KEY || '',
   appleIapIssuerId: process.env.APPLE_IAP_ISSUER_ID || '',
   appleIapKeyId: process.env.APPLE_IAP_KEY_ID || '',

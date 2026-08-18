@@ -219,7 +219,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPlayData();
     });
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
       _refreshPlayData();
     });
@@ -354,6 +354,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                             }
                           } catch (error) {
                             if (!mounted) return;
+                            ref.invalidate(playLimitStatusProvider);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
@@ -485,6 +486,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                       }
                                     } catch (error) {
                                       if (!mounted) return;
+                                      ref.invalidate(playLimitStatusProvider);
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(

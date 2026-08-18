@@ -289,7 +289,17 @@ class ApiService {
       );
     }
     final hasBody = response.body.trim().isNotEmpty;
-    final decodedBody = hasBody ? jsonDecode(response.body) : null;
+    dynamic decodedBody;
+    if (hasBody) {
+      try {
+        decodedBody = jsonDecode(response.body);
+      } on FormatException {
+        // Proxies and infrastructure rate limiters may return plain text or
+        // HTML. Preserve it as an actionable API error instead of leaking a
+        // JSON parsing exception into the UI.
+        decodedBody = response.body.trim();
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodedBody;
@@ -312,6 +322,8 @@ class ApiService {
           }
         }
       }
+    } else if (decodedBody is String && decodedBody.isNotEmpty) {
+      message = decodedBody;
     }
 
     throw AppException(message, statusCode: response.statusCode);
