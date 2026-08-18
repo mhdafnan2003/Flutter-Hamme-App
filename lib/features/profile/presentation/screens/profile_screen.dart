@@ -454,7 +454,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: Image.asset(TImages.hammeHomeLogo, height: 32),
                     ),
                   ),
-                  const SizedBox(width: 44),
+                  IconButton(
+                    onPressed: () => context.push('/settings'),
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0xFFF2F2F7),
+                      fixedSize: const Size(44, 44),
+                    ),
+                    icon: const Icon(
+                      CupertinoIcons.gear_solid,
+                      color: Colors.black,
+                      size: 21,
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -8,6 +8,7 @@ import 'utils/theme/theme.dart';
 import 'providers/deferred_interaction_provider.dart';
 import 'models/interaction_type.dart';
 import 'providers/interaction_providers.dart';
+import 'providers/settings_providers.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/install_referrer_service.dart';
 
@@ -175,7 +176,7 @@ class _HammeAppState extends ConsumerState<HammeApp> {
       scaffoldMessengerKey: _scaffoldMessengerKey,
       theme: TAppTheme.lightTheme,
       darkTheme: TAppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(themeModeProvider),
       routerConfig: ref.watch(appRouterProvider),
     );
   }

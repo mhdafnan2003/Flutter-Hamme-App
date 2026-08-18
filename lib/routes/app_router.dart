@@ -15,6 +15,9 @@ import '../features/onboarding/presentation/screens/pro_screen.dart';
 import '../features/onboarding/presentation/screens/social_media_screen.dart';
 import '../features/onboarding/presentation/screens/splash_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
+import '../features/settings/presentation/screens/appearance_settings_screen.dart';
+import '../features/settings/presentation/screens/notifications_settings_screen.dart';
+import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/shared/presentation/screens/main_shell.dart';
 import '../providers/auth_providers.dart';
 import '../providers/onboarding_providers.dart';
@@ -92,6 +95,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const ProScreen(isOnboarding: false),
       ),
       GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
+      GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+      GoRoute(
+        path: '/settings/notifications',
+        builder: (_, _) => const NotificationsSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/appearance',
+        builder: (_, _) => const AppearanceSettingsScreen(),
+      ),
       GoRoute(path: '/matches', builder: (_, _) => const MatchesScreen()),
       StatefulShellRoute.indexedStack(
         builder:
