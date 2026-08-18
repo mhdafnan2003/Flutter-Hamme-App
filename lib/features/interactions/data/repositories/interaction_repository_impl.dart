@@ -18,6 +18,10 @@ class InteractionRepositoryImpl implements InteractionRepository {
       _remoteDataSource.getReceivedInteractions();
 
   @override
+  Future<void> reportInteraction(String interactionId) =>
+      _remoteDataSource.reportInteraction(interactionId);
+
+  @override
   Future<InteractionResult> sendInteraction({
     required String shareCode,
     required InteractionType type,

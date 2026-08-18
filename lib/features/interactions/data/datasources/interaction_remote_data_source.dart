@@ -73,6 +73,13 @@ class InteractionRemoteDataSource {
         .toList();
   }
 
+  Future<void> reportInteraction(String interactionId) async {
+    await _apiService.post(
+      '/interactions/$interactionId/report',
+      authenticated: true,
+    );
+  }
+
   Future<InteractionResult> finalizeInteraction(String token) async {
     final response =
         await _apiService.post(

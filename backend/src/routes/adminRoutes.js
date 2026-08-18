@@ -21,6 +21,7 @@ router.get('/', (req, res) => {
 });
 
 router.get('/users', adminMiddleware, adminController.listUsers);
+router.get('/reports', adminMiddleware, adminController.listReports);
 
 router.patch(
   '/users/:id/plan',

@@ -211,6 +211,105 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     );
   }
 
+  Future<void> _reportInteraction(InteractionRecord interaction) async {
+    final reportedUserId = interaction.fromUser;
+    if (reportedUserId == null || reportedUserId.isEmpty) return;
+
+    final name =
+        interaction.fromUserName?.trim().isNotEmpty == true
+            ? interaction.fromUserName!.trim()
+            : interaction.fromUserUsername?.trim().isNotEmpty == true
+            ? interaction.fromUserUsername!.trim()
+            : 'This user';
+
+    final confirmed =
+        Platform.isIOS
+            ? await showCupertinoDialog<bool>(
+              context: context,
+              builder:
+                  (dialogContext) => CupertinoAlertDialog(
+                    content: Text('Are you sure you want to report $name?'),
+                    actions: [
+                      CupertinoDialogAction(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      CupertinoDialogAction(
+                        isDestructiveAction: true,
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        child: const Text('Report'),
+                      ),
+                    ],
+                  ),
+            )
+            : await showDialog<bool>(
+              context: context,
+              builder:
+                  (dialogContext) => AlertDialog(
+                    content: Text('Are you sure you want to report $name?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        child: const Text(
+                          'Report',
+                          style: TextStyle(color: TColors.error),
+                        ),
+                      ),
+                    ],
+                  ),
+            );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await ref
+          .read(interactionControllerProvider.notifier)
+          .reportInteraction(interaction.id);
+      if (!mounted) return;
+
+      if (Platform.isIOS) {
+        await showCupertinoDialog<void>(
+          context: context,
+          builder:
+              (dialogContext) => CupertinoAlertDialog(
+                content: Text('$name has been reported.'),
+                actions: [
+                  CupertinoDialogAction(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Back'),
+                  ),
+                ],
+              ),
+        );
+      } else {
+        await showDialog<void>(
+          context: context,
+          builder:
+              (dialogContext) => AlertDialog(
+                content: Text('$name has been reported.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Back'),
+                  ),
+                ],
+              ),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not submit report: $error'),
+          backgroundColor: TColors.error,
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -299,6 +398,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                         item: effectiveItem,
                         remainingCount: items.length,
                         isSubmitting: controller.isLoading,
+                        onReport: () => _reportInteraction(effectiveItem),
                         onSelect: (type) async {
                           final targetUserId = effectiveItem.fromUser;
                           final isAnonymous =
@@ -416,6 +516,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                   item: effectiveItem,
                                   remainingCount: items.length,
                                   isSubmitting: controller.isLoading,
+                                  onReport:
+                                      () => _reportInteraction(effectiveItem),
                                   onSelect: (type) async {
                                     final targetUserId = effectiveItem.fromUser;
                                     final isAnonymous =
@@ -1490,12 +1592,14 @@ class _PlayQueue extends StatelessWidget {
     required this.item,
     required this.remainingCount,
     required this.isSubmitting,
+    required this.onReport,
     required this.onSelect,
   });
 
   final InteractionRecord item;
   final int remainingCount;
   final bool isSubmitting;
+  final VoidCallback onReport;
   final ValueChanged<InteractionType> onSelect;
 
   @override
@@ -1647,17 +1751,27 @@ class _PlayQueue extends StatelessWidget {
                                 ),
                                 child: Stack(
                                   children: [
-                                    Positioned(
-                                      top: 14,
-                                      right: 16,
-                                      child: Icon(
-                                        CupertinoIcons.flag_fill,
-                                        size: 18,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.5,
+                                    if (!isAnonymous)
+                                      Positioned(
+                                        top: 4,
+                                        right: 6,
+                                        child: Semantics(
+                                          button: true,
+                                          label: 'Report $name',
+                                          child: IconButton(
+                                            tooltip: 'Report user',
+                                            onPressed:
+                                                isSubmitting ? null : onReport,
+                                            icon: Icon(
+                                              CupertinoIcons.flag_fill,
+                                              size: 18,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.65,
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
                                     Align(
                                       alignment: Alignment.bottomCenter,
                                       child: Padding(

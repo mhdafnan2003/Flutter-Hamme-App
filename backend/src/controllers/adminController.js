@@ -1,5 +1,6 @@
 const userService = require('../services/userService');
 const appConfigService = require('../services/appConfigService');
+const reportService = require('../services/reportService');
 
 async function listUsers(req, res) {
   const result = await userService.listUsers({
@@ -26,9 +27,18 @@ async function updateConfig(req, res) {
   return res.status(200).json({ config });
 }
 
+async function listReports(req, res) {
+  const result = await reportService.listReports({
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  return res.status(200).json(result);
+}
+
 module.exports = {
   listUsers,
   setPlan,
   getConfig,
   updateConfig,
+  listReports,
 };

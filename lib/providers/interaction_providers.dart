@@ -224,6 +224,17 @@ class InteractionController extends AsyncNotifier<void> {
     }
   }
 
+  Future<void> reportInteraction(String interactionId) async {
+    state = const AsyncLoading();
+    try {
+      await _repository.reportInteraction(interactionId);
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
   Future<InteractionResult> finalizeInteraction(String token) async {
     state = const AsyncLoading();
     try {

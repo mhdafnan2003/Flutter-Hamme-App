@@ -1,5 +1,6 @@
 const interactionService = require('../services/interactionService');
 const appConfigService = require('../services/appConfigService');
+const reportService = require('../services/reportService');
 
 async function createInteraction(req, res) {
   const result = await interactionService.createInteraction({
@@ -95,6 +96,14 @@ async function getLimitStatus(req, res) {
   return res.status(200).json({ cardLimitStatus });
 }
 
+async function reportInteraction(req, res) {
+  const report = await reportService.createReport({
+    reporterId: req.auth.userId,
+    interactionId: req.params.id,
+  });
+  return res.status(201).json({ reportId: report.id });
+}
+
 module.exports = {
   createInteraction,
   getMatches,
@@ -105,4 +114,5 @@ module.exports = {
   finalizePendingInteraction,
   getPendingInteraction,
   getLimitStatus,
+  reportInteraction,
 };

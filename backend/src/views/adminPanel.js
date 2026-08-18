@@ -41,6 +41,9 @@ module.exports = `<!doctype html>
   .number-input { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:14px; }
   .hint { font-size:11px; color:#9a9aae; margin-top:4px; }
   #settingsStatus { font-size:13px; min-height:18px; margin-top:10px; }
+  .report-person { display:flex; align-items:center; gap:9px; min-width:170px; }
+  .report-person .avatar { flex:0 0 auto; }
+  .report-id { max-width:150px; overflow-wrap:anywhere; }
 </style>
 </head>
 <body>
@@ -102,11 +105,35 @@ module.exports = `<!doctype html>
       <tbody id="rows"><tr><td colspan="6" class="muted">Enter your admin key and click “Save & Load”.</td></tr></tbody>
     </table>
   </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div>
+        <div class="section-title" style="margin-bottom:3px;">User Reports</div>
+        <div class="muted" id="reportSummary">No reports loaded.</div>
+      </div>
+      <div class="pager">
+        <button class="btn-ghost" id="reportRefresh">Refresh</button>
+        <button class="btn-ghost" id="reportPrev">&lsaquo; Prev</button>
+        <span class="muted" id="reportPageInfo">&ndash;</span>
+        <button class="btn-ghost" id="reportNext">Next &rsaquo;</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr><th>Reported user</th><th>Reported by</th><th>Reaction</th><th>Submitted</th><th>Status</th></tr>
+        </thead>
+        <tbody id="reportRows"><tr><td colspan="5" class="muted">Enter your admin key and click Save & Load.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
   var API_BASE = location.pathname.replace(/\\/$/, '');
   var state = { page: 1, limit: 25, search: '', pages: 1 };
+  var reportState = { page: 1, limit: 25, pages: 1 };
   var $ = function (id) { return document.getElementById(id); };
 
   function getKey() { return localStorage.getItem('hamme_admin_key') || ''; }
@@ -197,11 +224,56 @@ module.exports = `<!doctype html>
     }
   }
 
+  function personHtml(person, id) {
+    person = person || {};
+    var avatar = person.avatarUrl
+      ? '<img class="avatar" src="' + escapeHtml(person.avatarUrl) + '" onerror="this.style.visibility=\'hidden\'"/>'
+      : '<div class="avatar"></div>';
+    var handle = person.username ? '@' + person.username : person.email || person.shareCode || '';
+    return '<div class="report-person">' + avatar + '<div><div>' + escapeHtml(person.name || 'Unknown user') +
+      '</div><div class="muted">' + escapeHtml(handle) + '</div><div class="muted report-id">ID: ' + escapeHtml(id) + '</div></div></div>';
+  }
+
+  function renderReports(data) {
+    var tbody = $('reportRows');
+    reportState.pages = data.pages;
+    $('reportSummary').textContent = data.total + ' report(s) total';
+    $('reportPageInfo').textContent = 'Page ' + data.page + ' / ' + data.pages;
+    if (!data.reports.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="muted">No reports found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.reports.map(function (r) {
+      var submitted = new Date(r.createdAt).toLocaleString();
+      return '<tr>' +
+        '<td>' + personHtml(r.reportedUser, r.reportedUserId) + '</td>' +
+        '<td>' + personHtml(r.reporter, r.reporterId) + '</td>' +
+        '<td><strong>' + escapeHtml(r.interactionType) + '</strong><div class="muted report-id">ID: ' + escapeHtml(r.interactionId) + '</div></td>' +
+        '<td>' + escapeHtml(submitted) + '</td>' +
+        '<td><span class="badge free">' + escapeHtml(r.status.toUpperCase()) + '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  async function loadReports() {
+    if (!getKey()) return;
+    $('reportSummary').textContent = 'Loading reports...';
+    try {
+      var data = await api('/reports?page=' + reportState.page + '&limit=' + reportState.limit);
+      renderReports(data);
+    } catch (e) {
+      $('reportSummary').textContent = e.message;
+      $('reportRows').innerHTML = '<tr><td colspan="5" class="err">Could not load reports.</td></tr>';
+    }
+  }
+
   $('saveKey').addEventListener('click', function () {
     setKey($('adminKey').value.trim());
     state.page = 1;
+    reportState.page = 1;
     load();
     loadSettings();
+    loadReports();
   });
 
   var searchTimer = null;
@@ -219,6 +291,13 @@ module.exports = `<!doctype html>
   });
   $('next').addEventListener('click', function () {
     if (state.page < state.pages) { state.page++; load(); }
+  });
+  $('reportRefresh').addEventListener('click', loadReports);
+  $('reportPrev').addEventListener('click', function () {
+    if (reportState.page > 1) { reportState.page--; loadReports(); }
+  });
+  $('reportNext').addEventListener('click', function () {
+    if (reportState.page < reportState.pages) { reportState.page++; loadReports(); }
   });
 
   // ── Settings ──────────────────────────────────────────────────────────────
@@ -258,7 +337,7 @@ module.exports = `<!doctype html>
 
   // Restore saved key on open.
   $('adminKey').value = getKey();
-  if (getKey()) { load(); loadSettings(); }
+  if (getKey()) { load(); loadSettings(); loadReports(); }
 </script>
 </body>
 </html>`;

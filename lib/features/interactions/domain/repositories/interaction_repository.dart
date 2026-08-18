@@ -18,6 +18,7 @@ abstract interface class InteractionRepository {
   Future<List<MatchRecord>> getMatches();
 
   Future<List<InteractionRecord>> getReceivedInteractions();
+  Future<void> reportInteraction(String interactionId);
   Future<InteractionResult> finalizeInteraction(String token);
   Future<Map<String, dynamic>> getPendingInteraction(String token);
 }

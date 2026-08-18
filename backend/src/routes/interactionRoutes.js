@@ -1,5 +1,5 @@
 const express = require('express');
-const { body } = require('express-validator');
+const { body, param } = require('express-validator');
 
 const interactionController = require('../controllers/interactionController');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -60,6 +60,12 @@ router.post(
 router.get('/limit-status', interactionController.getLimitStatus);
 router.get('/matches', interactionController.getMatches);
 router.get('/received', interactionController.getReceivedInteractions);
+router.post(
+  '/:id/report',
+  [param('id').isMongoId()],
+  validateRequest,
+  interactionController.reportInteraction
+);
 router.post(
   '/finalize',
   [body('token').trim().notEmpty()],
