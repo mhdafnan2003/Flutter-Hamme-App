@@ -60,7 +60,14 @@ async function getCardLimitStatus(userId) {
 
   const session = await CardSession.findOne({ userId });
   if (!session) {
-    return { limited: false, viewsLeft: freeUserCardLimit, resetAt: null, maxCards: freeUserCardLimit, cooldownMinutes, isPro: false };
+    return {
+      limited: false,
+      viewsLeft: freeUserCardLimit,
+      resetAt: null,
+      maxCards: freeUserCardLimit,
+      cooldownMinutes: cardCooldownMinutes,
+      isPro: false,
+    };
   }
 
   const windowEndMs = session.windowStartedAt.getTime() + cardCooldownMinutes * 60 * 1000;
@@ -68,7 +75,14 @@ async function getCardLimitStatus(userId) {
 
   if (now >= windowEndMs) {
     await CardSession.findOneAndUpdate({ userId }, { count: 0, windowStartedAt: new Date() });
-    return { limited: false, viewsLeft: freeUserCardLimit, resetAt: null, maxCards: freeUserCardLimit, cooldownMinutes, isPro: false };
+    return {
+      limited: false,
+      viewsLeft: freeUserCardLimit,
+      resetAt: null,
+      maxCards: freeUserCardLimit,
+      cooldownMinutes: cardCooldownMinutes,
+      isPro: false,
+    };
   }
 
   if (session.count >= freeUserCardLimit) {
@@ -77,7 +91,7 @@ async function getCardLimitStatus(userId) {
       viewsLeft: 0,
       resetAt: new Date(windowEndMs).toISOString(),
       maxCards: freeUserCardLimit,
-      cooldownMinutes,
+      cooldownMinutes: cardCooldownMinutes,
       isPro: false,
     };
   }
@@ -87,7 +101,7 @@ async function getCardLimitStatus(userId) {
     viewsLeft: freeUserCardLimit - session.count,
     resetAt: null,
     maxCards: freeUserCardLimit,
-    cooldownMinutes,
+    cooldownMinutes: cardCooldownMinutes,
     isPro: false,
   };
 }
