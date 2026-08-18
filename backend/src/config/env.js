@@ -29,6 +29,10 @@ module.exports = {
   jwtRefreshTtl: process.env.JWT_REFRESH_TTL || '30d',
   enableSockets:
     process.env.ENABLE_SOCKETS === 'true' && !process.env.VERCEL,
+  // Disabled by default. When enabled, creators can answer anonymous votes
+  // and matching answers are exposed as anonymous (blurred) matches.
+  anonymousVoteBackEnabled:
+    process.env.ANONYMOUS_VOTE_BACK_ENABLED === 'true',
   adminApiKey: process.env.ADMIN_API_KEY || '',
   appleIapIssuerId: process.env.APPLE_IAP_ISSUER_ID || '',
   appleIapKeyId: process.env.APPLE_IAP_KEY_ID || '',

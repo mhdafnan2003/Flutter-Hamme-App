@@ -11,6 +11,7 @@ _MatchRecord _$MatchRecordFromJson(Map<String, dynamic> json) => _MatchRecord(
   type: $enumDecode(_$InteractionTypeEnumMap, json['type']),
   matchedUser: AppUser.fromJson(json['matchedUser'] as Map<String, dynamic>),
   createdAt: DateTime.parse(json['createdAt'] as String),
+  anonymous: json['anonymous'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$MatchRecordToJson(_MatchRecord instance) =>
@@ -19,6 +20,7 @@ Map<String, dynamic> _$MatchRecordToJson(_MatchRecord instance) =>
       'type': _$InteractionTypeEnumMap[instance.type]!,
       'matchedUser': instance.matchedUser,
       'createdAt': instance.createdAt.toIso8601String(),
+      'anonymous': instance.anonymous,
     };
 
 const _$InteractionTypeEnumMap = {

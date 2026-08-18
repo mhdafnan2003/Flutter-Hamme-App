@@ -24,15 +24,24 @@ class InteractionRemoteDataSource {
     return InteractionResult.fromJson(response);
   }
 
-  Future<InteractionResult> respondToUser({
-    required String targetUserId,
+  Future<InteractionResult> respondToInteraction({
+    String? targetUserId,
+    String? interactionId,
     required InteractionType type,
   }) async {
+    assert(
+      (targetUserId == null) != (interactionId == null),
+      'Exactly one response target is required.',
+    );
     final response =
         await _apiService.post(
               '/interactions/respond',
               authenticated: true,
-              body: {'targetUserId': targetUserId, 'type': type.name},
+              body: {
+                if (targetUserId != null) 'targetUserId': targetUserId,
+                if (interactionId != null) 'interactionId': interactionId,
+                'type': type.name,
+              },
             )
             as Map<String, dynamic>;
 
@@ -56,7 +65,8 @@ class InteractionRemoteDataSource {
         await _apiService.get('/interactions/received', authenticated: true)
             as Map<String, dynamic>;
 
-    final interactions = response['interactions'] as List<dynamic>? ?? <dynamic>[];
+    final interactions =
+        response['interactions'] as List<dynamic>? ?? <dynamic>[];
     return interactions
         .cast<Map<String, dynamic>>()
         .map(InteractionRecord.fromJson)
@@ -64,20 +74,24 @@ class InteractionRemoteDataSource {
   }
 
   Future<InteractionResult> finalizeInteraction(String token) async {
-    final response = await _apiService.post(
-      '/interactions/finalize',
-      authenticated: true,
-      body: {'token': token},
-    ) as Map<String, dynamic>;
+    final response =
+        await _apiService.post(
+              '/interactions/finalize',
+              authenticated: true,
+              body: {'token': token},
+            )
+            as Map<String, dynamic>;
 
     return InteractionResult.fromJson(response);
   }
 
   Future<Map<String, dynamic>> getPendingInteraction(String token) async {
-    final response = await _apiService.get(
-      '/interactions/pending/$token',
-      authenticated: false,
-    ) as Map<String, dynamic>;
+    final response =
+        await _apiService.get(
+              '/interactions/pending/$token',
+              authenticated: false,
+            )
+            as Map<String, dynamic>;
 
     return response;
   }

@@ -6,6 +6,7 @@ const ApiError = require('../utils/ApiError');
 const crypto = require('crypto');
 const { emitMatchFound } = require('../socket');
 const appConfigService = require('./appConfigService');
+const env = require('../config/env');
 
 const allowedTypes = new Set(['friend', 'crush', 'frenemy']);
 const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 60);
@@ -40,6 +41,54 @@ function serializeMatch(match, currentUserId) {
     type: match.type,
     createdAt: match.createdAt,
     matchedUser: matchedUser.toJSON(),
+  };
+}
+
+function serializeAnonymousInteraction(interaction) {
+  const metadata = { ...(interaction.metadata || {}) };
+  // Reveal tokens and browser session identifiers belong only to the voter.
+  // They must never be exposed to the poll creator through the received feed.
+  delete metadata.pendingToken;
+  delete metadata.sessionId;
+
+  return {
+    id: interaction.id,
+    fromUser: '',
+    fromUserName: null,
+    fromUserUsername: null,
+    fromUserProfileImageUrl: null,
+    fromUserShareCode: null,
+    fromUserInstagramId: null,
+    fromUserSnapchatId: null,
+    toUser: interaction.toUser.toString(),
+    type: interaction.type,
+    metadata: {
+      ...metadata,
+      anonymous: true,
+      anonymousVoteBackEnabled: env.anonymousVoteBackEnabled,
+    },
+    respondedByCurrentUser: Boolean(interaction.metadata?.creatorResponseType),
+    matched: Boolean(interaction.metadata?.anonymousMatched),
+    createdAt: interaction.createdAt,
+  };
+}
+
+function serializeAnonymousMatch(interaction) {
+  const respondedAt = interaction.metadata?.creatorRespondedAt;
+  return {
+    id: `anonymous:${interaction.id}`,
+    type: interaction.type,
+    anonymous: true,
+    createdAt: respondedAt || interaction.createdAt,
+    matchedUser: {
+      id: `anonymous:${interaction.id}`,
+      name: 'Anonymous',
+      email: '',
+      instagramId: '',
+      avatarUrl: null,
+      shareCode: '',
+      isPro: false,
+    },
   };
 }
 
@@ -114,7 +163,22 @@ async function getMatchesForUser(userId) {
     .sort({ createdAt: -1 })
     .populate('userA userB');
 
-  return matches.map((match) => serializeMatch(match, userId));
+  const serializedMatches = matches.map((match) => serializeMatch(match, userId));
+
+  if (!env.anonymousVoteBackEnabled) {
+    return serializedMatches;
+  }
+
+  const anonymousMatches = await Interaction.find({
+    toUser: userId,
+    fromUser: null,
+    'metadata.anonymous': true,
+    'metadata.anonymousMatched': true,
+    'metadata.creatorRespondedAt': { $gte: visibleSince },
+  }).sort({ 'metadata.creatorRespondedAt': -1 });
+
+  return [...serializedMatches, ...anonymousMatches.map(serializeAnonymousMatch)]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 async function createAnonymousResponse({
@@ -276,6 +340,64 @@ async function createInteractionByTargetId({ fromUserId, targetUserId, type }) {
   };
 }
 
+async function respondToAnonymousInteraction({ currentUserId, interactionId, type }) {
+  if (!env.anonymousVoteBackEnabled) {
+    throw new ApiError(403, 'Anonymous vote-back is currently disabled.');
+  }
+
+  const normalizedType = normalizeType(type);
+  const candidate = await Interaction.findOne({
+    _id: interactionId,
+    toUser: currentUserId,
+    fromUser: null,
+    'metadata.anonymous': true,
+  });
+  if (!candidate) {
+    throw new ApiError(404, 'Anonymous interaction not found.');
+  }
+  if (candidate.metadata?.creatorResponseType) {
+    throw new ApiError(409, 'You already responded to this interaction.');
+  }
+
+  const respondedAt = new Date();
+  const matched = candidate.type === normalizedType;
+  const interaction = await Interaction.findOneAndUpdate(
+    {
+      _id: candidate.id,
+      toUser: currentUserId,
+      fromUser: null,
+      'metadata.anonymous': true,
+      'metadata.creatorResponseType': { $exists: false },
+    },
+    {
+      $set: {
+        'metadata.creatorResponseType': normalizedType,
+        'metadata.creatorRespondedAt': respondedAt,
+        'metadata.anonymousMatched': matched,
+      },
+    },
+    { new: true }
+  );
+  if (!interaction) {
+    throw new ApiError(409, 'You already responded to this interaction.');
+  }
+
+  await appConfigService.incrementCardView(currentUserId).catch((err) => {
+    console.error('[CardSession] Failed to increment anonymous card view:', err);
+  });
+  const cardLimitStatus = await appConfigService
+    .getCardLimitStatus(currentUserId)
+    .catch(() => null);
+
+  return {
+    interaction: serializeAnonymousInteraction(interaction),
+    matched,
+    match: matched ? serializeAnonymousMatch(interaction) : null,
+    notification: null,
+    cardLimitStatus,
+  };
+}
+
 async function createAnonymousInteraction({ targetUserId, type, source = 'web' }) {
   const normalizedType = normalizeType(type);
   const targetUser = await User.findById(targetUserId);
@@ -345,6 +467,10 @@ async function getReceivedInteractions(userId) {
     const respondedByCurrentUser = Boolean(fromUserId) && outgoingUserIds.has(fromUserId);
     const matched =
       Boolean(fromUserId) && matchKeys.has(`${fromUserId}:${interaction.type}`);
+
+    if (!fromUserId) {
+      return serializeAnonymousInteraction(interaction);
+    }
 
     return {
       id: interaction.id,
@@ -486,6 +612,11 @@ async function finalizePendingInteraction({ token, currentUserId }) {
 
   let result;
   if (existingAnonymous) {
+    // If the creator already answered while this voter was anonymous, preserve
+    // that answer as a normal reciprocal interaction during attribution. This
+    // upgrades a synthetic anonymous match into an ordinary account-to-account
+    // match without asking the creator to vote a second time.
+    const creatorResponseType = existingAnonymous.metadata?.creatorResponseType;
     try {
       existingAnonymous.fromUser = currentUserId;
       existingAnonymous.metadata = {
@@ -504,6 +635,28 @@ async function finalizePendingInteraction({ token, currentUserId }) {
       } else {
         throw error;
       }
+    }
+
+    if (creatorResponseType) {
+      await Interaction.updateOne(
+        {
+          fromUser: pending.targetUserId,
+          toUser: currentUserId,
+          type: creatorResponseType,
+        },
+        {
+          $setOnInsert: {
+            fromUser: pending.targetUserId,
+            toUser: currentUserId,
+            type: creatorResponseType,
+            metadata: {
+              source: 'anonymous-vote-back',
+              finalizedFromPending: true,
+            },
+          },
+        },
+        { upsert: true }
+      );
     }
 
     result = await detectMatchAndBuildResult({
@@ -567,6 +720,7 @@ module.exports = {
   createInteraction,
   createAnonymousResponse,
   createInteractionByTargetId,
+  respondToAnonymousInteraction,
   createAnonymousInteraction,
   getMatchesForUser,
   getReceivedInteractions,

@@ -101,6 +101,7 @@ npx vercel env add <VAR_NAME> production
 | `JWT_REFRESH_TTL`      | Refresh token lifetime (e.g. `300d`)           |
 | `ENABLE_SOCKETS`       | `true`/`false` — Socket.IO is disabled on Vercel serverless |
 | `PENDING_TTL_SECONDS`  | Pending interaction expiry in seconds          |
+| `ANONYMOUS_VOTE_BACK_ENABLED` | `false` for count-only anonymous votes; `true` for blurred vote-back cards and matches |
 | `ALLOW_UNVERIFIED_IAP` | **Set to `false` in production**               |
 | `ADMIN_API_KEY`        | Secret key for the admin API                   |
 
