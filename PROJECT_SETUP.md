@@ -46,7 +46,7 @@ Recommended `.env` values for desktop or web:
 
 ```env
 API_BASE_URL=http://localhost:3000/api/v1
-SHARE_LINK_BASE=https://app.hamme.link/u
+SHARE_LINK_BASE=https://app.hamme.link/poll
 APP_SCHEME=hamme
 APP_HOST=app.hamme.link
 ```

@@ -42,28 +42,6 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <!-- Primary verified Android App Links for Hamme share URLs. -->
-                <data
-                    android:scheme="https"
-                    android:host="www.hamme.app"
-                    android:pathPrefix="/u/" />
-            </intent-filter>
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <!-- Backward compatibility for previously shared Vercel URLs. -->
-                <data
-                    android:scheme="https"
-                    android:host="client-sigma-beryl-15.vercel.app"
-                    android:pathPrefix="/u/" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

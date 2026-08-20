@@ -19,7 +19,7 @@ workflows:
           API_BASE_URL=https://backend-three-kappa-24.vercel.app/api/v1
           API_BASE_URL_PROD=https://backend-three-kappa-24.vercel.app/api/v1
           APP_SCHEME=hamme
-          SHARE_LINK_BASE=https://client-sigma-beryl-15.vercel.app/u
+          SHARE_LINK_BASE=https://client-sigma-beryl-15.vercel.app/poll
           APP_HOST=client-sigma-beryl-15.vercel.app
           EOF
       - name: Get Flutter packages
@@ -50,7 +50,7 @@ workflows:
           API_BASE_URL=https://backend-three-kappa-24.vercel.app/api/v1
           API_BASE_URL_PROD=https://backend-three-kappa-24.vercel.app/api/v1
           APP_SCHEME=hamme
-          SHARE_LINK_BASE=https://client-sigma-beryl-15.vercel.app/u
+          SHARE_LINK_BASE=https://client-sigma-beryl-15.vercel.app/poll
           APP_HOST=client-sigma-beryl-15.vercel.app
           EOF
       - name: Get Flutter packages

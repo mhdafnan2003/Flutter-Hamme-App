@@ -45,7 +45,9 @@ function markAsVoted(code) {
 
 function readShareCodeFromPath() {
   const parts = window.location.pathname.split('/').filter(Boolean);
-  if (parts.length >= 2 && parts[0] === 'u') {
+  // New poll links use /poll so installed apps leave them in the browser.
+  // Continue accepting /u links when they reach the website for compatibility.
+  if (parts.length >= 2 && (parts[0] === 'poll' || parts[0] === 'u')) {
     const rawCode = decodeURIComponent(parts[1]);
     return rawCode.replace(/[.,;:]+$/, '');
   }

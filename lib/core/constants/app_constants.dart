@@ -24,7 +24,7 @@ final class AppConstants {
   }
 
   static String get shareLinkBase =>
-      dotenv.env['SHARE_LINK_BASE'] ?? 'https://app.hamme.link/u';
+      dotenv.env['SHARE_LINK_BASE'] ?? 'https://app.hamme.link/poll';
 
   static String get appScheme => dotenv.env['APP_SCHEME'] ?? 'hamme';
 

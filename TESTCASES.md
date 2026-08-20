@@ -189,9 +189,9 @@ This is the exact bug that was fixed (share-code fallback firing after token exp
 1. Open a deep link containing token + code + type.
 2. **Expected:** only the reveal/finalize path runs; no separate share-code send.
 
-### TC-8.2 — Raw profile link opens app, no auto-reaction ✅
-1. Open `https://app.hamme.link/u/<code>` (no token).
-2. **Expected:** app opens / installs; **no** interaction is auto-created.
+### TC-8.2 — Poll link stays on the web, no auto-reaction ✅
+1. Open `https://app.hamme.link/poll/<code>` (no token).
+2. **Expected:** the web poll opens even when Hamme is installed; **no** interaction is auto-created until an option is selected.
 
 ### TC-8.3 — Android install referrer
 1. Install via Play Store using a referrer carrying `hamme_token` (within 60s).

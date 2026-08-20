@@ -60,7 +60,7 @@ Production-ready full-stack starter for a Flutter mobile app and an Express + Mo
 - Anonymous interaction submission using shareable profile links
 - Match detection when two users send the same interaction type to each other
 - Match listing endpoint and Flutter screen
-- Prepared deep-link routes for `/u/:shareCode` plus native mobile scheme registration
+- Web-only poll routes at `/poll/:shareCode` plus native custom-scheme registration after voting
 - Secure token persistence on device using flutter_secure_storage
 
 ## Environment Files
