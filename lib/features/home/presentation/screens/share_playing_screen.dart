@@ -83,6 +83,21 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
         }
       } else {
         // Instagram Logic
+        if (Platform.isIOS &&
+            (_instagramAppId.isEmpty ||
+                int.tryParse(_instagramAppId) == null)) {
+          debugPrint(
+            'Instagram Stories is disabled: META_APP_ID is missing or invalid.',
+          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Instagram Stories is temporarily unavailable.'),
+              ),
+            );
+          }
+          return;
+        }
         try {
           bool instagramInstalled = false;
           if (Platform.isAndroid) {
@@ -109,13 +124,6 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
               );
               if (launchResult == 'SUCCESS') return;
             } else if (Platform.isIOS) {
-              if (_instagramAppId.isEmpty ||
-                  int.tryParse(_instagramAppId) == null) {
-                throw StateError(
-                  'META_APP_ID is missing or invalid. Build with '
-                  '--dart-define=META_APP_ID=<numeric-meta-app-id>.',
-                );
-              }
               await socialShare.iOS.shareToInstagramStory(
                 _instagramAppId,
                 backgroundImage: tempPath,

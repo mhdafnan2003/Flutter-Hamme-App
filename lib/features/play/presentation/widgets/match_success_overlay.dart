@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
+import 'package:hamme_app/core/widgets/animated_spoiler.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
@@ -425,12 +426,12 @@ class _MatchDescription extends StatelessWidget {
                     ? Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ImageFiltered(
-                          imageFilter: ui.ImageFilter.blur(
-                            sigmaX: 4,
-                            sigmaY: 4,
-                          ),
-                          child: const Text('Anonymous', style: _style),
+                        AnimatedSpoiler(
+                          width: 92,
+                          height: 19,
+                          particleColor: _style.color ?? Colors.black,
+                          backgroundColor: (_style.color ?? Colors.black)
+                              .withValues(alpha: 0.08),
                         ),
                         Text(' also chose $choiceText.', style: _style),
                       ],

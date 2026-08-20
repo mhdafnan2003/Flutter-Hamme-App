@@ -29,13 +29,7 @@ workflows:
           cd ios && pod install
       - name: Flutter build ipa
         script: |
-          set -eu
-          : "${META_APP_ID:?Missing META_APP_ID (the numeric Meta app ID required for Instagram Stories)}"
-          case "$META_APP_ID" in
-            *[!0-9]*) echo "META_APP_ID must contain digits only"; exit 1 ;;
-          esac
           flutter build ipa --release \
-            --dart-define=META_APP_ID="$META_APP_ID" \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa

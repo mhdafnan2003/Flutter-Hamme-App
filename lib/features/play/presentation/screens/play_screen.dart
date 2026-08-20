@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
+import 'package:hamme_app/core/widgets/animated_spoiler.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/interaction_record.dart';
 import 'package:hamme_app/models/interaction_type.dart';
@@ -1746,9 +1747,12 @@ class _PlayQueue extends StatelessWidget {
                                         ),
                                         child:
                                             isAnonymous
-                                                ? const _BlurredAnonymousName(
-                                                  color: Colors.white,
-                                                  fontSize: 20,
+                                                ? AnimatedSpoiler(
+                                                  width: 148,
+                                                  height: 24,
+                                                  particleColor: Colors.white,
+                                                  backgroundColor: Colors.white
+                                                      .withValues(alpha: 0.08),
                                                 )
                                                 : Text(
                                                   name,
@@ -1903,29 +1907,6 @@ class _PlayQueue extends StatelessWidget {
     if (insta.isNotEmpty) return TImages.instagramIcon;
     if (snap.isNotEmpty) return TImages.snapchatIcon;
     return null;
-  }
-}
-
-class _BlurredAnonymousName extends StatelessWidget {
-  const _BlurredAnonymousName({required this.color, required this.fontSize});
-
-  final Color color;
-  final double fontSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return ImageFiltered(
-      imageFilter: ui.ImageFilter.blur(sigmaX: 4.5, sigmaY: 4.5),
-      child: Text(
-        'Anonymous voter',
-        style: TextStyle(
-          fontFamily: TFonts.nunito,
-          fontWeight: FontWeight.w900,
-          color: color,
-          fontSize: fontSize,
-        ),
-      ),
-    );
   }
 }
 

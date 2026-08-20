@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/widgets/animated_spoiler.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
@@ -254,29 +255,19 @@ class _MatchTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (isAnonymous) ...[
-                  ImageFiltered(
-                    imageFilter: ui.ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                    child: const Text(
-                      'Anonymous voter',
-                      style: TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                        color: Colors.black,
-                      ),
-                    ),
+                  const AnimatedSpoiler(
+                    width: 132,
+                    height: 20,
+                    particleColor: Color(0xFF8B8B92),
+                    backgroundColor: Color(0xFFE8E8EC),
                   ),
-                  ImageFiltered(
-                    imageFilter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                    child: const Text(
-                      'ig: @anonymous',
-                      style: TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: Colors.black,
-                      ),
-                    ),
+                  const SizedBox(height: 5),
+                  const AnimatedSpoiler(
+                    width: 96,
+                    height: 14,
+                    particleColor: Color(0xFFA0A0A8),
+                    backgroundColor: Color(0xFFF0F0F3),
+                    semanticLabel: 'Hidden anonymous social profile',
                   ),
                 ] else ...[
                   Text(
