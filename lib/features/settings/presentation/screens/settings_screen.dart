@@ -8,9 +8,9 @@ import '../../../../providers/auth_providers.dart';
 import '../widgets/settings_page_scaffold.dart';
 
 // Replace these URLs with the final public pages when they are ready.
-const privacyPolicyUrl = 'https://example.com/privacy';
-const termsOfUseUrl = 'https://example.com/terms';
-const safetyResourcesUrl = 'https://example.com/safety';
+const privacyPolicyUrl = 'https://www.hamme.app/privacy-policy';
+const termsOfUseUrl = 'https://www.hamme.app/terms-of-service';
+const safetyResourcesUrl = 'https://www.hamme.app/support';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
