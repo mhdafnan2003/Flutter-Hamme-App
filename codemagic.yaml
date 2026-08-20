@@ -29,18 +29,26 @@ workflows:
           cd ios && pod install
       - name: Flutter build ipa
         script: |
+          set -eu
+          : "${META_APP_ID:?Missing META_APP_ID (the numeric Meta app ID required for Instagram Stories)}"
+          case "$META_APP_ID" in
+            *[!0-9]*) echo "META_APP_ID must contain digits only"; exit 1 ;;
+          esac
           flutter build ipa --release \
+            --dart-define=META_APP_ID="$META_APP_ID" \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
 
   android-workflow:
-    name: Android Build
+    name: Android App Bundle
     max_build_duration: 60
     instance_type: linux_x2
     environment:
       flutter: stable
       java: 17
+      groups:
+        - android_signing # UPLOAD_KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
     scripts:
       - name: Create .env
         script: |
@@ -53,8 +61,34 @@ workflows:
           EOF
       - name: Get Flutter packages
         script: flutter pub get
-      - name: Build APK (debug-signed, no key.properties present yet)
+      - name: Configure release signing
         script: |
-          flutter build apk --release
+          set -eu
+          : "${UPLOAD_KEYSTORE_BASE64:?Missing UPLOAD_KEYSTORE_BASE64}"
+          : "${KEYSTORE_PASSWORD:?Missing KEYSTORE_PASSWORD}"
+          : "${KEY_ALIAS:?Missing KEY_ALIAS}"
+          : "${KEY_PASSWORD:?Missing KEY_PASSWORD}"
+          mkdir -p android/keystore
+          printf '%s' "$UPLOAD_KEYSTORE_BASE64" | base64 --decode > android/keystore/upload-keystore.jks
+          cat > android/keystore/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=../keystore/upload-keystore.jks
+          EOF
+      - name: Verify upload certificate and build App Bundle
+        script: |
+          set -eu
+          ACTUAL_SHA1=$(keytool -list -v \
+            -keystore android/keystore/upload-keystore.jks \
+            -alias "$KEY_ALIAS" \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" | sed -n 's/^[[:space:]]*SHA1: //p')
+          EXPECTED_SHA1='70:E0:D1:AC:82:30:3B:A2:BA:52:A2:66:7B:C5:CF:43:12:61:32:CA'
+          test "$ACTUAL_SHA1" = "$EXPECTED_SHA1" || {
+            echo "Upload certificate mismatch: $ACTUAL_SHA1"
+            exit 1
+          }
+          flutter build appbundle --release
     artifacts:
-      - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/bundle/release/*.aab

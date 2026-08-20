@@ -8,9 +8,28 @@ plugins {
 import java.util.Properties
 
 val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
+val keystorePropertiesFile = rootProject.file("keystore/key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
+}
+
+val releaseSigningProperties = listOf(
+    "storeFile",
+    "storePassword",
+    "keyAlias",
+    "keyPassword",
+)
+val hasReleaseSigningConfig = keystorePropertiesFile.exists() &&
+    releaseSigningProperties.all { !keystoreProperties.getProperty(it).isNullOrBlank() }
+val isReleaseBuild = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+
+if (isReleaseBuild && !hasReleaseSigningConfig) {
+    throw GradleException(
+        "Release signing is not configured. Add android/keystore/key.properties and the matching " +
+            "upload keystore; release builds must never fall back to the debug key."
+    )
 }
 
 android {
@@ -34,20 +53,20 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String?
+        if (hasReleaseSigningConfig) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
             }
             isMinifyEnabled = true
             isShrinkResources = true

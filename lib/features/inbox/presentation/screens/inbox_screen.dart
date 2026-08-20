@@ -132,6 +132,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
               });
               return;
             } else if (Platform.isIOS) {
+              if (_instagramAppId.isEmpty ||
+                  int.tryParse(_instagramAppId) == null) {
+                throw StateError(
+                  'META_APP_ID is missing or invalid. Build with '
+                  '--dart-define=META_APP_ID=<numeric-meta-app-id>.',
+                );
+              }
               await socialShare.iOS.shareToInstagramStory(
                 _instagramAppId,
                 backgroundImage: tempPath,
