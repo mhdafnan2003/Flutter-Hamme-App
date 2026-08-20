@@ -47,7 +47,8 @@ class _AnimatedSpoilerState extends State<AnimatedSpoiler>
   @override
   Widget build(BuildContext context) {
     final radius =
-        widget.borderRadius ?? BorderRadius.circular(widget.height / 2);
+        widget.borderRadius ??
+        BorderRadius.circular(math.min(6, widget.height * 0.3));
 
     return Semantics(
       label: widget.semanticLabel,

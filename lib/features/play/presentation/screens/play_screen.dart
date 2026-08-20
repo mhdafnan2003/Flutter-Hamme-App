@@ -1749,8 +1749,6 @@ class _PlayQueue extends StatelessWidget {
                                                   width: 148,
                                                   height: 24,
                                                   particleColor: Colors.white,
-                                                  backgroundColor: Colors.white
-                                                      .withValues(alpha: 0.08),
                                                 )
                                                 : Text(
                                                   name,

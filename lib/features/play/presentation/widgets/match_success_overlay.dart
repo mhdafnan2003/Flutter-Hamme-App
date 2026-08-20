@@ -430,8 +430,6 @@ class _MatchDescription extends StatelessWidget {
                           width: 92,
                           height: 19,
                           particleColor: _style.color ?? Colors.black,
-                          backgroundColor: (_style.color ?? Colors.black)
-                              .withValues(alpha: 0.08),
                         ),
                         Text(' also chose $choiceText.', style: _style),
                       ],

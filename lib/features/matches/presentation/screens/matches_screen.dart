@@ -259,14 +259,12 @@ class _MatchTile extends StatelessWidget {
                     width: 132,
                     height: 20,
                     particleColor: Color(0xFF8B8B92),
-                    backgroundColor: Color(0xFFE8E8EC),
                   ),
                   const SizedBox(height: 5),
                   const AnimatedSpoiler(
                     width: 96,
                     height: 14,
                     particleColor: Color(0xFFA0A0A8),
-                    backgroundColor: Color(0xFFF0F0F3),
                     semanticLabel: 'Hidden anonymous social profile',
                   ),
                 ] else ...[
