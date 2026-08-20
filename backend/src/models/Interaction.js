@@ -41,8 +41,8 @@ const interactionSchema = new mongoose.Schema(
 );
 
 interactionSchema.index(
-  { fromUser: 1, toUser: 1, type: 1 },
-  { unique: true, partialFilterExpression: { fromUser: { $type: 'objectId' } } }
+  { fromUser: 1, toUser: 1, createdAt: -1 },
+  { partialFilterExpression: { fromUser: { $type: 'objectId' } } }
 );
 interactionSchema.index({ toUser: 1, type: 1, createdAt: -1 });
 interactionSchema.index({ fromUser: 1, createdAt: -1 });

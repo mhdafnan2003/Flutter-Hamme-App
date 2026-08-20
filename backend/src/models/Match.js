@@ -22,6 +22,12 @@ const matchSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    lastMatchedAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
+      index: true,
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },

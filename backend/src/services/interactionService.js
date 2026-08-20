@@ -16,6 +16,29 @@ const pendingTtlSeconds = Number.isFinite(pendingTtlSecondsRaw)
 const PENDING_TTL_MS = pendingTtlSeconds * 1000;
 const REVEAL_EXTEND_MS = 5 * 60 * 1000; // 5 min grace after user taps Reveal
 const VISIBLE_MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
+const INTERACTION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+async function assertInteractionCooldownElapsed(fromUserId, targetUserId) {
+  const cutoff = new Date(Date.now() - INTERACTION_COOLDOWN_MS);
+  const recentInteraction = await Interaction.findOne({
+    fromUser: fromUserId,
+    toUser: targetUserId,
+    createdAt: { $gte: cutoff },
+  })
+    .sort({ createdAt: -1 })
+    .select('createdAt');
+
+  if (!recentInteraction) return;
+
+  const retryAt = new Date(
+    recentInteraction.createdAt.getTime() + INTERACTION_COOLDOWN_MS
+  );
+  throw new ApiError(
+    409,
+    'You can interact with this user again after 24 hours.',
+    { retryAt }
+  );
+}
 
 async function assertUsersCanInteract(fromUserId, targetUser) {
   const targetBlockedSender = (targetUser.blockedUsers || []).some(
@@ -52,7 +75,7 @@ function serializeMatch(match, currentUserId) {
   return {
     id: match.id,
     type: match.type,
-    createdAt: match.createdAt,
+    createdAt: match.lastMatchedAt || match.createdAt,
     matchedUser: matchedUser.toJSON(),
   };
 }
@@ -116,25 +139,21 @@ async function createInteraction({ fromUserId, shareCode, type }) {
     throw new ApiError(400, 'You cannot interact with your own profile.');
   }
   await assertUsersCanInteract(fromUserId, targetUser);
+  await assertInteractionCooldownElapsed(fromUserId, targetUser.id);
 
-  let interaction;
-  try {
-    interaction = await Interaction.create({
-      fromUser: fromUserId,
-      toUser: targetUser.id,
-      type: normalizedType,
-    });
-  } catch (error) {
-    if (error && error.code === 11000) {
-      throw new ApiError(409, 'This interaction has already been sent.');
-    }
-    throw error;
-  }
+  const interaction = await Interaction.create({
+    fromUser: fromUserId,
+    toUser: targetUser.id,
+    type: normalizedType,
+  });
 
   const reciprocal = await Interaction.findOne({
     fromUser: targetUser.id,
     toUser: fromUserId,
     type: normalizedType,
+    createdAt: {
+      $gte: new Date(interaction.createdAt.getTime() - INTERACTION_COOLDOWN_MS),
+    },
   });
 
   let match = null;
@@ -148,6 +167,7 @@ async function createInteraction({ fromUserId, shareCode, type }) {
         userB: pair.userB,
         type: normalizedType,
         triggeredBy: fromUserId,
+        lastMatchedAt: new Date(),
       },
       {
         upsert: true,
@@ -173,7 +193,14 @@ async function getMatchesForUser(userId) {
   const currentUser = await User.findById(userId).select('+blockedUsers');
   const blockedUserIds = currentUser?.blockedUsers || [];
   const matches = await Match.find({
-    createdAt: { $gte: visibleSince },
+    $and: [
+      {
+        $or: [
+          { lastMatchedAt: { $gte: visibleSince } },
+          { lastMatchedAt: { $exists: false }, createdAt: { $gte: visibleSince } },
+        ],
+      },
+    ],
     $or: [{ userA: userId }, { userB: userId }],
     $nor: [
       { userA: { $in: blockedUserIds } },
@@ -183,7 +210,9 @@ async function getMatchesForUser(userId) {
     .sort({ createdAt: -1 })
     .populate('userA userB');
 
-  const serializedMatches = matches.map((match) => serializeMatch(match, userId));
+  const serializedMatches = matches
+    .map((match) => serializeMatch(match, userId))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (!env.anonymousVoteBackEnabled) {
     return serializedMatches;
@@ -241,7 +270,7 @@ async function createAnonymousResponse({
       toUser: targetUser.id,
       fromUser: null,
       'metadata.sessionId': sessionId,
-      createdAt: { $gte: new Date(now - 24 * 60 * 60 * 1000) },
+      createdAt: { $gte: new Date(now - INTERACTION_COOLDOWN_MS) },
     });
     if (existingInteraction) {
       throw new ApiError(409, 'This interaction has already been sent.');
@@ -316,25 +345,21 @@ async function createInteractionByTargetId({
     throw new ApiError(400, 'You cannot interact with your own profile.');
   }
   await assertUsersCanInteract(fromUserId, targetUser);
+  await assertInteractionCooldownElapsed(fromUserId, targetUser.id);
 
-  let interaction;
-  try {
-    interaction = await Interaction.create({
-      fromUser: fromUserId,
-      toUser: targetUser.id,
-      type: normalizedType,
-    });
-  } catch (error) {
-    if (error && error.code === 11000) {
-      throw new ApiError(409, 'This interaction has already been sent.');
-    }
-    throw error;
-  }
+  const interaction = await Interaction.create({
+    fromUser: fromUserId,
+    toUser: targetUser.id,
+    type: normalizedType,
+  });
 
   const reciprocal = await Interaction.findOne({
     fromUser: targetUser.id,
     toUser: fromUserId,
     type: normalizedType,
+    createdAt: {
+      $gte: new Date(interaction.createdAt.getTime() - INTERACTION_COOLDOWN_MS),
+    },
   });
 
   let match = null;
@@ -347,6 +372,7 @@ async function createInteractionByTargetId({
         userB: pair.userB,
         type: normalizedType,
         triggeredBy: fromUserId,
+        lastMatchedAt: new Date(),
       },
       {
         upsert: true,
@@ -488,36 +514,48 @@ async function getReceivedInteractions(userId) {
     ? await Interaction.find({
         fromUser: userId,
         toUser: { $in: voterIds },
-      }).select('toUser type')
+      }).select('toUser type createdAt')
     : [];
 
-  const outgoingUserIds = new Set(
-    outgoing.map((interaction) => interaction.toUser.toString())
-  );
+  const outgoingByUserId = new Map();
+  for (const interaction of outgoing) {
+    const targetId = interaction.toUser.toString();
+    const existing = outgoingByUserId.get(targetId) || [];
+    existing.push(interaction.createdAt);
+    outgoingByUserId.set(targetId, existing);
+  }
 
   const pairIds = voterIds.map((voterId) => buildCanonicalPair(userId, voterId));
   const matches = pairIds.length
     ? await Match.find({
         $or: pairIds.map((pair) => ({ userA: pair.userA, userB: pair.userB })),
-      }).select('userA userB type')
+      }).select('userA userB type createdAt lastMatchedAt')
     : [];
 
-  const matchKeys = new Set(
+  const matchesByKey = new Map(
     matches.map((match) => {
       const otherUserId =
         match.userA.toString() === userId.toString()
           ? match.userB.toString()
           : match.userA.toString();
-      return `${otherUserId}:${match.type}`;
+      return [`${otherUserId}:${match.type}`, match.lastMatchedAt || match.createdAt];
     })
   );
 
   return interactions.map((interaction) => {
     const fromUser = interaction.fromUser;
     const fromUserId = fromUser?._id?.toString() || null;
-    const respondedByCurrentUser = Boolean(fromUserId) && outgoingUserIds.has(fromUserId);
-    const matched =
-      Boolean(fromUserId) && matchKeys.has(`${fromUserId}:${interaction.type}`);
+    const interactionTime = interaction.createdAt.getTime();
+    const respondedByCurrentUser = Boolean(fromUserId) &&
+      (outgoingByUserId.get(fromUserId) || []).some(
+        (outgoingAt) =>
+          Math.abs(outgoingAt.getTime() - interactionTime) < INTERACTION_COOLDOWN_MS
+      );
+    const matchedAt = fromUserId
+      ? matchesByKey.get(`${fromUserId}:${interaction.type}`)
+      : null;
+    const matched = Boolean(matchedAt) &&
+      Math.abs(matchedAt.getTime() - interactionTime) < INTERACTION_COOLDOWN_MS;
 
     if (!fromUserId) {
       return serializeAnonymousInteraction(interaction);
@@ -583,20 +621,31 @@ async function detectMatchAndBuildResult({ fromUserId, targetUserId, type }) {
     fromUser: fromUserId,
     toUser: targetUserId,
     type,
-  });
+  }).sort({ createdAt: -1 });
 
   const reciprocal = await Interaction.findOne({
     fromUser: targetUserId,
     toUser: fromUserId,
     type,
-  });
+    ...(interaction && {
+      createdAt: {
+        $gte: new Date(interaction.createdAt.getTime() - INTERACTION_COOLDOWN_MS),
+      },
+    }),
+  }).sort({ createdAt: -1 });
 
   let match = null;
   if (reciprocal) {
     const pair = buildCanonicalPair(fromUserId, targetUserId);
     match = await Match.findOneAndUpdate(
       { userA: pair.userA, userB: pair.userB, type },
-      { userA: pair.userA, userB: pair.userB, type, triggeredBy: fromUserId },
+      {
+        userA: pair.userA,
+        userB: pair.userB,
+        type,
+        triggeredBy: fromUserId,
+        lastMatchedAt: new Date(),
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).populate('userA userB');
 

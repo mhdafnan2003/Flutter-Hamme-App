@@ -5,6 +5,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/a
 const flutterWebBaseUrl = import.meta.env.VITE_FLUTTER_WEB_URL ?? '';
 const sessionStorageKey = 'hamme_web_session_id';
 const votedCodesKey = 'hamme_voted_codes';
+const voteCooldownMs = 24 * 60 * 60 * 1000;
 const pendingTtlSeconds = Math.max(30, Number(import.meta.env.VITE_PENDING_TTL_SECONDS) || 60);
 const pendingTtlMs = pendingTtlSeconds * 1000;
 const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -16,7 +17,18 @@ function hasAlreadyVoted(code) {
   if (!code) return false;
   try {
     const voted = JSON.parse(window.localStorage.getItem(votedCodesKey) || '{}');
-    return Boolean(voted[code]);
+    const votedAt = Number(voted[code]);
+    if (Number.isFinite(votedAt) && Date.now() - votedAt < voteCooldownMs) {
+      return true;
+    }
+
+    // Remove expired (and legacy non-timestamp) entries so this browser can
+    // vote for the profile again after the 24-hour server cooldown.
+    if (Object.hasOwn(voted, code)) {
+      delete voted[code];
+      window.localStorage.setItem(votedCodesKey, JSON.stringify(voted));
+    }
+    return false;
   } catch {
     return false;
   }
@@ -773,7 +785,7 @@ function AlreadyVotedScreen({ profileName, profileImage }) {
         </div>
         <h2 className="text-[24px] font-black leading-tight">You already voted!</h2>
         <p className="max-w-[260px] text-[15px] font-medium text-white/70">
-          You already sent your reaction to <strong>{profileName}</strong>. Only one vote per person is allowed.
+          You already sent your reaction to <strong>{profileName}</strong>. You can vote for them again after 24 hours.
         </p>
       </div>
     </div>
