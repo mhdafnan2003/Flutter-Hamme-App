@@ -344,11 +344,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
 
                   // Show cooldown wall for free users who hit the limit
                   if (status.limited) {
-                    return SingleChildScrollView(
-                      child: PlayCooldownView(
-                        status: status,
-                        onCooldownEnd: _refreshPlayData,
-                      ),
+                    return PlayCooldownView(
+                      status: status,
+                      onCooldownEnd: _refreshPlayData,
                     );
                   }
 
