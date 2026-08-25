@@ -122,6 +122,7 @@ flutter:
   assets:
     - .env
     - assets/images/
+    - assets/images/pro/
     - assets/icons/
     - assets/icons/icon_filled/
     - assets/icons/icon_line/

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 
 class FooterLink extends StatelessWidget {
@@ -19,7 +18,7 @@ class FooterLink extends StatelessWidget {
           fontFamily: TFonts.nunito,
           fontSize: 14,
           fontWeight: FontWeight.w500,
-          color: TColors.darkGrey,
+          color: Color(0xFFA4A1A2),
         ),
       ),
     );

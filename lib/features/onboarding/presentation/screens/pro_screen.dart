@@ -7,17 +7,17 @@ import 'package:go_router/go_router.dart';
 import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
 import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
 import 'package:hamme_app/core/utils/app_exception.dart';
-import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/billing_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
+import 'package:hamme_app/utils/constants/image_strings.dart';
 
 import '../widgets/avatar_bubble.dart';
 import '../widgets/footer_link.dart';
-import '../widgets/header_curve_clipper.dart';
 import '../widgets/pro_feature.dart';
 
 class ProScreen extends ConsumerStatefulWidget {
@@ -181,9 +181,8 @@ class _ProScreenState extends ConsumerState<ProScreen> {
   Widget build(BuildContext context) {
     final billing = ref.watch(billingControllerProvider);
     final isUpgrade = !widget.isOnboarding;
-    final topInset = MediaQuery.paddingOf(context).top;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final headerHeight = (topInset + 100).clamp(140.0, 160.0);
+    final headerHeight = 156.0;
     final footerBottomPadding =
         bottomInset > 0 ? (bottomInset - 5).clamp(20.0, 29.0) : 20.0;
 
@@ -210,7 +209,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     final String ctaLabel =
         isUpgrade
             ? (billing.proProduct != null
-                ? 'Subscribe • ${billing.proProduct!.price}'
+                ? 'Continue • ${billing.proProduct!.price}'
                 : 'Upgrade to Pro')
             : 'Continue';
     final Future<void> Function() onCta =
@@ -225,40 +224,49 @@ class _ProScreenState extends ConsumerState<ProScreen> {
             children: [
               SizedBox(
                 height: headerHeight,
+                width: double.infinity,
                 child: Stack(
                   children: [
-                    ClipPath(
-                      clipper: HeaderCurveClipper(),
-                      child: Container(
-                        height: headerHeight,
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFF9E57FF), Color(0xFF8840FF)],
-                          ),
+                    Positioned.fill(
+                      child: SvgPicture.asset(
+                        TImages.proHeaderCurve,
+                        fit: BoxFit.fill,
+                      ),
+                    ),
+                    Positioned(
+                      top: 78,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Image.asset(
+                          TImages.proHammeLogo,
+                          width: 144,
+                          height: 38,
+                          filterQuality: FilterQuality.high,
                         ),
                       ),
                     ),
                     Positioned(
-                      top: topInset + 22,
-                      left: 0,
-                      right: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/images/Hammepro logo.png',
-                            height: 38,
-                            fit: BoxFit.contain,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Positioned(
-                      top: topInset + 18,
+                      top: 72,
                       right: 24,
-                      child: AppCloseCircleButton(onPressed: _dismiss),
+                      child: GestureDetector(
+                        onTap: _dismiss,
+                        behavior: HitTestBehavior.opaque,
+                        child: SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Opacity(
+                            opacity: 0.6,
+                            child: Center(
+                              child: SvgPicture.asset(
+                                TImages.proClose,
+                                width: 17,
+                                height: 17,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -269,8 +277,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                   bottom: false,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final horizontalPadding =
-                          constraints.maxWidth < 350 ? 20.0 : 28.0;
+                      final horizontalPadding = 28.0;
                       const minimumContentHeight = 570.0;
                       final contentHeight =
                           constraints.maxHeight < minimumContentHeight
@@ -287,71 +294,33 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                             child: Column(
                               children: [
                                 const Spacer(flex: 2),
-                                const Column(
-                                  children: [
-                                    Text(
-                                      'Unlock Unlimited',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontFamily: TFonts.nunito,
-                                        fontSize: 28,
-                                        height: 1.1,
-                                        fontWeight: FontWeight.w900,
-                                        color: Color(0xFFCE00E6),
-                                      ),
-                                    ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Access ',
-                                          style: TextStyle(
-                                            fontFamily: TFonts.nunito,
-                                            fontSize: 28,
-                                            height: 1.1,
-                                            fontWeight: FontWeight.w900,
-                                            color: Color(0xFFCE00E6),
-                                          ),
-                                        ),
-                                        Image(
-                                          image: AssetImage(
-                                            'assets/icons/Unlocked.png',
-                                          ),
-                                          width: 28,
-                                          height: 28,
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                const _UnlockTitle(),
                                 const Spacer(flex: 2),
                                 Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    24,
+                                    12,
+                                    22,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F0FD),
-                                    borderRadius: BorderRadius.circular(20),
+                                    color: const Color(0xFFEBEAFA),
+                                    borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: const Color(0xFFE2DBFF),
-                                      width: 1.5,
+                                      color: const Color(0xFF9B6AFF),
                                     ),
                                   ),
                                   child: const Column(
                                     children: [
-                                      SizedBox(height: 10),
                                       ProFeature(
                                         icon: Image(
                                           image: AssetImage(
-                                            'assets/icons/Infinity.png',
+                                            TImages.proInfinity,
                                           ),
                                           width: 32,
                                           height: 32,
+                                          filterQuality: FilterQuality.high,
                                         ),
                                         title: 'Unlimited Play',
                                         subtitle:
@@ -360,11 +329,10 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                       SizedBox(height: 24),
                                       ProFeature(
                                         icon: Image(
-                                          image: AssetImage(
-                                            'assets/icons/Right Arrow Curving Left.png',
-                                          ),
+                                          image: AssetImage(TImages.proRewind),
                                           width: 32,
                                           height: 32,
+                                          filterQuality: FilterQuality.high,
                                         ),
                                         title: 'Unlimited Rewinds',
                                         subtitle:
@@ -374,76 +342,35 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                       ProFeature(
                                         icon: Image(
                                           image: AssetImage(
-                                            'assets/icons/High Voltage.png',
+                                            TImages.proHighVoltage,
                                           ),
                                           width: 32,
                                           height: 32,
+                                          filterQuality: FilterQuality.high,
                                         ),
                                         title: 'Priority Profile',
                                         subtitle:
                                             'Appear first in queues of people you\nreacted to.',
                                       ),
-                                      SizedBox(height: 10),
                                     ],
                                   ),
                                 ),
                                 const Spacer(flex: 3),
-                                const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    AvatarBubble(
-                                      label: 'N',
-                                      color: Color(0xFFFA3F8F),
-                                    ),
-                                    AvatarBubble(
-                                      label: 'K',
-                                      color: Color(0xFF1BD66B),
-                                    ),
-                                    AvatarBubble(
-                                      label: 'A',
-                                      color: Color(0xFF3FA7FF),
-                                    ),
-                                    AvatarBubble(
-                                      label: 'S',
-                                      color: Color(0xFFFFCB36),
-                                    ),
-                                    AvatarBubble(
-                                      label: 'R',
-                                      color: Color(0xFFFF5252),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text(
-                                      '1000+ went PRO today',
-                                      style: TextStyle(
-                                        fontFamily: TFonts.nunito,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: TColors.darkGrey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                const _ProSocialProof(),
                                 const Spacer(flex: 1),
                                 Container(
                                   width: double.infinity,
-                                  height: 58,
+                                  height: 62,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(29),
+                                    borderRadius: BorderRadius.circular(33),
                                     gradient: const LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
                                       colors: [
-                                        Color(0xFF9E57FF),
-                                        Color(0xFF8B44FF),
+                                        Color(0xFF9F6FFF),
+                                        Color(0xFF7838FE),
                                       ],
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(
-                                          0xFF9E57FF,
-                                        ).withValues(alpha: 0.2),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
                                   ),
                                   child: ElevatedButton(
                                     onPressed: ctaBusy ? () {} : () => onCta(),
@@ -452,7 +379,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                       shadowColor: Colors.transparent,
                                       padding: EdgeInsets.zero,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(29),
+                                        borderRadius: BorderRadius.circular(33),
                                       ),
                                     ),
                                     child:
@@ -473,8 +400,8 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                               style: const TextStyle(
                                                 fontFamily: TFonts.nunito,
                                                 fontSize: 20,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFFFBFBFB),
                                               ),
                                             ),
                                   ),
@@ -499,9 +426,9 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                       : 'pro renews for \$6.99/wk',
                                   style: const TextStyle(
                                     fontFamily: TFonts.nunito,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: TColors.darkGrey,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF98999A),
                                   ),
                                 ),
                                 const SizedBox(height: 18),
@@ -574,6 +501,126 @@ class _ProScreenState extends ConsumerState<ProScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _UnlockTitle extends StatelessWidget {
+  const _UnlockTitle();
+
+  static const _titleStyle = TextStyle(
+    fontFamily: TFonts.nunito,
+    fontSize: 28,
+    height: 1.15,
+    fontWeight: FontWeight.w900,
+    color: Colors.white,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (bounds) {
+            return const LinearGradient(
+              colors: [Color(0xFF9000FF), Color(0xFFD200BD)],
+            ).createShader(bounds);
+          },
+          child: const Text(
+            'Unlock Unlimited',
+            textAlign: TextAlign.center,
+            style: _titleStyle,
+          ),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ShaderMask(
+              blendMode: BlendMode.srcIn,
+              shaderCallback: (bounds) {
+                return const LinearGradient(
+                  colors: [Color(0xFF9000FF), Color(0xFFD200BD)],
+                ).createShader(bounds);
+              },
+              child: const Text('Access ', style: _titleStyle),
+            ),
+            Image.asset(
+              TImages.proUnlocked,
+              width: 28,
+              height: 28,
+              filterQuality: FilterQuality.high,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ProSocialProof extends StatelessWidget {
+  const _ProSocialProof();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 104,
+          height: 26,
+          child: Stack(
+            children: const [
+              Positioned(
+                left: 0,
+                child: AvatarBubble(label: 'N', color: Color(0xFFFF457E)),
+              ),
+              Positioned(
+                left: 20,
+                child: AvatarBubble(
+                  label: 'K',
+                  color: Color(0xFF30E584),
+                  showBorder: true,
+                ),
+              ),
+              Positioned(
+                left: 40,
+                child: AvatarBubble(
+                  label: 'A',
+                  color: Color(0xFF4694FF),
+                  showBorder: true,
+                ),
+              ),
+              Positioned(
+                left: 60,
+                child: AvatarBubble(
+                  label: 'S',
+                  color: Color(0xFFFFDB45),
+                  showBorder: true,
+                ),
+              ),
+              Positioned(
+                left: 80,
+                child: AvatarBubble(
+                  label: 'R',
+                  color: Color(0xFFFF5353),
+                  showBorder: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          '1000+ went PRO today',
+          style: TextStyle(
+            fontFamily: TFonts.nunito,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFFB2B2B2),
+          ),
+        ),
+      ],
     );
   }
 }

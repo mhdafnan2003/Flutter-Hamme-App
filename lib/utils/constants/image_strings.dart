@@ -285,4 +285,11 @@ class TImages {
   // -- Hamme UI Images
   static const String hammeLogo = "assets/images/logo.png";
   static const String hammeHomeLogo = "assets/images/homelogo.png";
+  static const String proHammeLogo = "assets/images/hamme_pro_logo.png";
+  static const String proHeaderCurve = "assets/images/pro/header_curve.svg";
+  static const String proClose = "assets/images/pro/close.svg";
+  static const String proUnlocked = "assets/images/pro/unlocked.png";
+  static const String proInfinity = "assets/images/pro/infinity.png";
+  static const String proRewind = "assets/images/pro/rewind.png";
+  static const String proHighVoltage = "assets/images/pro/high_voltage.png";
 }

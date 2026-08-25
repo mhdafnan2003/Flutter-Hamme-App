@@ -1,27 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 
 class AvatarBubble extends StatelessWidget {
-  const AvatarBubble({super.key, required this.label, required this.color});
+  const AvatarBubble({
+    super.key,
+    required this.label,
+    required this.color,
+    this.showBorder = false,
+  });
 
   final String label;
   final Color color;
+  final bool showBorder;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border:
+            showBorder
+                ? Border.all(color: Colors.white, width: 1)
+                : null,
+      ),
       alignment: Alignment.center,
       child: Text(
         label,
         style: const TextStyle(
           fontFamily: TFonts.nunito,
           fontSize: 12,
-          fontWeight: FontWeight.w900,
-          color: TColors.white,
+          height: 1,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
         ),
       ),
     );
