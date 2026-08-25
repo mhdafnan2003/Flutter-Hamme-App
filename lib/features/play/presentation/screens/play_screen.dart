@@ -48,13 +48,18 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   InteractionRecord? _lastVotedItem;
 
   static const String _shownMatchIdsPreferenceKey = 'play_shown_match_ids_v1';
+  static const String _shownPollerResultIdsPreferenceKey =
+      'play_shown_poller_result_ids_v1';
 
   // Tracks match IDs already surfaced as overlays. The IDs are also saved on
   // this device so reopening the app does not replay the same match.
   final Set<String> _shownMatchIds = {};
   bool _shownMatchIdsLoaded = false;
-  // Tracks interaction IDs already shown as poller-side "not a match" overlays.
+  // Tracks interaction IDs already shown as poller-side "not a match"
+  // overlays. Also saved on this device so reopening the app does not
+  // replay the same result.
   final Set<String> _shownPollerResultIds = {};
+  bool _shownPollerResultIdsLoaded = false;
 
   void _refreshPlayData() {
     ref.invalidate(receivedInteractionsProvider);
@@ -92,6 +97,24 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     ref.read(matchesProvider).whenData(_checkForNewMatchesFromPollerSide);
   }
 
+  Future<void> _loadShownPollerResultIds() async {
+    final preferences = await SharedPreferences.getInstance();
+    final savedIds =
+        preferences.getStringList(_shownPollerResultIdsPreferenceKey) ??
+        const <String>[];
+
+    if (!mounted) return;
+    _shownPollerResultIds.addAll(savedIds);
+    _shownPollerResultIdsLoaded = true;
+
+    // The initial received-interactions request may have completed while
+    // preferences loaded. Re-evaluate its cached result once local seen
+    // state is ready.
+    ref
+        .read(receivedInteractionsProvider)
+        .whenData(_checkForNotMatchFromPollerSide);
+  }
+
   Future<void> _markMatchAsShown(String matchId) async {
     _shownMatchIds.add(matchId);
 
@@ -104,6 +127,21 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     await preferences.setStringList(
       _shownMatchIdsPreferenceKey,
       _shownMatchIds.toList(growable: false),
+    );
+  }
+
+  Future<void> _markPollerResultAsShown(String interactionId) async {
+    _shownPollerResultIds.add(interactionId);
+
+    final preferences = await SharedPreferences.getInstance();
+    // Keep the preference bounded. Results disappear after 24 hours, so this
+    // is substantially more history than the UI can ever need.
+    while (_shownPollerResultIds.length > 500) {
+      _shownPollerResultIds.remove(_shownPollerResultIds.first);
+    }
+    await preferences.setStringList(
+      _shownPollerResultIdsPreferenceKey,
+      _shownPollerResultIds.toList(growable: false),
     );
   }
 
@@ -147,6 +185,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   /// overlay for the poller (the person who voted via share link) when the
   /// creator voted back but it wasn't a match.
   void _checkForNotMatchFromPollerSide(List<InteractionRecord> interactions) {
+    if (!_shownPollerResultIdsLoaded) return;
+
     for (final interaction in interactions) {
       if (_shownPollerResultIds.contains(interaction.id)) continue;
 
@@ -169,7 +209,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
         continue;
       }
 
-      _shownPollerResultIds.add(interaction.id);
+      unawaited(_markPollerResultAsShown(interaction.id));
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _showPollNotAMatchOverlay(interaction);
       });
@@ -280,6 +320,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_loadShownMatchIds());
+    unawaited(_loadShownPollerResultIds());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPlayData();
     });
