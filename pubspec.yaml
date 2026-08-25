@@ -160,6 +160,10 @@ flutter:
       fonts:
         - asset: assets/fonts/Nunito-VariableFont_wght.ttf
 
+    - family: Schibsted Grotesk
+      fonts:
+        - asset: assets/fonts/SchibstedGrotesk-VariableFont_wght.ttf
+
 flutter_launcher_icons:
   android: true
   ios: true

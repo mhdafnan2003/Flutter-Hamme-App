@@ -55,6 +55,9 @@ class TColors {
   static const Color hammePickerInactive = Color(0xFFA9A9A9);
   static const Color hammeMutedText = Color(0xFF8F8F8F);
   static const Color hammePlaceholder = Color(0xFFB2B2B2);
+  static const Color hammeChip = Color(0xFFAB7FE0);
+  static const Color hammeAvatarFill = Color(0xFFF3F4F4);
+  static const Color hammePlusBadge = Color(0xFF906EF6);
   static const Color hammeInactiveText = Color(0xFF79797B);
   static const Color hammeAccentBlue = Color(0xFF4A85F6);
 

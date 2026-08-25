@@ -1,20 +1,18 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
+import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
 
-import 'package:hamme_app/core/widgets/emoji_image.dart';
 import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../core/widgets/onboarding_validation_dialog.dart';
 import '../widgets/dob_top_bar.dart';
-import '../widgets/triangle_painter.dart';
+import '../widgets/profile_avatar_stack.dart';
 
 class ProfileUploadScreen extends ConsumerStatefulWidget {
   const ProfileUploadScreen({super.key});
@@ -27,15 +25,11 @@ class ProfileUploadScreen extends ConsumerStatefulWidget {
 class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
   static const int _maxImageBytes = 10 * 1024 * 1024;
   static const Set<String> _allowedExtensions = {'jpeg', 'jpg', 'png', 'webp'};
+  static const double _progress = 152 / 170;
 
   final ImagePicker _imagePicker = ImagePicker();
   Uint8List? _previewBytes;
   bool _isPickingImage = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   Future<void> _pickProfileImage() async {
     if (_isPickingImage) return;
@@ -70,13 +64,11 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
       setState(() {
         _previewBytes = bytes;
       });
-      ref
-          .read(onboardingProfileImageProvider.notifier)
-          .state = OnboardingProfileImage(
-        bytes: bytes,
-        filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
-      );
-      context.go('/onboarding/social_media');
+      ref.read(onboardingProfileImageProvider.notifier).state =
+          OnboardingProfileImage(
+            bytes: bytes,
+            filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
+          );
     } finally {
       _isPickingImage = false;
     }
@@ -103,203 +95,53 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
           children: [
             DobTopBar(
               onBack: () => context.go('/onboarding/name'),
-              progress: 0.75,
+              progress: _progress,
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 33),
             const Text(
               TTexts.onboardingProfileTitle,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: TFonts.nunito,
                 fontWeight: FontWeight.w900,
-                fontSize: 26,
-                color: TColors.black,
+                fontSize: 24,
+                height: 1,
+                color: Colors.black,
               ),
             ),
-            const SizedBox(height: 12),
-            const EmojiImage(emoji: '📸', size: 28),
-
-            const Spacer(),
-
-            SizedBox(
-              height: 280,
-              width: 300,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned(
-                    top: 10,
-                    left: 50,
-                    child: Transform.rotate(
-                      angle: 0.0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFAC7AFF),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
-                              CupertinoIcons.time_solid,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              TTexts.onboardingRecentPhoto,
-                              style: TextStyle(
-                                fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                                color: Colors.white,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  Positioned(
-                    top: 45,
-                    left: 20,
-                    child: Transform.rotate(
-                      angle: -0.07,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFAC7AFF),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SvgPicture.asset(
-                              'assets/icons/user_3.svg',
-                              width: 16,
-                              height: 16,
-                              colorFilter: const ColorFilter.mode(
-                                Colors.white,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              TTexts.onboardingShowFace,
-                              style: TextStyle(
-                                fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                                color: Colors.white,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  Positioned(
-                    top: 80,
-                    left: 140,
-                    child: CustomPaint(
-                      size: const Size(20, 15),
-                      painter: TrianglePainter(color: const Color(0xFFAC7AFF)),
-                    ),
-                  ),
-
-                  Positioned(
-                    top: 100,
-                    left: 71,
-                    child: GestureDetector(
-                      onTap: _pickProfileImage,
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 158,
-                            height: 158,
-                            decoration: const BoxDecoration(
-                              color: TColors.hammeSurface,
-                              shape: BoxShape.circle,
-                            ),
-                            child: ClipOval(
-                              child:
-                                  profileImageUrl != null &&
-                                          profileImageUrl.isNotEmpty
-                                      ? Image.network(
-                                        profileImageUrl,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : selectedImage != null
-                                      ? Image.memory(
-                                        selectedImage.bytes,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : _previewBytes != null
-                                      ? Image.memory(
-                                        _previewBytes!,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : const Icon(
-                                        CupertinoIcons.person_solid,
-                                        size: 80,
-                                        color: Colors.black,
-                                      ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              width: 46,
-                              height: 46,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF9E57FF),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10.0),
-                                child: Image.asset(
-                                  'assets/icons/icon_line/Plus.png',
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 21),
+            Image.asset(
+              TImages.emojiCamera,
+              width: 24,
+              height: 24,
+              fit: BoxFit.cover,
             ),
-
+            const SizedBox(height: 74),
+            ProfileAvatarStack(
+              onPickImage: _pickProfileImage,
+              previewBytes: _previewBytes,
+              profileImageUrl: profileImageUrl,
+              selectedImageBytes: selectedImage?.bytes,
+            ),
             const Spacer(),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: GradientButton(
                 label: TTexts.next,
+                borderRadius: 22,
+                fontWeight: FontWeight.w800,
                 onTap: () async {
                   if ((profileImageUrl == null || profileImageUrl.isEmpty) &&
                       selectedImage == null) {
                     HapticFeedback.mediumImpact();
-                    final shouldPickImage = await showOnboardingValidationDialog(
-                      context,
-                      title: 'Add a profile photo',
-                      message:
-                          'Choose a clear photo of yourself before continuing.',
-                      actionLabel: 'Choose photo',
-                    );
+                    final shouldPickImage =
+                        await showOnboardingValidationDialog(
+                          context,
+                          title: 'Add a profile photo',
+                          message:
+                              'Choose a clear photo of yourself before continuing.',
+                          actionLabel: 'Choose photo',
+                        );
                     if (shouldPickImage && mounted) await _pickProfileImage();
                     return;
                   }

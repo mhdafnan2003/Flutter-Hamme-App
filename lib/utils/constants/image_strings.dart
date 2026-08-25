@@ -24,6 +24,11 @@ class TImages {
   static const String iconArrowLeft = "assets/icons/icon_line/arrow_left.svg";
   static const String iconPickerChevron = "assets/icons/icon_line/picker_chevron.svg";
   static const String emojiCamera = "assets/icons/emoji_camera.png";
+  static const String iconClockCircle = "assets/icons/icon_filled/clock_circle.svg";
+  static const String iconUserRectangle = "assets/icons/icon_filled/user_rectangle.svg";
+  static const String iconUserFilled = "assets/icons/user_3.svg";
+  static const String iconPlus = "assets/icons/icon_line/plus.svg";
+  static const String iconSpeechTail = "assets/icons/icon_line/speech_tail.svg";
   static const String emojiSpeaking = "assets/icons/emoji_speaking.png";
   static const String emojiHourglass = "assets/icons/emoji_hourglass.png";
   static const String emojiEyes = "assets/icons/emoji_eyes.png";
