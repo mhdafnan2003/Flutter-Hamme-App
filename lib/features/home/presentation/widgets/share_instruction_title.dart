@@ -13,12 +13,7 @@ class ShareInstructionTitle extends StatelessWidget {
       return Text(
         data.prefix,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontFamily: TFonts.nunito,
-          fontWeight: FontWeight.w700,
-          fontSize: 24,
-          color: Colors.black,
-        ),
+        style: _titleStyle,
       );
     }
 
@@ -75,7 +70,8 @@ class ShareInstructionTitle extends StatelessWidget {
   static const _titleStyle = TextStyle(
     fontFamily: TFonts.nunito,
     fontWeight: FontWeight.w800,
-    fontSize: 18,
+    fontSize: 20,
+    height: 1.2,
     color: Colors.black,
   );
 }

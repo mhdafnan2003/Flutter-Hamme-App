@@ -76,7 +76,7 @@ class _StepDots extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 6),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: active ? TColors.hammePrimary : const Color(0xFFE8EDF1),
+            color: active ? TColors.hammeProgressFill : const Color(0xFFE8EDF1),
             shape: BoxShape.circle,
           ),
           child: Text(

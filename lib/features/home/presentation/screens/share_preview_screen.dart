@@ -72,13 +72,25 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                             PlatformPill(
                               selected: _isInstagram,
                               iconPath: 'assets/icons/insta-outline.png',
-                              onTap: () => setState(() => _isInstagram = true),
+                              onTap: () {
+                                if (_isInstagram) return;
+                                setState(() {
+                                  _isInstagram = true;
+                                  _step = 1;
+                                });
+                              },
                             ),
                             const SizedBox(width: 28),
                             PlatformPill(
                               selected: !_isInstagram,
                               iconPath: 'assets/icons/snap-fill.png',
-                              onTap: () => setState(() => _isInstagram = false),
+                              onTap: () {
+                                if (!_isInstagram) return;
+                                setState(() {
+                                  _isInstagram = false;
+                                  _step = 1;
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -89,8 +101,7 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                           totalSteps: 4,
                           instructionTitle: ShareInstructionTitle(data: data),
                           image: ShareInstructionPreview(
-                            step: _step,
-                            isInstagram: _isInstagram,
+                            imagePath: data.imagePath,
                           ),
                           action: ShareActionButton(
                             label: _step == 4 ? 'Share' : 'Next Step',
