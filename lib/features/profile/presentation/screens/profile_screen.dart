@@ -22,131 +22,9 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileTextEditDialog extends StatefulWidget {
-  const _ProfileTextEditDialog({
-    required this.title,
-    required this.hint,
-    required this.initialValue,
-    required this.username,
-  });
-
-  final String title;
-  final String hint;
-  final String initialValue;
-  final bool username;
-
-  @override
-  State<_ProfileTextEditDialog> createState() => _ProfileTextEditDialogState();
-}
-
-class _ProfileTextEditDialogState extends State<_ProfileTextEditDialog> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _save() => Navigator.of(context).pop(_controller.text.trim());
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.title,
-              style: const TextStyle(
-                fontFamily: TFonts.nunito,
-                fontWeight: FontWeight.w900,
-                fontSize: 22,
-              ),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              maxLength: widget.username ? 32 : 80,
-              textCapitalization:
-                  widget.username
-                      ? TextCapitalization.none
-                      : TextCapitalization.words,
-              decoration: InputDecoration(
-                hintText: widget.hint,
-                counterText: '',
-                filled: true,
-                fillColor: TColors.hammeSurface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(
-                    color: TColors.hammePrimary,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-              onSubmitted: (_) => _save(),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF9E57FF), Color(0xFF8B44FF)],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: TextButton(
-                      onPressed: _save,
-                      child: const Text(
-                        'Save',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploadingImage = false;
-  bool _isSaving = false;
   bool _isLoggingOut = false;
 
   Future<void> _logoutForOnboardingPreview() async {
@@ -163,109 +41,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoggingOut = false);
-    }
-  }
-
-  Future<String?> _showEditDialog({
-    required String title,
-    required String hint,
-    required String initialValue,
-    bool username = false,
-  }) {
-    return showDialog<String>(
-      context: context,
-      builder:
-          (_) => _ProfileTextEditDialog(
-            title: title,
-            hint: hint,
-            initialValue: initialValue,
-            username: username,
-          ),
-    );
-  }
-
-  Future<void> _saveName(String currentName) async {
-    final name = await _showEditDialog(
-      title: 'Edit your name',
-      hint: 'Your name',
-      initialValue: currentName,
-    );
-    if (name == null || name.isEmpty || name == currentName) return;
-    await _saveProfile(
-      action:
-          () => ProfileRemoteDataSource(
-            ref.read(apiServiceProvider),
-          ).updateMe(name: name),
-      onSuccess: () => ref.read(onboardingDraftProvider.notifier).setName(name),
-      successMessage: 'Name updated!',
-    );
-  }
-
-  Future<void> _saveSocialUsername({
-    required String currentUsername,
-    required bool isInstagram,
-  }) async {
-    final username = await _showEditDialog(
-      title: isInstagram ? 'Edit Instagram username' : 'Edit Snapchat username',
-      hint: isInstagram ? 'Instagram username' : 'Snapchat username',
-      initialValue: currentUsername.replaceFirst(RegExp(r'^@'), ''),
-      username: true,
-    );
-    if (username == null ||
-        username.isEmpty ||
-        username == currentUsername.replaceFirst(RegExp(r'^@'), '')) {
-      return;
-    }
-
-    await _saveProfile(
-      action:
-          () => ProfileRemoteDataSource(ref.read(apiServiceProvider)).updateMe(
-            instagramId: isInstagram ? username : null,
-            snapchatId: isInstagram ? null : username,
-            username: username,
-          ),
-      onSuccess:
-          () => ref
-              .read(onboardingDraftProvider.notifier)
-              .setSocial(
-                platform:
-                    isInstagram
-                        ? TTexts.socialInstagram
-                        : TTexts.socialSnapchat,
-                username: username,
-              ),
-      successMessage: 'Username updated!',
-    );
-  }
-
-  Future<void> _saveProfile({
-    required Future<void> Function() action,
-    required Future<void> Function() onSuccess,
-    required String successMessage,
-  }) async {
-    if (_isSaving) {
-      return;
-    }
-    setState(() => _isSaving = true);
-    try {
-      await action();
-      await onSuccess();
-      await ref.read(authControllerProvider.notifier).refreshUser();
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(successMessage)));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not update your profile. Please try again.'),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -460,59 +235,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             const SizedBox(height: 16),
 
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 22,
-                    color: TColors.black,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _isSaving ? null : () => _saveName(name),
-                  child: const Icon(
-                    CupertinoIcons.pencil,
-                    size: 18,
-                    color: TColors.hammePrimary,
-                  ),
-                ),
-              ],
+            Text(
+              name,
+              style: const TextStyle(
+                fontFamily: TFonts.nunito,
+                fontWeight: FontWeight.w900,
+                fontSize: 22,
+                color: TColors.black,
+              ),
             ),
             if (handle.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    handle,
-                    style: const TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: TColors.darkGrey,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap:
-                        _isSaving
-                            ? null
-                            : () => _saveSocialUsername(
-                              currentUsername: socialUsername,
-                              isInstagram: isInstagram,
-                            ),
-                    child: const Icon(
-                      CupertinoIcons.pencil,
-                      size: 15,
-                      color: TColors.hammePrimary,
-                    ),
-                  ),
-                ],
+              Text(
+                handle,
+                style: const TextStyle(
+                  fontFamily: TFonts.nunito,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: TColors.darkGrey,
+                ),
               ),
             ],
 
