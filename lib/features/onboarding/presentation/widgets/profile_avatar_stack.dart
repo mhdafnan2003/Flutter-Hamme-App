@@ -22,7 +22,7 @@ class ProfileAvatarStack extends StatelessWidget {
   final String? profileImageUrl;
   final Uint8List? selectedImageBytes;
 
-  static const double _rotate = -4 * math.pi / 180;
+  static const double _tilt = -4 * math.pi / 180;
 
   @override
   Widget build(BuildContext context) {
@@ -31,102 +31,92 @@ class ProfileAvatarStack extends StatelessWidget {
         selectedImageBytes != null ||
         previewBytes != null;
 
-    return SizedBox(
-      width: 250,
-      height: 250,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          const Positioned(
-            top: 0,
-            left: 29,
-            child: _PromptChip(
-              width: 192,
-              height: 38,
-              iconPath: TImages.iconClockCircle,
-              iconSize: 20,
-              label: TTexts.onboardingRecentPhoto,
-            ),
-          ),
-          Positioned(
-            top: 34,
-            left: 14,
-            child: Transform.rotate(
-              angle: _rotate,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _PromptChip(
+          iconPath: TImages.iconClockCircle,
+          iconSize: 20,
+          height: 38,
+          label: TTexts.onboardingRecentPhoto,
+        ),
+        const SizedBox(height: 4),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Transform.rotate(
+              angle: _tilt,
               child: const _PromptChip(
-                width: 223,
-                height: 35,
                 iconPath: TImages.iconUserRectangle,
                 iconSize: 17,
+                height: 35,
                 label: TTexts.onboardingShowFace,
               ),
             ),
-          ),
-          Positioned(
-            top: 70,
-            left: 108,
-            child: Transform.rotate(
-              angle: _rotate,
-              child: Transform.scale(
-                scaleY: -1,
-                child: SvgPicture.asset(
-                  TImages.iconSpeechTail,
-                  width: 34,
-                  height: 20,
+            Transform.translate(
+              offset: const Offset(8, -8),
+              child: Transform.rotate(
+                angle: _tilt,
+                child: Transform.scale(
+                  scaleY: -1,
+                  child: SvgPicture.asset(
+                    TImages.iconSpeechTail,
+                    width: 34,
+                    height: 20,
+                  ),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: 92,
-            left: 46,
-            child: GestureDetector(
-              onTap: onPickImage,
-              child: SizedBox(
-                width: 158,
-                height: 158,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 158,
-                      height: 158,
-                      decoration: const BoxDecoration(
-                        color: TColors.hammeAvatarFill,
-                        shape: BoxShape.circle,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child:
-                          hasImage
-                              ? _ProfileImage(
-                                profileImageUrl: profileImageUrl,
-                                selectedImageBytes: selectedImageBytes,
-                                previewBytes: previewBytes,
-                              )
-                              : Center(
-                                child: SvgPicture.asset(
-                                  TImages.iconUserFilled,
-                                  width: 60,
-                                  height: 60,
-                                  colorFilter: const ColorFilter.mode(
-                                    Colors.black,
-                                    BlendMode.srcIn,
-                                  ),
+          ],
+        ),
+        Transform.translate(
+          offset: const Offset(0, -8),
+          child: GestureDetector(
+            onTap: onPickImage,
+            child: SizedBox(
+              width: 158,
+              height: 158,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 158,
+                    height: 158,
+                    decoration: const BoxDecoration(
+                      color: TColors.hammeAvatarFill,
+                      shape: BoxShape.circle,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child:
+                        hasImage
+                            ? _ProfileImage(
+                              profileImageUrl: profileImageUrl,
+                              selectedImageBytes: selectedImageBytes,
+                              previewBytes: previewBytes,
+                            )
+                            : Center(
+                              child: SvgPicture.asset(
+                                TImages.iconUserFilled,
+                                width: 60,
+                                height: 60,
+                                colorFilter: const ColorFilter.mode(
+                                  Colors.black,
+                                  BlendMode.srcIn,
                                 ),
                               ),
-                    ),
-                    const Positioned(
-                      right: 7,
-                      bottom: 7,
-                      child: _PlusBadge(),
-                    ),
-                  ],
-                ),
+                            ),
+                  ),
+                  const Positioned(
+                    right: 7,
+                    bottom: 7,
+                    child: _PlusBadge(),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -156,46 +146,41 @@ class _ProfileImage extends StatelessWidget {
 
 class _PromptChip extends StatelessWidget {
   const _PromptChip({
-    required this.width,
-    required this.height,
     required this.iconPath,
     required this.iconSize,
+    required this.height,
     required this.label,
   });
 
-  final double width;
-  final double height;
   final String iconPath;
   final double iconSize;
+  final double height;
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: width,
       height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.only(left: 10, right: 14),
       decoration: BoxDecoration(
         color: TColors.hammeChip,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           SvgPicture.asset(iconPath, width: iconSize, height: iconSize),
           const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: TFonts.schibstedGrotesk,
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-                height: 1,
-                letterSpacing: -0.9,
-                color: Colors.white,
-              ),
+          Text(
+            label,
+            softWrap: false,
+            style: const TextStyle(
+              fontFamily: TFonts.schibstedGrotesk,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              height: 1,
+              letterSpacing: -0.9,
+              color: Colors.white,
             ),
           ),
         ],
@@ -217,7 +202,12 @@ class _PlusBadge extends StatelessWidget {
         color: TColors.hammePlusBadge,
         shape: BoxShape.circle,
       ),
-      child: SvgPicture.asset(TImages.iconPlus, width: 24, height: 24),
+      child: SvgPicture.asset(
+        TImages.iconPlus,
+        width: 24,
+        height: 24,
+        clipBehavior: Clip.none,
+      ),
     );
   }
 }
