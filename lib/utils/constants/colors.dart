@@ -48,7 +48,11 @@ class TColors {
   static const Color hammePrimary = Color(0xFF9F6FFF);
   static const Color hammePrimaryDark = Color(0xFF7838FE);
   static const Color hammeTrack = Color(0xFFECEDED);
+  static const Color hammeProgressFill = Color(0xFFA678FF);
   static const Color hammeSurface = Color(0xFFF1F2F6);
+  static const Color hammeYearsOld = Color(0xFF8A96D0);
+  static const Color hammePickerHighlight = Color(0xFFF3F4F5);
+  static const Color hammePickerInactive = Color(0xFFA9A9A9);
   static const Color hammeMutedText = Color(0xFF8F8F8F);
   static const Color hammeInactiveText = Color(0xFF79797B);
   static const Color hammeAccentBlue = Color(0xFF4A85F6);

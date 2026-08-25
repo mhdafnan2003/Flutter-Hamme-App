@@ -5,12 +5,16 @@ class GradientButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final double fontSize;
+  final double borderRadius;
+  final FontWeight fontWeight;
 
   const GradientButton({
     super.key,
     required this.label,
     required this.onTap,
     this.fontSize = 18,
+    this.borderRadius = 40,
+    this.fontWeight = FontWeight.w900,
   });
 
   @override
@@ -26,14 +30,14 @@ class GradientButton extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [TColors.hammePrimary, TColors.hammePrimaryDark],
           ),
-          borderRadius: BorderRadius.circular(40),
+          borderRadius: BorderRadius.circular(borderRadius),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
             fontFamily: 'Nunito',
-            fontWeight: FontWeight.w900,
+            fontWeight: fontWeight,
             fontSize: fontSize,
             color: Colors.white,
           ),

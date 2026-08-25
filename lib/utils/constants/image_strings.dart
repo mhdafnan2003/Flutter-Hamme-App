@@ -21,6 +21,8 @@ class TImages {
   static const String emojiFriend = "assets/icons/emoji_friend.png";
   static const String emojiFrenemy = "assets/icons/emoji_frenemy.png";
   static const String emojiBirthday = "assets/icons/emoji_birthday.png";
+  static const String iconArrowLeft = "assets/icons/icon_line/arrow_left.svg";
+  static const String iconPickerChevron = "assets/icons/icon_line/picker_chevron.svg";
   static const String emojiCamera = "assets/icons/emoji_camera.png";
   static const String emojiSpeaking = "assets/icons/emoji_speaking.png";
   static const String emojiHourglass = "assets/icons/emoji_hourglass.png";
