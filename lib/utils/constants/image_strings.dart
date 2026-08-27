@@ -7,6 +7,7 @@ class TImages {
       "assets/logos/t-store-splash-logo-black.png";
   static const String lightAppLogo =
       "assets/logos/t-store-splash-logo-white.png";
+  static const String splashLogo = "assets/splash_logo.png";
 
   // -- Social Logos
   static const String google = "assets/logos/google-icon.png";
@@ -285,7 +286,7 @@ class TImages {
   // -- Hamme UI Images
   static const String hammeLogo = "assets/images/logo.png";
   static const String hammeHomeLogo = "assets/images/homelogo.png";
-  static const String proHammeLogo = "assets/images/hamme_pro_logo.png";
+  static const String proHammeLogo = "assets/hamme_pro_logo.png";
   static const String proHeaderCurve = "assets/images/pro/header_curve.svg";
   static const String proClose = "assets/images/pro/close.svg";
   static const String proUnlocked = "assets/images/pro/unlocked.png";

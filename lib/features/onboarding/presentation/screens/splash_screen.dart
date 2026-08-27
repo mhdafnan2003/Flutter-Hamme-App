@@ -53,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen>
             child: FadeTransition(
               opacity: _animation,
               child: Image.asset(
-                TImages.hammeLogo,
+                TImages.splashLogo,
                 width: 220,
                 fit: BoxFit.fill,
               ),
