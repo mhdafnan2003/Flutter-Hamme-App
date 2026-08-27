@@ -25,12 +25,17 @@ class AgePickerWheel extends StatelessWidget {
   final VoidCallback onDecrement;
   final VoidCallback onIncrement;
 
-  static const double itemExtent = 35;
+  // Keep the five visible ages close enough together that the values around
+  // the default selection (19) don't look artificially spaced out.
+  static const double itemExtent = 30;
+  static const double wheelHeight = itemExtent * 5 + 10;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: itemExtent * 5,
+      // The extra room prevents the first and last visible values (17 and
+      // 21 when 19 is selected) from being clipped at the viewport edges.
+      height: wheelHeight,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -54,6 +59,8 @@ class AgePickerWheel extends StatelessWidget {
               itemExtent: itemExtent,
               onSelectedItemChanged: onAgeIndexChanged,
               selectionOverlay: const SizedBox.shrink(),
+              // A flatter wheel keeps the edge values fully readable.
+              diameterRatio: 2.5,
               squeeze: 1.0,
               magnification: 1.0,
               useMagnifier: false,
@@ -68,17 +75,11 @@ class AgePickerWheel extends StatelessWidget {
           ),
           Positioned(
             left: 28,
-            child: _PickerChevron(
-              pointsRight: true,
-              onTap: onDecrement,
-            ),
+            child: _PickerChevron(pointsRight: true, onTap: onDecrement),
           ),
           Positioned(
             right: 28,
-            child: _PickerChevron(
-              pointsRight: false,
-              onTap: onIncrement,
-            ),
+            child: _PickerChevron(pointsRight: false, onTap: onIncrement),
           ),
         ],
       ),
@@ -87,10 +88,7 @@ class AgePickerWheel extends StatelessWidget {
 }
 
 class _PickerChevron extends StatelessWidget {
-  const _PickerChevron({
-    required this.pointsRight,
-    required this.onTap,
-  });
+  const _PickerChevron({required this.pointsRight, required this.onTap});
 
   final bool pointsRight;
   final VoidCallback onTap;
@@ -113,10 +111,7 @@ class _PickerChevron extends StatelessWidget {
 }
 
 class _AgePickerItem extends StatelessWidget {
-  const _AgePickerItem({
-    required this.age,
-    required this.selectedAge,
-  });
+  const _AgePickerItem({required this.age, required this.selectedAge});
 
   final int age;
   final int selectedAge;
