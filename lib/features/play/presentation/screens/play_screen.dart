@@ -55,11 +55,15 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   // this device so reopening the app does not replay the same match.
   final Set<String> _shownMatchIds = {};
   bool _shownMatchIdsLoaded = false;
+  Future<void>? _shownMatchIdsLoadFuture;
+  Future<void> _shownMatchIdsWriteQueue = Future<void>.value();
   // Tracks interaction IDs already shown as poller-side "not a match"
   // overlays. Also saved on this device so reopening the app does not
   // replay the same result.
   final Set<String> _shownPollerResultIds = {};
   bool _shownPollerResultIdsLoaded = false;
+  Future<void>? _shownPollerResultIdsLoadFuture;
+  Future<void> _shownPollerResultIdsWriteQueue = Future<void>.value();
 
   void _refreshPlayData() {
     ref.invalidate(receivedInteractionsProvider);
@@ -115,34 +119,63 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
         .whenData(_checkForNotMatchFromPollerSide);
   }
 
-  Future<void> _markMatchAsShown(String matchId) async {
-    _shownMatchIds.add(matchId);
+  Future<void> _markMatchAsShown(String matchId) {
+    if (!_shownMatchIds.add(matchId)) return _shownMatchIdsWriteQueue;
 
-    final preferences = await SharedPreferences.getInstance();
-    // Keep the preference bounded. Matches disappear after 24 hours, so this
-    // is substantially more history than the UI can ever need.
-    while (_shownMatchIds.length > 500) {
-      _shownMatchIds.remove(_shownMatchIds.first);
-    }
-    await preferences.setStringList(
-      _shownMatchIdsPreferenceKey,
-      _shownMatchIds.toList(growable: false),
-    );
+    // Serialize writes and wait for the initial read. Without this, a
+    // fire-and-forget write can race app shutdown or another write and leave
+    // the ID absent from storage on the next launch.
+    _shownMatchIdsWriteQueue = _shownMatchIdsWriteQueue.then((_) async {
+      try {
+        final loadFuture = _shownMatchIdsLoadFuture;
+        if (loadFuture != null) await loadFuture;
+
+        final preferences = await SharedPreferences.getInstance();
+        // Keep the preference bounded. Matches disappear after 24 hours, so
+        // this is substantially more history than the UI can ever need.
+        while (_shownMatchIds.length > 500) {
+          _shownMatchIds.remove(_shownMatchIds.first);
+        }
+        await preferences.setStringList(
+          _shownMatchIdsPreferenceKey,
+          _shownMatchIds.toList(growable: false),
+        );
+      } catch (error, stackTrace) {
+        debugPrint('[Play] could not persist shown match ID: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+    });
+    return _shownMatchIdsWriteQueue;
   }
 
-  Future<void> _markPollerResultAsShown(String interactionId) async {
-    _shownPollerResultIds.add(interactionId);
-
-    final preferences = await SharedPreferences.getInstance();
-    // Keep the preference bounded. Results disappear after 24 hours, so this
-    // is substantially more history than the UI can ever need.
-    while (_shownPollerResultIds.length > 500) {
-      _shownPollerResultIds.remove(_shownPollerResultIds.first);
+  Future<void> _markPollerResultAsShown(String interactionId) {
+    if (!_shownPollerResultIds.add(interactionId)) {
+      return _shownPollerResultIdsWriteQueue;
     }
-    await preferences.setStringList(
-      _shownPollerResultIdsPreferenceKey,
-      _shownPollerResultIds.toList(growable: false),
-    );
+
+    _shownPollerResultIdsWriteQueue = _shownPollerResultIdsWriteQueue.then((
+      _,
+    ) async {
+      try {
+        final loadFuture = _shownPollerResultIdsLoadFuture;
+        if (loadFuture != null) await loadFuture;
+
+        final preferences = await SharedPreferences.getInstance();
+        // Keep the preference bounded. Results disappear after 24 hours,
+        // so this is substantially more history than the UI can ever need.
+        while (_shownPollerResultIds.length > 500) {
+          _shownPollerResultIds.remove(_shownPollerResultIds.first);
+        }
+        await preferences.setStringList(
+          _shownPollerResultIdsPreferenceKey,
+          _shownPollerResultIds.toList(growable: false),
+        );
+      } catch (error, stackTrace) {
+        debugPrint('[Play] could not persist poller result ID: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+    });
+    return _shownPollerResultIdsWriteQueue;
   }
 
   /// Called whenever matchesProvider refreshes — shows overlays for any
@@ -155,18 +188,19 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
       if (_shownMatchIds.contains(match.id)) continue;
       // Skip matches older than 24 h — user can see them in the Matches tab.
       if (match.createdAt.toUtc().isBefore(cutoff)) {
-        _shownMatchIds.add(match.id);
+        unawaited(_markMatchAsShown(match.id));
         continue;
       }
-      unawaited(_markMatchAsShown(match.id));
-      // Defer to avoid triggering navigation during a build phase.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showPollMatchOverlay(match);
-      });
+      // Persist before presenting the overlay so closing the app immediately
+      // after the celebration cannot make it replay on the next launch.
+      unawaited(_showPollMatchOverlay(match));
     }
   }
 
   Future<void> _showPollMatchOverlay(MatchRecord match) async {
+    await _markMatchAsShown(match.id);
+    if (!mounted) return;
+
     final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
@@ -198,25 +232,26 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
           interaction.matched ||
           interaction.fromUser == null ||
           interaction.fromUser!.isEmpty) {
-        _shownPollerResultIds.add(interaction.id);
+        unawaited(_markPollerResultAsShown(interaction.id));
         continue;
       }
 
       // Only surface results from the last 24 h — older ones stay in the Matches tab.
       final cutoff = DateTime.now().toUtc().subtract(const Duration(hours: 24));
       if (interaction.createdAt.toUtc().isBefore(cutoff)) {
-        _shownPollerResultIds.add(interaction.id);
+        unawaited(_markPollerResultAsShown(interaction.id));
         continue;
       }
 
-      unawaited(_markPollerResultAsShown(interaction.id));
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showPollNotAMatchOverlay(interaction);
-      });
+      // Match the match-overlay path: persist before showing the result.
+      unawaited(_showPollNotAMatchOverlay(interaction));
     }
   }
 
   Future<void> _showPollNotAMatchOverlay(InteractionRecord interaction) async {
+    await _markPollerResultAsShown(interaction.id);
+    if (!mounted) return;
+
     final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
@@ -236,8 +271,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   Future<void> _showMatchOverlay(InteractionResult result) async {
     // Mark as seen so the matchesProvider listener doesn't re-show it.
     if (result.match?.id != null) {
-      unawaited(_markMatchAsShown(result.match!.id));
+      await _markMatchAsShown(result.match!.id);
     }
+    if (!mounted) return;
     final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
@@ -319,8 +355,10 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_loadShownMatchIds());
-    unawaited(_loadShownPollerResultIds());
+    _shownMatchIdsLoadFuture = _loadShownMatchIds();
+    _shownPollerResultIdsLoadFuture = _loadShownPollerResultIds();
+    unawaited(_shownMatchIdsLoadFuture!);
+    unawaited(_shownPollerResultIdsLoadFuture!);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPlayData();
     });
