@@ -133,7 +133,9 @@ class _AgePickerItem extends StatelessWidget {
       ),
     );
 
-    if (absDistance >= 2) {
+    // Keep the two edge values visible when 19 is selected; only values
+    // beyond the visible 17–21 range should receive the fade treatment.
+    if (absDistance >= 3) {
       final fadeDown = distance > 0;
       label = ShaderMask(
         blendMode: BlendMode.srcIn,
