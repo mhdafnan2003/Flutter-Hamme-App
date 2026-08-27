@@ -1653,7 +1653,7 @@ class _PlayQueue extends StatelessWidget {
                 const EmojiImage(emoji: '👀', size: 14),
                 const SizedBox(width: 8),
                 Text(
-                  '$remainingCount reacted to you',
+                  ' reacted to you', //$remainingCount
                   style: const TextStyle(
                     fontFamily: TFonts.nunito,
                     fontWeight: FontWeight.w600,
