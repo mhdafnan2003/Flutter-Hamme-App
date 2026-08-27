@@ -206,12 +206,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     // The big CTA performs a real purchase in the upgrade flow and just
     // continues onboarding otherwise.
     final bool ctaBusy = isUpgrade ? billing.busy : _isSubmitting;
-    final String ctaLabel =
-        isUpgrade
-            ? (billing.proProduct != null
-                ? 'Continue • ${billing.proProduct!.price}'
-                : 'Upgrade to Pro')
-            : 'Continue';
+    final String ctaLabel = 'Continue';
     final Future<void> Function() onCta =
         isUpgrade ? _buyPro : _completeOnboarding;
     final String? errorText = _errorText ?? (isUpgrade ? billing.error : null);
@@ -314,13 +309,9 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                   child: const Column(
                                     children: [
                                       ProFeature(
-                                        icon: Image(
-                                          image: AssetImage(
-                                            TImages.proInfinity,
-                                          ),
-                                          width: 32,
-                                          height: 32,
-                                          filterQuality: FilterQuality.high,
+                                        icon: Text(
+                                          '♾️',
+                                          style: TextStyle(fontSize: 32),
                                         ),
                                         title: 'Unlimited Play',
                                         subtitle:
@@ -328,11 +319,9 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                       ),
                                       SizedBox(height: 24),
                                       ProFeature(
-                                        icon: Image(
-                                          image: AssetImage(TImages.proRewind),
-                                          width: 32,
-                                          height: 32,
-                                          filterQuality: FilterQuality.high,
+                                        icon: Text(
+                                          '↩️',
+                                          style: TextStyle(fontSize: 32),
                                         ),
                                         title: 'Unlimited Rewinds',
                                         subtitle:
@@ -340,13 +329,9 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                       ),
                                       SizedBox(height: 24),
                                       ProFeature(
-                                        icon: Image(
-                                          image: AssetImage(
-                                            TImages.proHighVoltage,
-                                          ),
-                                          width: 32,
-                                          height: 32,
-                                          filterQuality: FilterQuality.high,
+                                        icon: Text(
+                                          '⚡️',
+                                          style: TextStyle(fontSize: 32),
                                         ),
                                         title: 'Priority Profile',
                                         subtitle:

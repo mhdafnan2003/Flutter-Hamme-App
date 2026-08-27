@@ -8,10 +8,12 @@ import 'package:go_router/go_router.dart';
 import 'package:hamme_app/core/widgets/animated_spoiler.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
+import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+import 'match_reply_screen.dart';
 
 class MatchesScreen extends ConsumerStatefulWidget {
   const MatchesScreen({super.key});
@@ -40,6 +42,8 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
   @override
   Widget build(BuildContext context) {
     final matches = ref.watch(matchesProvider);
+    final currentUserImageUrl =
+        ref.watch(onboardingDraftProvider).value?.profileImageUrl;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -105,6 +109,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                       final match = visibleItems[index];
                       return _MatchTile(
                         match: match,
+                        currentUserImageUrl: currentUserImageUrl,
                         onDismiss: () => _dismissMatch(match.id),
                       );
                     },
@@ -154,44 +159,25 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
 }
 
 class _MatchTile extends StatelessWidget {
-  const _MatchTile({required this.match, required this.onDismiss});
+  const _MatchTile({
+    required this.match,
+    required this.currentUserImageUrl,
+    required this.onDismiss,
+  });
   final MatchRecord match;
+  final String? currentUserImageUrl;
   final VoidCallback onDismiss;
 
-  Future<void> _openSocial() async {
-    if (match.anonymous) return;
-    final user = match.matchedUser;
-    final handle = (user.instagramId.isNotEmpty
-            ? user.instagramId
-            : user.shareCode)
-        .replaceAll('@', '');
-    if (handle.isEmpty) return;
-
-    final isSnap =
-        user.email.contains('snap') ||
-        user.name.toLowerCase().contains('snap') ||
-        user.id.contains('snap');
-
-    final Uri url;
-    if (isSnap) {
-      url = Uri.parse('snapchat://add/$handle');
-    } else {
-      url = Uri.parse('instagram://user?username=$handle');
-    }
-
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        final webUrl =
-            isSnap
-                ? Uri.parse('https://www.snapchat.com/add/$handle')
-                : Uri.parse('https://www.instagram.com/$handle/');
-        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      debugPrint('Could not launch $url: $e');
-    }
+  void _openMatchDetails(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder:
+            (_) => MatchReplyScreen(
+              match: match,
+              currentUserImageUrl: currentUserImageUrl,
+            ),
+      ),
+    );
   }
 
   @override
@@ -207,7 +193,7 @@ class _MatchTile extends StatelessWidget {
     final platformLabel = isSnap ? 'snap' : 'ig';
 
     return GestureDetector(
-      onTap: isAnonymous ? null : _openSocial,
+      onTap: () => _openMatchDetails(context),
       behavior: HitTestBehavior.opaque,
       child: Row(
         children: [

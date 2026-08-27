@@ -172,6 +172,7 @@ class _PollMatchOverlayState extends State<PollMatchOverlay> {
                                   theme.emoji,
                                   style: const TextStyle(fontSize: 24),
                                 ),
+                                plainOtherAvatar: widget.match.anonymous,
                               ),
                             ),
                           ],

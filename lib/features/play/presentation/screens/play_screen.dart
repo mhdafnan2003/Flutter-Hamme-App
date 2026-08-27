@@ -31,7 +31,6 @@ import '../widgets/match_share_export_widget.dart';
 import '../widgets/match_success_overlay.dart';
 import '../widgets/play_cooldown_view.dart';
 import '../widgets/poll_match_overlay.dart';
-import '../widgets/poll_not_a_match_overlay.dart';
 
 class PlayScreen extends ConsumerStatefulWidget {
   const PlayScreen({super.key});
@@ -215,55 +214,18 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     );
   }
 
-  /// Called when receivedInteractionsProvider refreshes — shows a "not a match"
-  /// overlay for the poller (the person who voted via share link) when the
-  /// creator voted back but it wasn't a match.
+  /// Called when receivedInteractionsProvider refreshes. The poller (the
+  /// person who voted via share link) should never see a "not a match"
+  /// overlay — only the creator sees that outcome, on their own swipe
+  /// screen. We still record every interaction ID here so nothing lingers
+  /// in the "unseen" set if this behavior ever changes.
   void _checkForNotMatchFromPollerSide(List<InteractionRecord> interactions) {
     if (!_shownPollerResultIdsLoaded) return;
 
     for (final interaction in interactions) {
       if (_shownPollerResultIds.contains(interaction.id)) continue;
-
-      // We only care about cards where:
-      // – the current user already voted for the other person (respondedByCurrentUser)
-      // – the other person voted back (fromUser is known)
-      // – it is NOT a match (matched: true is handled by matchesProvider)
-      if (!interaction.respondedByCurrentUser ||
-          interaction.matched ||
-          interaction.fromUser == null ||
-          interaction.fromUser!.isEmpty) {
-        unawaited(_markPollerResultAsShown(interaction.id));
-        continue;
-      }
-
-      // Only surface results from the last 24 h — older ones stay in the Matches tab.
-      final cutoff = DateTime.now().toUtc().subtract(const Duration(hours: 24));
-      if (interaction.createdAt.toUtc().isBefore(cutoff)) {
-        unawaited(_markPollerResultAsShown(interaction.id));
-        continue;
-      }
-
-      // Match the match-overlay path: persist before showing the result.
-      unawaited(_showPollNotAMatchOverlay(interaction));
+      unawaited(_markPollerResultAsShown(interaction.id));
     }
-  }
-
-  Future<void> _showPollNotAMatchOverlay(InteractionRecord interaction) async {
-    await _markPollerResultAsShown(interaction.id);
-    if (!mounted) return;
-
-    final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
-    await Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder(
-        opaque: true,
-        pageBuilder:
-            (ctx, _, __) => PollNotAMatchOverlay(
-              interaction: interaction,
-              currentUserImageUrl: myImageUrl,
-              onDismiss: () => Navigator.of(ctx).pop(),
-            ),
-      ),
-    );
   }
 
   /// Shows the full-screen match celebration on the root navigator so it
@@ -1251,6 +1213,8 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
   Widget build(BuildContext context) {
     final draftValue = ref.watch(onboardingDraftProvider);
     final myImageUrl = draftValue.value?.profileImageUrl;
+    final isAnonymous =
+        widget.result.interaction.metadata?['anonymous'] == true;
     final otherImageUrl = widget.result.interaction.fromUserProfileImageUrl;
     final otherName =
         widget.result.interaction.fromUserName?.trim() ??
@@ -1286,7 +1250,11 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                       // Left avatar (other person)
                       Positioned(
                         left: 0,
-                        child: _PlayAvatar(imageUrl: otherImageUrl, size: 76),
+                        child: _PlayAvatar(
+                          imageUrl: otherImageUrl,
+                          size: 76,
+                          plainCircle: isAnonymous,
+                        ),
                       ),
                       // Right avatar (me)
                       Positioned(
@@ -1396,10 +1364,12 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                           color: Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Icon(
-                          CupertinoIcons.arrow_counterclockwise,
-                          color: Colors.white,
-                          size: 22,
+                        child: Image.asset(
+                          'assets/icons/Right Arrow Curving Left.png',
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.contain,
+                          semanticLabel: 'Rewind',
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -1445,7 +1415,7 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                             fontFamily: TFonts.nunito,
                             fontWeight: FontWeight.w900,
                             fontSize: 13,
-                            color: Color(0xFFB18DFF),
+                            color: Color(0xFFCF25F3),
                           ),
                         ),
                       ),
@@ -1562,9 +1532,10 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PlayAvatar extends StatelessWidget {
-  const _PlayAvatar({this.imageUrl, this.size = 72});
+  const _PlayAvatar({this.imageUrl, this.size = 72, this.plainCircle = false});
   final String? imageUrl;
   final double size;
+  final bool plainCircle;
 
   @override
   Widget build(BuildContext context) {
@@ -1589,7 +1560,9 @@ class _PlayAvatar extends StatelessWidget {
       ),
       child: ClipOval(
         child:
-            hasValidUrl
+            plainCircle
+                ? const ColoredBox(color: Colors.white)
+                : hasValidUrl
                 ? Image.network(
                   imageUrl!,
                   fit: BoxFit.cover,
