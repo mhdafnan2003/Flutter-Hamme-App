@@ -11,8 +11,11 @@ Install these first:
 - Node.js 20+
 - npm 10+
 - MongoDB local server or MongoDB Atlas
-- Visual Studio 2022 with Desktop development with C++ if you want Windows desktop builds
 - Android Studio if you want Android emulator/device builds
+- Xcode (macOS only) if you want iOS simulator/device builds
+
+Windows desktop is not a supported build target — push notifications (Firebase)
+don't support it, so the `windows/` platform folder was removed.
 
 ## Project Structure
 
@@ -39,7 +42,6 @@ copy .env.example .env
 Use the API base URL that matches your target:
 
 - Android emulator: `http://10.0.2.2:3000/api/v1`
-- Windows desktop: `http://localhost:3000/api/v1`
 - Chrome or Edge: `http://localhost:3000/api/v1`
 
 Recommended `.env` values for desktop or web:
@@ -111,10 +113,10 @@ flutter pub run build_runner build --delete-conflicting-outputs
 If your local clone does not have the target platform you want to use, generate it with:
 
 ```bash
-flutter create --platforms=web,windows .
+flutter create --platforms=web .
 ```
 
-You only need to do this if those folders are missing.
+You only need to do this if that folder is missing.
 
 ## 7. Start MongoDB
 
@@ -148,12 +150,6 @@ Check available targets:
 
 ```bash
 flutter devices
-```
-
-Run on Windows desktop:
-
-```bash
-flutter run -d windows
 ```
 
 Run on Chrome:
@@ -197,12 +193,12 @@ Either:
 - Stop the process using port 3000
 - Change `PORT` in [backend/.env](backend/.env) and update `API_BASE_URL` in [.env](.env)
 
-### Flutter Web Or Windows Not Configured
+### Flutter Web Not Configured
 
-If Flutter says the app is not configured for web or desktop, run:
+If Flutter says the app is not configured for web, run:
 
 ```bash
-flutter create --platforms=web,windows .
+flutter create --platforms=web .
 ```
 
 ### Android Toolchain Problems
@@ -227,7 +223,7 @@ This project is pinned to package versions that work with Flutter 3.29. If you u
 - `flutter pub get` completed
 - `npm install` completed in `backend`
 - backend started with `npm run dev`
-- app started with `flutter run -d windows` or another valid target
+- app started with `flutter run -d chrome` or `flutter run -d android`
 
 ## Recommended First Command Sequence
 
@@ -243,5 +239,5 @@ In a second terminal:
 
 ```bash
 cd Hamme-Flutter-App
-flutter run -d windows
+flutter run -d chrome
 ```

@@ -50,4 +50,26 @@ class ProfileRemoteDataSource {
   Future<void> deleteMe() async {
     await _apiService.delete('/profiles/me', authenticated: true);
   }
+
+  /// Registers (or refreshes) this device's push token for the signed-in user.
+  Future<void> registerDeviceToken({
+    required String token,
+    required String platform,
+  }) async {
+    await _apiService.put(
+      '/profiles/device-token',
+      body: {'token': token, 'platform': platform},
+      authenticated: true,
+    );
+  }
+
+  /// Removes a push token, e.g. on logout, so a signed-out device stops
+  /// receiving another account's notifications.
+  Future<void> unregisterDeviceToken(String token) async {
+    await _apiService.delete(
+      '/profiles/device-token',
+      body: {'token': token},
+      authenticated: true,
+    );
+  }
 }

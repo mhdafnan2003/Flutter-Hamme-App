@@ -89,6 +89,22 @@ class ApiService {
     return _decodeResponse(response);
   }
 
+  Future<dynamic> put(
+    String path, {
+    Object? body,
+    bool authenticated = false,
+  }) async {
+    final uri = _buildUri(path);
+    final requestBody = body == null ? null : jsonEncode(body);
+    debugPrint('[Api] PUT start: $uri auth=$authenticated');
+    final response = await _sendWithAuthRetry(
+      (headers) => _client.put(uri, headers: headers, body: requestBody),
+      authenticated: authenticated,
+    );
+    debugPrint('[Api] PUT done: $uri status=${response.statusCode}');
+    return _decodeResponse(response);
+  }
+
   Future<dynamic> delete(
     String path, {
     Object? body,

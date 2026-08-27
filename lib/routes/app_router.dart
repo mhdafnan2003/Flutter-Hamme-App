@@ -66,13 +66,15 @@ String? resolveAuthRedirect({
   return null;
 }
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+/// Exposed so code without a `BuildContext` (e.g. push notification tap
+/// handling) can still navigate via `rootNavigatorKey.currentContext`.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final listenable = RouterTransitionNotifier(ref);
 
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     overridePlatformDefaultLocation: true,
     refreshListenable: listenable,

@@ -7,6 +7,16 @@ plugins {
 
 import java.util.Properties
 
+// Push notifications (Firebase Cloud Messaging) need google-services.json,
+// which isn't committed to the repo (each developer/CI environment adds their
+// own from the Firebase console). Only apply the plugin once that file
+// exists, so a missing file fails with a clear message instead of a cryptic
+// Gradle sync error.
+val hasGoogleServicesJson = file("google-services.json").exists()
+if (hasGoogleServicesJson) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("keystore/key.properties")
 if (keystorePropertiesFile.exists()) {
@@ -40,6 +50,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // Required by flutter_local_notifications (push notification display).
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -82,4 +94,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

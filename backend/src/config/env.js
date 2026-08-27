@@ -40,4 +40,7 @@ module.exports = {
   appleIapBundleId: process.env.APPLE_IAP_BUNDLE_ID || '',
   appleIapAppId: process.env.APPLE_IAP_APP_ID || '',
   appleIapPrivateKeyBase64: process.env.APPLE_IAP_PRIVATE_KEY_BASE64 || '',
+  // Full Firebase service-account JSON (single line), used by firebase-admin
+  // to send push notifications via FCM. Leave empty to disable push sending.
+  firebaseServiceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '',
 };

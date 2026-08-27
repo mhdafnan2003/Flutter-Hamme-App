@@ -12,6 +12,7 @@ import '../models/auth_session.dart';
 import 'api_providers.dart';
 import 'deferred_interaction_provider.dart';
 import 'onboarding_providers.dart';
+import 'push_notification_providers.dart';
 
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
   return AuthRemoteDataSource(ref.watch(apiServiceProvider));
@@ -90,6 +91,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     );
     if (restored != null) {
       await _markOnboardingComplete();
+      await _registerPushToken();
     }
     return restored;
   }
@@ -102,6 +104,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
         password: password,
       );
       await _markOnboardingComplete();
+      await _registerPushToken();
       state = AsyncData(session);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -110,6 +113,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
 
   Future<void> logout() async {
     state = const AsyncLoading();
+    await _unregisterPushToken();
     await _repository.logout();
     await _clearLocalSession();
   }
@@ -120,6 +124,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
   Future<void> deleteAccount() async {
     state = const AsyncLoading();
     try {
+      await _unregisterPushToken();
       await ProfileRemoteDataSource(ref.read(apiServiceProvider)).deleteMe();
       await ref.read(secureStorageServiceProvider).clearTokens();
       final preferences = await SharedPreferences.getInstance();
@@ -161,6 +166,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
         avatarUrl: avatarUrl,
       );
       await _markOnboardingComplete();
+      await _registerPushToken();
       state = AsyncData(session);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -185,6 +191,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     final session = await _repository.restoreProSession();
     if (session == null) return false;
     await _markOnboardingComplete();
+    await _registerPushToken();
     state = AsyncData(session);
     return true;
   }
@@ -200,6 +207,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
           refreshToken: session.refreshToken,
         );
     await _markOnboardingComplete();
+    await _registerPushToken();
     state = AsyncData(session);
   }
 
@@ -228,6 +236,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
         deviceId: deviceId,
       );
       debugPrint('[Auth] guestRegister success: token received and saved');
+      await _registerPushToken();
       state = AsyncData(session);
     } catch (e, st) {
       debugPrint('[Auth] guestRegister failed: $e');
@@ -238,5 +247,13 @@ class AuthController extends AsyncNotifier<AuthSession?> {
 
   Future<void> _markOnboardingComplete() {
     return ref.read(onboardingCompletionProvider.notifier).markComplete();
+  }
+
+  Future<void> _registerPushToken() {
+    return ref.read(pushNotificationServiceProvider).registerToken();
+  }
+
+  Future<void> _unregisterPushToken() {
+    return ref.read(pushNotificationServiceProvider).unregisterToken();
   }
 }

@@ -9,6 +9,7 @@ import 'providers/deferred_interaction_provider.dart';
 import 'models/interaction_type.dart';
 import 'providers/interaction_providers.dart';
 import 'providers/settings_providers.dart';
+import 'providers/push_notification_providers.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/install_referrer_service.dart';
 
@@ -33,6 +34,7 @@ class _HammeAppState extends ConsumerState<HammeApp> {
     super.initState();
     _initDeepLinks();
     _initInstallReferrer();
+    _initPushNotifications();
   }
 
   @override
@@ -97,6 +99,16 @@ class _HammeAppState extends ConsumerState<HammeApp> {
         ref.read(deferredShareCodeProvider.notifier).state = shareCode;
         debugPrint('[DeepLink] parsed web link: code=$shareCode');
       }
+    }
+  }
+
+  Future<void> _initPushNotifications() async {
+    try {
+      final pushService = ref.read(pushNotificationServiceProvider);
+      await pushService.initialize();
+      await pushService.handleInitialMessage();
+    } catch (e) {
+      debugPrint('[Push] initialization skipped: $e');
     }
   }
 

@@ -34,4 +34,23 @@ router.patch(
 // email or support, so users can permanently remove their data themselves.
 router.delete('/me', authMiddleware, profileController.deleteMe);
 
+router.put(
+  '/device-token',
+  authMiddleware,
+  [
+    body('token').trim().notEmpty(),
+    body('platform').isIn(['ios', 'android']),
+  ],
+  validateRequest,
+  profileController.registerDeviceToken
+);
+
+router.delete(
+  '/device-token',
+  authMiddleware,
+  [body('token').trim().notEmpty()],
+  validateRequest,
+  profileController.unregisterDeviceToken
+);
+
 module.exports = router;

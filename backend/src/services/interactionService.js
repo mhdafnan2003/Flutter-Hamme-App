@@ -6,6 +6,7 @@ const ApiError = require('../utils/ApiError');
 const crypto = require('crypto');
 const { emitMatchFound } = require('../socket');
 const appConfigService = require('./appConfigService');
+const pushService = require('./pushService');
 const env = require('../config/env');
 
 const allowedTypes = new Set(['friend', 'crush', 'frenemy']);
@@ -128,6 +129,44 @@ function serializeAnonymousMatch(interaction) {
   };
 }
 
+/** Pushes to the poll creator (`toUser`) whenever anyone votes. `fromUser` is null for anonymous votes. */
+async function notifyVote({ toUserId, fromUser }) {
+  try {
+    const name = fromUser?.name || null;
+    await pushService.sendToUser(toUserId, {
+      title: 'New vote!',
+      body: name ? `${name} voted on your poll` : 'Someone voted on your poll',
+      imageUrl: fromUser?.profileImageUrl || null,
+      data: { type: 'vote' },
+    });
+  } catch (error) {
+    console.error('[Push] notifyVote failed', error);
+  }
+}
+
+/** Pushes "it's a match" to both sides of a newly created/updated Match doc (userA/userB populated). */
+async function notifyMatch(match) {
+  if (!match) return;
+  try {
+    const pairs = [
+      [match.userA, match.userB],
+      [match.userB, match.userA],
+    ];
+    await Promise.all(
+      pairs.map(([recipient, other]) =>
+        pushService.sendToUser(recipient.id, {
+          title: "It's a match! 🎉",
+          body: `You and ${other.name} matched!`,
+          imageUrl: other.profileImageUrl || null,
+          data: { type: 'match', matchId: match.id },
+        })
+      )
+    );
+  } catch (error) {
+    console.error('[Push] notifyMatch failed', error);
+  }
+}
+
 async function createInteraction({ fromUserId, shareCode, type }) {
   const normalizedType = normalizeType(type);
   const targetUser = await User.findOne({ shareCode }).select('+blockedUsers');
@@ -146,6 +185,9 @@ async function createInteraction({ fromUserId, shareCode, type }) {
     toUser: targetUser.id,
     type: normalizedType,
   });
+
+  const fromUser = await User.findById(fromUserId).select('name profileImageUrl');
+  await notifyVote({ toUserId: targetUser.id, fromUser });
 
   const reciprocal = await Interaction.findOne({
     fromUser: targetUser.id,
@@ -178,6 +220,7 @@ async function createInteraction({ fromUserId, shareCode, type }) {
 
     const payload = serializeMatch(match, fromUserId);
     emitMatchFound([fromUserId, targetUser.id], payload);
+    await notifyMatch(match);
   }
 
   return {
@@ -302,6 +345,8 @@ async function createAnonymousResponse({
     },
   });
 
+  await notifyVote({ toUserId: targetUser.id, fromUser: null });
+
   console.info('[AnonymousResponse] pending created', {
     shareCode: targetUser.shareCode,
     type: normalizedType,
@@ -353,6 +398,9 @@ async function createInteractionByTargetId({
     type: normalizedType,
   });
 
+  const fromUser = await User.findById(fromUserId).select('name profileImageUrl');
+  await notifyVote({ toUserId: targetUser.id, fromUser });
+
   const reciprocal = await Interaction.findOne({
     fromUser: targetUser.id,
     toUser: fromUserId,
@@ -383,6 +431,7 @@ async function createInteractionByTargetId({
 
     const payload = serializeMatch(match, fromUserId);
     emitMatchFound([fromUserId, targetUser.id], payload);
+    await notifyMatch(match);
   }
 
   // Must await so the DB write completes before the response is sent.
@@ -483,6 +532,8 @@ async function createAnonymousInteraction({ targetUserId, type, source = 'web' }
     type: normalizedType,
     metadata: { source, anonymous: true },
   });
+
+  await notifyVote({ toUserId: targetUser.id, fromUser: null });
 
   return {
     interaction: interaction.toJSON(),
@@ -651,6 +702,7 @@ async function detectMatchAndBuildResult({ fromUserId, targetUserId, type }) {
 
     const payload = serializeMatch(match, fromUserId);
     emitMatchFound([fromUserId, targetUserId], payload);
+    await notifyMatch(match);
   }
 
   return {

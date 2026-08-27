@@ -135,6 +135,18 @@ const userSchema = new mongoose.Schema(
       select: false,
       index: true,
     },
+    deviceTokens: {
+      type: [
+        {
+          _id: false,
+          token: { type: String, required: true },
+          platform: { type: String, enum: ['ios', 'android'], required: true },
+          updatedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+      select: false,
+    },
   },
   {
     timestamps: true,

@@ -31,9 +31,23 @@ async function getPublicProfile(req, res) {
   return res.status(200).json({ user: toPublicProfile(user), matchedBy });
 }
 
+async function registerDeviceToken(req, res) {
+  const { token, platform } = req.body;
+  await userService.registerDeviceToken(req.auth.userId, { token, platform });
+  return res.status(200).json({ message: 'Device token registered.' });
+}
+
+async function unregisterDeviceToken(req, res) {
+  const { token } = req.body;
+  await userService.unregisterDeviceToken(req.auth.userId, token);
+  return res.status(200).json({ message: 'Device token removed.' });
+}
+
 module.exports = {
   getMe,
   updateMe,
   deleteMe,
   getPublicProfile,
+  registerDeviceToken,
+  unregisterDeviceToken,
 };

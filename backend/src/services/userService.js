@@ -164,6 +164,27 @@ async function listUsers({ search = '', page = 1, limit = 25 } = {}) {
   };
 }
 
+/** Registers (or refreshes) a push token for this user, moving it off any other account first. */
+async function registerDeviceToken(userId, { token, platform }) {
+  await User.updateMany(
+    { 'deviceTokens.token': token },
+    { $pull: { deviceTokens: { token } } }
+  );
+
+  await User.updateOne(
+    { _id: userId },
+    { $push: { deviceTokens: { token, platform, updatedAt: new Date() } } }
+  );
+}
+
+/** Removes a push token, e.g. on logout, so a signed-out device stops receiving pushes. */
+async function unregisterDeviceToken(userId, token) {
+  await User.updateOne(
+    { _id: userId },
+    { $pull: { deviceTokens: { token } } }
+  );
+}
+
 async function setProStatus(userId, isPro) {
   const user = await User.findById(userId);
   if (!user) {
@@ -186,4 +207,6 @@ module.exports = {
   getPublicProfile,
   listUsers,
   setProStatus,
+  registerDeviceToken,
+  unregisterDeviceToken,
 };
