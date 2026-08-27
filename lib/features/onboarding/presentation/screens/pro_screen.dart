@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -309,10 +310,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                   child: const Column(
                                     children: [
                                       ProFeature(
-                                        icon: Text(
-                                          '♾️',
-                                          style: TextStyle(fontSize: 32),
-                                        ),
+                                        icon: _UnlimitedPlayIcon(),
                                         title: 'Unlimited Play',
                                         subtitle:
                                             'No waiting, Play every profile,\nanytime.',
@@ -539,6 +537,27 @@ class _UnlockTitle extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _UnlimitedPlayIcon extends StatelessWidget {
+  const _UnlimitedPlayIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return const Image(
+        image: AssetImage('assets/icons/loop.png'),
+        width: 32,
+        height: 32,
+        filterQuality: FilterQuality.high,
+      );
+    }
+
+    return const Text(
+      '♾️',
+      style: TextStyle(fontSize: 32),
     );
   }
 }
