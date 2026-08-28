@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required on Android 13+ (API 33+) to show any notification, including push. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Required for Google Play in-app billing (in_app_purchase). -->
     <uses-permission android:name="com.android.vending.BILLING" />
     <uses-permission
