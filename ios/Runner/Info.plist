@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>FLTEnableImpeller</key>
-	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -39,17 +35,27 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<!-- Required to detect and open Instagram for Story sharing. -->
+	<key>FLTEnableImpeller</key>
+	<false/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>instagram</string>
 		<string>instagram-stories</string>
 	</array>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Hamme uses your camera so you can take a profile photo directly within the app.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Hamme may access your microphone when recording video clips through the camera.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Hamme may save shared images or screenshots to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Hamme uses your photo library so you can select and upload your profile picture and share images with other users.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!-- Required for push notifications (Firebase Cloud Messaging / APNs). -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
@@ -58,27 +64,6 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<!-- ============================================================ -->
-	<!-- Privacy Usage Description Keys (required by App Store) -->
-	<!-- ============================================================ -->
-
-	<!-- Required by: image_picker_ios — users pick profile photos from gallery -->
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Hamme uses your photo library so you can select and upload your profile picture and share images with other users.</string>
-
-	<!-- Required by: image_picker_ios — allows the app to save captured or processed images back to the photo library -->
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Hamme may save shared images or screenshots to your photo library.</string>
-
-	<!-- Required by: image_picker_ios — users can take a live photo with the camera -->
-	<key>NSCameraUsageDescription</key>
-	<string>Hamme uses your camera so you can take a profile photo directly within the app.</string>
-
-	<!-- Required by: image_picker_ios — camera access may capture audio during video recording -->
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Hamme may access your microphone when recording video clips through the camera.</string>
-
-	<!-- ============================================================ -->
 	<key>UIStatusBarStyle</key>
 	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
