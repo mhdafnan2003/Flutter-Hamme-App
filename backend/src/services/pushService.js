@@ -65,7 +65,8 @@ async function sendToUser(userId, { title, body, data = {}, imageUrl = null }) {
     }
 
     const user = await User.findById(userId).select('+deviceTokens');
-    const tokens = (user?.deviceTokens || []).map((entry) => entry.token);
+    const rawTokens = (user?.deviceTokens || []).map((entry) => entry.token).filter(Boolean);
+    const tokens = Array.from(new Set(rawTokens));
     if (!tokens.length) {
       logger.info('[Push] sendToUser skipped: No device tokens for user', { userId: userId?.toString?.() });
       return;

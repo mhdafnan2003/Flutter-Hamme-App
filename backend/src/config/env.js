@@ -43,4 +43,8 @@ module.exports = {
   // Full Firebase service-account JSON (single line), used by firebase-admin
   // to send push notifications via FCM. Leave empty to disable push sending.
   firebaseServiceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '',
+  allowUnverifiedIap:
+    process.env.ALLOW_UNVERIFIED_IAP === 'true' &&
+    process.env.NODE_ENV !== 'production',
 };
+

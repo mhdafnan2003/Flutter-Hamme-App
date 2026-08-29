@@ -38,6 +38,9 @@ function getConfiguredPackageName() {
 function ensurePackageName(packageName) {
   const configured = getConfiguredPackageName();
   if (!configured) {
+    if (env.allowUnverifiedIap) {
+      return packageName || 'com.hamme.app';
+    }
     throw new ApiError(503, 'ANDROID_PACKAGE_NAME is not configured.');
   }
   if (packageName && packageName !== configured) {
@@ -141,9 +144,44 @@ function subscriptionSnapshot(raw) {
   };
 }
 
+function playAuthorizationError(googleMessage) {
+  const message = (googleMessage || '').toLowerCase();
+  if (message.includes('has not been linked')) {
+    return 'Google Cloud project hamme-app is not linked in Play Console > Setup > API access.';
+  }
+  if (message.includes('access not configured') || message.includes('has not been used')) {
+    return 'Google Play Android Developer API is not enabled on Cloud project hamme-app.';
+  }
+  if (message.includes('insufficient permissions') || message.includes('permission')) {
+    return 'Play Console user hamme-play-billing@hamme-app.iam.gserviceaccount.com is missing financial/orders access on com.hamme.app.';
+  }
+  return 'Google Play verification credentials are not authorized.';
+}
+
 async function fetchSubscription(purchaseToken, packageName) {
   const publisher = await getAndroidPublisher();
   if (!publisher) {
+    if (env.allowUnverifiedIap) {
+      logger.warn(
+        '[Billing] Bypassing Google Play verification in development mode (ALLOW_UNVERIFIED_IAP=true).'
+      );
+      const now = new Date();
+      const expiryAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return {
+        raw: {
+          subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
+          externalAccountIdentifiers: {},
+        },
+        productIds: PRO_PRODUCT_IDS,
+        productId: PRO_PRODUCT_IDS[0] || 'hamme_pro_weekly',
+        state: 'SUBSCRIPTION_STATE_ACTIVE',
+        expiryAt,
+        active: true,
+        autoRenewing: true,
+        linkedPurchaseToken: null,
+        acknowledgementPending: false,
+      };
+    }
     throw new ApiError(
       503,
       'Google Play purchase verification is not configured on the server.'
@@ -160,16 +198,28 @@ async function fetchSubscription(purchaseToken, packageName) {
   } catch (error) {
     if (error instanceof ApiError) throw error;
     const status = Number(error?.code || error?.response?.status);
+    const googleDetail =
+      error?.errors?.[0]?.message ||
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      '';
+    logger.error('Google Play subscription lookup failed', {
+      status,
+      message: googleDetail,
+    });
     if ([400, 404, 410].includes(status)) {
       throw new ApiError(402, 'Google Play could not find an active purchase.');
     }
     if ([401, 403].includes(status)) {
       throw new ApiError(
         503,
-        'Google Play verification credentials are not authorized.'
+        `${playAuthorizationError(googleDetail)}${googleDetail ? ` (${status}: ${googleDetail})` : ` (${status})`}`
       );
     }
-    throw new ApiError(503, 'Google Play verification is temporarily unavailable.');
+    throw new ApiError(
+      503,
+      `Google Play verification is temporarily unavailable${googleDetail ? ` (${status}: ${googleDetail})` : ''}.`
+    );
   }
 }
 
@@ -309,6 +359,34 @@ function appleSubscriptionSnapshot(statusResponse) {
 }
 
 async function fetchAppleSubscription(receiptOrJws) {
+  const isAppleConfigured =
+    Boolean(env.appleIapPrivateKeyBase64 &&
+    env.appleIapIssuerId &&
+    env.appleIapKeyId &&
+    env.appleIapBundleId);
+
+  if (!isAppleConfigured && env.allowUnverifiedIap) {
+    logger.warn(
+      '[Billing] Bypassing Apple purchase verification in development mode (ALLOW_UNVERIFIED_IAP=true).'
+    );
+    const now = new Date();
+    const expiryAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const originalTransactionId =
+      typeof receiptOrJws === 'string' && receiptOrJws.trim().length > 0
+        ? receiptOrJws.trim().slice(0, 64)
+        : 'dev_mock_transaction_id';
+    return {
+      raw: {},
+      productIds: PRO_PRODUCT_IDS,
+      productId: PRO_PRODUCT_IDS[0] || 'hamme_pro_weekly',
+      state: 'APPLE_ACTIVE',
+      expiryAt,
+      active: true,
+      autoRenewing: true,
+      originalTransactionId,
+    };
+  }
+
   const transactionId = extractAppleTransactionId(receiptOrJws);
   let lastError;
   // App Review and TestFlight use Sandbox; production customers use Production.

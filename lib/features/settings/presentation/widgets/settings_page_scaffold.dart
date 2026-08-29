@@ -17,19 +17,35 @@ class SettingsPageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leadingWidth: 76,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 20),
-          child: IconButton(
-            onPressed: () => context.pop(),
-            style: IconButton.styleFrom(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          leadingWidth: 76,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: IconButton(
+              onPressed: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/home');
+                }
+              },
+              style: IconButton.styleFrom(
               backgroundColor:
                   Theme.of(context).brightness == Brightness.dark
                       ? const Color(0xFF2A2A2E)
@@ -48,6 +64,7 @@ class SettingsPageScaffold extends StatelessWidget {
         ),
       ),
       body: SafeArea(top: false, child: child),
+    ),
     );
   }
 }
