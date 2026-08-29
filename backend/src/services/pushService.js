@@ -90,11 +90,18 @@ async function sendToUser(userId, { title, body, data = {}, imageUrl = null }) {
       },
       data: stringifiedData,
       android: {
+        priority: 'high',
         notification: {
           channelId: 'hamme_default',
+          priority: 'max',
+          defaultSound: true,
+          defaultVibrateTimings: true,
         },
       },
       apns: {
+        headers: {
+          'apns-priority': '10',
+        },
         payload: {
           aps: {
             'mutable-content': 1,

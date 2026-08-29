@@ -32,6 +32,7 @@ async function createAnonymousResponse(req, res) {
     source: req.body.source || 'web',
     timestamp: req.body.timestamp,
     sessionId: req.body.sessionId,
+    fromUserId: req.auth?.userId || null,
   });
   return res.status(201).json(result);
 }

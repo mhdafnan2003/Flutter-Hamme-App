@@ -150,7 +150,7 @@ class PushNotificationService {
     final imagePath = imageUrl != null ? await _downloadImage(imageUrl) : null;
 
     await _localNotifications.show(
-      message.hashCode,
+      DateTime.now().millisecondsSinceEpoch % 100000,
       notification.title,
       notification.body,
       NotificationDetails(

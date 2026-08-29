@@ -5,10 +5,12 @@ const rateLimit = require('express-rate-limit');
 const publicController = require('../controllers/publicController');
 const validateRequest = require('../middleware/validateRequest');
 
+const optionalAuthMiddleware = require('../middleware/optionalAuthMiddleware');
+
 const router = express.Router();
 
-// Anonymous responses are unauthenticated, so cap how many a single client can
-// fire to prevent flooding a target with bogus interactions / pending records.
+// Anonymous responses are unauthenticated by default, but accept optional bearer auth
+// so that logged-in users who vote on web or funnel can be properly identified.
 const anonymousResponseLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 10,
@@ -30,6 +32,7 @@ router.get(
 
 router.post(
   '/anonymous-response',
+  optionalAuthMiddleware,
   anonymousResponseLimiter,
   [
     body('shareCode').optional({ values: 'falsy' }).trim(),
