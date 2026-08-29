@@ -1,4 +1,5 @@
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getMessaging } = require('firebase-admin/messaging');
 
 const User = require('../models/User');
 const env = require('../config/env');
@@ -18,9 +19,11 @@ function getApp() {
   }
 
   try {
-    const serviceAccount = JSON.parse(env.firebaseServiceAccountJson);
-    app = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+    const serviceAccount = typeof env.firebaseServiceAccountJson === 'string'
+      ? JSON.parse(env.firebaseServiceAccountJson)
+      : env.firebaseServiceAccountJson;
+    app = initializeApp({
+      credential: cert(serviceAccount),
     });
   } catch (error) {
     logger.error('[Push] Failed to initialize firebase-admin', { message: error.message });
@@ -56,11 +59,23 @@ async function pruneTokens(userId, tokens) {
 async function sendToUser(userId, { title, body, data = {}, imageUrl = null }) {
   try {
     const firebaseApp = getApp();
-    if (!firebaseApp) return;
+    if (!firebaseApp) {
+      logger.info('[Push] sendToUser skipped: Firebase app not initialized');
+      return;
+    }
 
     const user = await User.findById(userId).select('+deviceTokens');
     const tokens = (user?.deviceTokens || []).map((entry) => entry.token);
-    if (!tokens.length) return;
+    if (!tokens.length) {
+      logger.info('[Push] sendToUser skipped: No device tokens for user', { userId: userId?.toString?.() });
+      return;
+    }
+
+    logger.info('[Push] Sending notification to user', {
+      userId: userId?.toString?.(),
+      tokensCount: tokens.length,
+      title,
+    });
 
     const stringifiedData = Object.fromEntries(
       Object.entries(data).map(([key, value]) => [key, String(value)])
@@ -90,12 +105,24 @@ async function sendToUser(userId, { title, body, data = {}, imageUrl = null }) {
       },
     };
 
-    const response = await admin.messaging(firebaseApp).sendEachForMulticast(message);
+    const response = await getMessaging(firebaseApp).sendEachForMulticast(message);
+
+    logger.info('[Push] FCM multicast dispatched', {
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+    });
 
     const staleTokens = [];
     response.responses.forEach((result, index) => {
-      if (!result.success && UNREGISTERED_ERROR_CODES.has(result.error?.code)) {
-        staleTokens.push(tokens[index]);
+      if (!result.success) {
+        logger.error('[Push] FCM recipient delivery failure', {
+          token: tokens[index]?.substring(0, 15) + '...',
+          error: result.error?.message,
+          code: result.error?.code,
+        });
+        if (UNREGISTERED_ERROR_CODES.has(result.error?.code)) {
+          staleTokens.push(tokens[index]);
+        }
       }
     });
     await pruneTokens(userId, staleTokens);

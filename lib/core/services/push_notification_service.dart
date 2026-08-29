@@ -53,6 +53,12 @@ class PushNotificationService {
         >()
         ?.createNotificationChannel(_androidChannel);
 
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+
     await _localNotifications.initialize(
       const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -70,9 +76,16 @@ class PushNotificationService {
       sound: true,
     );
 
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
     FirebaseMessaging.onMessage.listen(_showForegroundNotification);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
     FirebaseMessaging.instance.onTokenRefresh.listen((_) => registerToken());
+    debugPrint('[Push] Service initialized successfully');
   }
 
   /// Call once the router is mounted, to route into a notification that
@@ -129,6 +142,7 @@ class PushNotificationService {
   /// image shows up consistently on both platforms while the app is open.
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
+    debugPrint('[Push] onMessage received: ${notification?.title} - ${notification?.body}');
     if (notification == null) return;
 
     final imageUrl =
