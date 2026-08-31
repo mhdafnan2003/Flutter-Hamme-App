@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/utils/app_exception.dart';
 import '../models/auth_session.dart';
 import 'api_providers.dart';
 import 'auth_providers.dart';
@@ -385,8 +386,8 @@ class BillingController extends Notifier<BillingState> {
         case PurchaseStatus.restored:
           // IMPORTANT: In production you should verify the purchase server-side
           // before granting entitlement. See _verifyPurchase below.
-          final valid = await _verifyPurchase(purchase);
-          if (valid) {
+          final verificationError = await _verifyPurchase(purchase);
+          if (verificationError == null) {
             await _grantEntitlement();
             state = state.copyWith(
               isPro: true,
@@ -399,7 +400,7 @@ class BillingController extends Notifier<BillingState> {
             state = state.copyWith(
               purchasePending: false,
               restoring: false,
-              error: 'Could not verify purchase.',
+              error: verificationError,
             );
             _completeRestore(false);
           }
@@ -415,9 +416,10 @@ class BillingController extends Notifier<BillingState> {
 
   /// Verifies the purchase with our backend, which validates the token against
   /// Google Play and grants the Pro entitlement on the user account.
-  Future<bool> _verifyPurchase(PurchaseDetails purchase) async {
+  /// Returns null on success or an error message on failure.
+  Future<String?> _verifyPurchase(PurchaseDetails purchase) async {
     final token = purchase.verificationData.serverVerificationData;
-    if (token.isEmpty) return false;
+    if (token.isEmpty) return 'Missing purchase verification data.';
 
     try {
       final api = ref.read(apiServiceProvider);
@@ -436,17 +438,20 @@ class BillingController extends Notifier<BillingState> {
         },
       );
       if (recoverSession) {
-        if (response is! Map<String, dynamic>) return false;
+        if (response is! Map<String, dynamic>) return 'Invalid restore response.';
         final session = AuthSession.fromJson(response);
         await ref
             .read(authControllerProvider.notifier)
             .acceptBillingRestoredSession(session);
       }
       // A 2xx response means the backend verified the purchase and granted Pro.
-      return true;
+      return null;
     } catch (error) {
       debugPrint('[Billing] backend verification failed: $error');
-      return false;
+      if (error is AppException) {
+        return error.message;
+      }
+      return 'Could not verify purchase.';
     }
   }
 

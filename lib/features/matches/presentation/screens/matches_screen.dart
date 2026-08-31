@@ -45,19 +45,35 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
     final currentUserImageUrl =
         ref.watch(onboardingDraftProvider).value?.profileImageUrl;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Top Bar ───────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Container(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // ── Top Bar ───────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/home');
+                        }
+                      },
+                      child: Container(
                       width: 40,
                       height: 40,
                       decoration: const BoxDecoration(
@@ -154,6 +170,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

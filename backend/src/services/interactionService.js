@@ -129,18 +129,56 @@ function serializeAnonymousMatch(interaction) {
   };
 }
 
+const pendingAnonymousPushTimers = new Map();
+
 /** Pushes to the poll creator (`toUser`) whenever anyone votes. `fromUser` is null for anonymous votes. */
 async function notifyVote({ toUserId, fromUser }) {
   try {
-    const name = fromUser?.name || null;
+    const voterName = fromUser?.username || fromUser?.name || null;
     await pushService.sendToUser(toUserId, {
       title: 'New vote!',
-      body: name ? `${name} voted on your poll` : 'Someone voted on your poll',
+      body: voterName ? `${voterName} voted on your poll` : 'Someone voted on your poll',
       imageUrl: fromUser?.profileImageUrl || null,
       data: { type: 'vote' },
     });
   } catch (error) {
     console.error('[Push] notifyVote failed', error);
+  }
+}
+
+/**
+ * Schedules a delayed anonymous vote push. If the voter has the app installed and
+ * reveals/finalizes within the buffer (e.g. 3s), the anonymous push is canceled
+ * and only the single username notification is delivered.
+ */
+function scheduleAnonymousVoteNotification({ toUserId, pendingToken, delayMs = 3000 }) {
+  if (!pendingToken) return;
+
+  cancelAnonymousVoteNotification(pendingToken);
+
+  const timer = setTimeout(async () => {
+    pendingAnonymousPushTimers.delete(pendingToken);
+    try {
+      const interaction = await Interaction.findOne({
+        toUser: toUserId,
+        'metadata.pendingToken': pendingToken,
+      });
+      // If the interaction is still anonymous (user never opened the app), send the anonymous push.
+      if (interaction && !interaction.fromUser) {
+        await notifyVote({ toUserId, fromUser: null });
+      }
+    } catch (err) {
+      console.error('[Push] Delayed anonymous vote notification failed:', err);
+    }
+  }, delayMs);
+
+  pendingAnonymousPushTimers.set(pendingToken, timer);
+}
+
+function cancelAnonymousVoteNotification(pendingToken) {
+  if (pendingToken && pendingAnonymousPushTimers.has(pendingToken)) {
+    clearTimeout(pendingAnonymousPushTimers.get(pendingToken));
+    pendingAnonymousPushTimers.delete(pendingToken);
   }
 }
 
@@ -156,7 +194,7 @@ async function notifyMatch(match) {
       pairs.map(([recipient, other]) =>
         pushService.sendToUser(recipient.id, {
           title: "It's a match! 🎉",
-          body: `You and ${other.name} matched!`,
+          body: `You and ${other.username || other.name} matched!`,
           imageUrl: other.profileImageUrl || null,
           data: { type: 'match', matchId: match.id },
         })
@@ -186,7 +224,7 @@ async function createInteraction({ fromUserId, shareCode, type }) {
     type: normalizedType,
   });
 
-  const fromUser = await User.findById(fromUserId).select('name profileImageUrl');
+  const fromUser = await User.findById(fromUserId).select('username name profileImageUrl');
   await notifyVote({ toUserId: targetUser.id, fromUser });
 
   const reciprocal = await Interaction.findOne({
@@ -280,6 +318,7 @@ async function createAnonymousResponse({
   source = 'web',
   timestamp,
   sessionId,
+  fromUserId = null,
 }) {
   const normalizedType = normalizeType(type);
   const rawIdentifier = (shareCode || identifier || '').trim();
@@ -328,24 +367,36 @@ async function createAnonymousResponse({
     shareCode: targetUser.shareCode,
   });
 
-  // Create an anonymous Interaction immediately so the play card shows and the
-  // poll counts regardless of whether the sender ever opens the app.
-  // finalize() will attribute it (set fromUser) and run the match check if the
-  // sender taps Reveal within the 60s window; otherwise it stays anonymous.
+  let fromUser = null;
+  if (fromUserId) {
+    fromUser = await User.findById(fromUserId).select('username name profileImageUrl');
+  }
+
+  // Create an Interaction record so the play card shows and the poll counts.
   await Interaction.create({
-    fromUser: null,
+    fromUser: fromUserId || null,
     toUser: targetUser.id,
     type: normalizedType,
     metadata: {
-      anonymous: true,
-      pendingReveal: true,
+      anonymous: !fromUserId,
+      pendingReveal: !fromUserId,
       pendingToken: pending.pendingToken,
       source,
       sessionId: sessionId || null,
     },
   });
 
-  await notifyVote({ toUserId: targetUser.id, fromUser: null });
+  if (fromUser) {
+    await notifyVote({ toUserId: targetUser.id, fromUser });
+  } else {
+    // Wait 2.5s buffer before sending an anonymous push.
+    // If the voter opens their installed app, finalize will cancel this and send with their username instead.
+    scheduleAnonymousVoteNotification({
+      toUserId: targetUser.id,
+      pendingToken: pending.pendingToken,
+      delayMs: 2500,
+    });
+  }
 
   console.info('[AnonymousResponse] pending created', {
     shareCode: targetUser.shareCode,
@@ -398,7 +449,7 @@ async function createInteractionByTargetId({
     type: normalizedType,
   });
 
-  const fromUser = await User.findById(fromUserId).select('name profileImageUrl');
+  const fromUser = await User.findById(fromUserId).select('username name profileImageUrl');
   await notifyVote({ toUserId: targetUser.id, fromUser });
 
   const reciprocal = await Interaction.findOne({
@@ -714,6 +765,7 @@ async function detectMatchAndBuildResult({ fromUserId, targetUserId, type }) {
 }
 
 async function finalizePendingInteraction({ token, currentUserId }) {
+  cancelAnonymousVoteNotification(token);
   const pending = await PendingInteraction.findOne({ deepLinkToken: token });
   if (!pending) {
     throw new ApiError(404, 'Invalid or expired reveal link.');
@@ -825,6 +877,11 @@ async function finalizePendingInteraction({ token, currentUserId }) {
       type: pending.type,
       enforceCardLimit: false,
     });
+
+    if (!result.matched) {
+      const fromUser = await User.findById(currentUserId).select('username name profileImageUrl');
+      await notifyVote({ toUserId: pending.targetUserId, fromUser });
+    }
   } else {
     // Backward compatibility for records created before pendingToken metadata existed.
     result = await createInteractionByTargetId({

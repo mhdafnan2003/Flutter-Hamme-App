@@ -53,6 +53,12 @@ class PushNotificationService {
         >()
         ?.createNotificationChannel(_androidChannel);
 
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+
     await _localNotifications.initialize(
       const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -62,6 +68,10 @@ class PushNotificationService {
           requestSoundPermission: false,
         ),
       ),
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        _navigateToTarget(payload);
+      },
     );
 
     await FirebaseMessaging.instance.requestPermission(
@@ -70,9 +80,16 @@ class PushNotificationService {
       sound: true,
     );
 
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
     FirebaseMessaging.onMessage.listen(_showForegroundNotification);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
     FirebaseMessaging.instance.onTokenRefresh.listen((_) => registerToken());
+    debugPrint('[Push] Service initialized successfully');
   }
 
   /// Call once the router is mounted, to route into a notification that
@@ -110,33 +127,43 @@ class PushNotificationService {
     }
   }
 
-  void _handleMessageTap(RemoteMessage message) {
+  void _navigateToTarget(String? type) {
     final context = rootNavigatorKey.currentContext;
     if (context == null) return;
-    switch (message.data['type']) {
+    switch (type) {
       case 'match':
         GoRouter.of(context).go('/matches');
         break;
       case 'vote':
-        GoRouter.of(context).go('/inbox');
+      default:
+        GoRouter.of(context).go('/play');
         break;
     }
   }
 
-  /// FCM only auto-displays a system notification while the app is
-  /// backgrounded/terminated; in the foreground we must show it ourselves —
-  /// which also lets us download and attach the voter/match avatar so the
-  /// image shows up consistently on both platforms while the app is open.
+  void _handleMessageTap(RemoteMessage message) {
+    final type = message.data['type'] as String?;
+    _navigateToTarget(type);
+  }
+
+  /// FCM auto-displays notifications in the background. On iOS,
+  /// `setForegroundNotificationPresentationOptions` handles foreground display natively.
+  /// On Android foreground, we use local notifications to display the heads-up banner.
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
+    debugPrint('[Push] onMessage received: ${notification?.title} - ${notification?.body}');
     if (notification == null) return;
+
+    // iOS native APNs already renders the foreground alert via presentation options
+    if (Platform.isIOS) return;
 
     final imageUrl =
         notification.android?.imageUrl ?? notification.apple?.imageUrl;
     final imagePath = imageUrl != null ? await _downloadImage(imageUrl) : null;
+    final type = message.data['type'] as String? ?? 'vote';
 
     await _localNotifications.show(
-      message.hashCode,
+      DateTime.now().millisecondsSinceEpoch % 100000,
       notification.title,
       notification.body,
       NotificationDetails(
@@ -154,13 +181,8 @@ class PushNotificationService {
                   )
                   : null,
         ),
-        iOS: DarwinNotificationDetails(
-          attachments:
-              imagePath != null
-                  ? [DarwinNotificationAttachment(imagePath)]
-                  : null,
-        ),
       ),
+      payload: type,
     );
   }
 
