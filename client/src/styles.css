@@ -131,6 +131,73 @@ a {
 .privacy-card ul {
   margin: 0;
   padding-left: 22px;
+  list-style: disc;
+}
+
+.privacy-card li + li {
+  margin-top: 4px;
+}
+
+.privacy-card h3 {
+  margin: 20px 0 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.privacy-card p + p,
+.privacy-card ul + p {
+  margin-top: 12px;
+}
+
+.privacy-card strong {
+  color: #fff;
+}
+
+.legal-link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.legal-link:hover {
+  color: #f9a8d4;
+}
+
+.legal-table {
+  margin: 12px 0 16px;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+}
+
+.legal-table table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+}
+
+.legal-table th,
+.legal-table td {
+  padding: 10px 14px;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.55;
+}
+
+.legal-table th {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f9a8d4;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.legal-table td {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(248, 250, 252, 0.9);
+  font-size: 0.95rem;
 }
 
 @media (max-width: 640px) {
