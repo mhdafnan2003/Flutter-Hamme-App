@@ -25,8 +25,10 @@ body {
     0 4px 0 #000;
 }
 
-a {
-  color: inherit;
+@layer base {
+  a {
+    color: inherit;
+  }
 }
 
 .reveal-button {
