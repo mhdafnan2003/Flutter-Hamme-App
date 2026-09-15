@@ -363,7 +363,7 @@ function PrivacyPolicyPage() {
             Your date of birth, used to confirm you meet our minimum age and to apply age-appropriate restrictions
           </li>
           <li>Your profile photo, which you upload</li>
-          <li>Optionally, your Instagram or Snapchat username, if you choose to add it</li>
+          <li>Optionally, your Instagram and/or Snapchat username, if you choose to add it</li>
         </ul>
         <p>
           We do not ask for your email address, phone number, or postal address at signup. If you email our support
@@ -463,8 +463,8 @@ function PrivacyPolicyPage() {
         </p>
         <p>
           To have your response and associated technical data deleted, email <MailLink email={legal.supportEmail} /> with
-          the approximate date and the link you responded to. If you have since installed the app and created an
-          account, you can also delete your account from inside the app (Profile → Settings → Delete account).
+          the approximate date and the link you responded to, or delete your account from inside the app (Settings →
+          Delete Account).
         </p>
 
         <h2>4. What Is Visible to Others</h2>
@@ -487,21 +487,19 @@ function PrivacyPolicyPage() {
         <LegalTable
           columns={['Recipient', 'What they receive', 'Why']}
           rows={[
+            ['Cloud hosting provider (Vercel, MongoDB Atlas, Cloudinary)', 'All stored data', 'Hosting and databases'],
             [
-              'Our hosting, database, and image storage providers (Vercel, MongoDB Atlas, Cloudinary)',
-              'All stored data',
-              'Hosting and databases',
-            ],
-            [
-              'Google Play (Install Referrer)',
+              'Attribution provider (Google Play Install Referrer)',
               'Device and install identifiers, IP address',
               'Linking a shared link to the resulting install',
             ],
             [
-              'Google (Firebase Cloud Messaging) and Apple (Push Notification service)',
-              'Push token',
-              'Sending notifications',
+              'Analytics and crash reporting (Firebase)',
+              'Device data, activity events, crash logs',
+              'Diagnostics and product analytics',
             ],
+            ['Push provider (Firebase Cloud Messaging)', 'Push token', 'Sending notifications'],
+            ['Moderation or image-scanning provider, if used', 'Profile photos', 'Detecting objectionable content'],
             ['Apple, Google', 'Purchase and subscription status', 'Processing payments'],
             ['Law enforcement or regulators', 'Only what is legally required', 'Legal obligation, safety'],
             ['An acquirer', 'Stored data', 'Merger, acquisition, or asset sale, subject to this policy'],
@@ -537,8 +535,7 @@ function PrivacyPolicyPage() {
 
         <h2>7. Deleting Your Data</h2>
         <p>
-          <strong>In the app:</strong> Profile → Settings → Delete account. This removes your account and the data in
-          Section 6.
+          <strong>In the app:</strong> Settings → Delete Account. This removes your account and the data in Section 6.
         </p>
         <p>
           <strong>Without the app installed:</strong> email <MailLink email={legal.supportEmail} /> from a device or
@@ -555,7 +552,7 @@ function PrivacyPolicyPage() {
         <ul>
           <li>
             <strong>India (DPDP Act, 2023):</strong> you may access, correct, and erase your data, nominate another
-            person to exercise your rights, and raise a grievance. Our Grievance Officer can be reached at{' '}
+            person to exercise your rights, and raise a grievance. Our Grievance Officer is reachable at{' '}
             <MailLink email={legal.supportEmail} />. If unresolved, you may complain to the Data Protection Board of
             India.
           </li>
@@ -601,7 +598,7 @@ function PrivacyPolicyPage() {
         <h2>11. International Transfers</h2>
         <p>
           We are based in India, and our users include people outside India. Your information may be stored and
-          processed in India, the United States, and other countries where our service providers operate, where data
+          processed in India, the United States, and other countries where our providers operate, where data
           protection laws may differ from those where you live. Where required, we use appropriate safeguards such as
           standard contractual clauses with our providers.
         </p>
@@ -915,8 +912,8 @@ function TermsOfServicePage() {
 
         <h2>12. Deletion, Suspension, and Termination</h2>
         <p>
-          You can delete your account at any time from inside the app (Profile → Settings → Delete account). You can
-          also request deletion, without reinstalling the app, by emailing <MailLink email={legal.supportEmail} />.
+          You can delete your account at any time from the app’s settings. You can also request deletion, without
+          reinstalling the app, by emailing <MailLink email={legal.supportEmail} /> from your registered address.
         </p>
         <p>
           When you delete your account, we delete or anonymise your personal data as described in the{' '}
