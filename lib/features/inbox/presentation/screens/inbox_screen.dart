@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io' show File, Platform;
 import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
@@ -184,7 +183,6 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     bool isInstagram,
   ) async {
     final boundaryKey = GlobalKey();
-    final completer = Completer<void>();
     late final OverlayEntry entry;
 
     entry = OverlayEntry(
