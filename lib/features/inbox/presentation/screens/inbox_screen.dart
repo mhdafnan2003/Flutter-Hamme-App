@@ -96,14 +96,14 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
             }
           }
           // iOS or fallback — use system share sheet (Snapchat will offer Story option)
-          await Share.shareXFiles([
-            XFile(tempPath),
-          ], text: 'Check out my reactions on Hamme! $shareLink');
+          await SharePlus.instance.share(
+            ShareParams(files: [XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink'),
+          );
         } catch (e) {
           debugPrint('Snapchat share failed: $e');
-          await Share.shareXFiles([
-            XFile(tempPath),
-          ], text: 'Check out my reactions on Hamme! $shareLink');
+          await SharePlus.instance.share(
+            ShareParams(files: [XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink'),
+          );
         }
       } else {
         // Instagram Logic
@@ -160,14 +160,16 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       }
 
       // Final Fallback
-      await Share.shareXFiles([
-        XFile(tempPath),
-      ], text: 'Check out my reactions on Hamme! $shareLink');
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink'),
+      );
     } catch (e) {
       debugPrint('Error in _captureAndShare: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to share. Please try again.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to share. Please try again.')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isSharing = false);

@@ -57,13 +57,13 @@ class TCloudHelperFunctions {
     return null;
   }
 
-  /// TODO: Re-enable when Firebase is active (uncomment Firebase in pubspec.yaml).
+  /// NOTE: Re-enable when Firebase is active (uncomment Firebase in pubspec.yaml).
   /// Create a reference with an initial file path and name and retrieve the download URL.
   static Future<String> getURLFromFilePathAndName(String path) async {
     throw UnimplementedError('Firebase Storage is not enabled on this platform.');
   }
 
-  /// TODO: Re-enable when Firebase is active (uncomment Firebase in pubspec.yaml).
+  /// NOTE: Re-enable when Firebase is active (uncomment Firebase in pubspec.yaml).
   /// Retrieve the download URL from a given storage URI.
   static Future<String> getURLFromURI(String url) async {
     throw UnimplementedError('Firebase Storage is not enabled on this platform.');

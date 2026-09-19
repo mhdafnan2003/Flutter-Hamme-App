@@ -404,6 +404,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                         isSubmitting: controller.isLoading,
                         onReport: () => _reportInteraction(effectiveItem),
                         onSelect: (type) async {
+                          final messenger = ScaffoldMessenger.of(context);
                           final targetUserId = effectiveItem.fromUser;
                           final isAnonymous =
                               effectiveItem.metadata?['anonymous'] == true;
@@ -459,7 +460,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                           } catch (error) {
                             if (!mounted) return;
                             ref.invalidate(playLimitStatusProvider);
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(
                                 content: Text(
                                   'Could not save response: $error',
@@ -524,6 +525,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                   onReport:
                                       () => _reportInteraction(effectiveItem),
                                   onSelect: (type) async {
+                                    final messenger = ScaffoldMessenger.of(context);
                                     final targetUserId = effectiveItem.fromUser;
                                     final isAnonymous =
                                         effectiveItem.metadata?['anonymous'] ==
@@ -593,9 +595,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                     } catch (error) {
                                       if (!mounted) return;
                                       ref.invalidate(playLimitStatusProvider);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      messenger.showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             'Could not save response: $error',
@@ -750,7 +750,9 @@ class _MatchViewState extends ConsumerState<_MatchView> {
               ? "We matched as friends! 🤝"
               : "Frenemy vibes only 😈";
 
-      await Share.shareXFiles([XFile(file.path)], subject: text);
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: text),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
