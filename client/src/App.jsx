@@ -275,11 +275,7 @@ function ShareFlowApp() {
         )}
 
         <footer className="mt-auto flex flex-col items-center">
-          <img
-            src="/frieendsareplaying.png"
-            alt="6 friends playing now"
-            className="mb-[82px] h-[61px] w-[202px] object-contain"
-          />
+          <FriendsPlaying />
           <h1 className="brand-text text-[28px] font-black leading-none tracking-[-0.06em]">Hamme</h1>
           <p className="mt-2 text-[12px] font-extrabold">play games &amp; meet people</p>
           <nav className="mt-6 flex items-center gap-4 text-[12px] font-bold text-white/70">
@@ -289,6 +285,40 @@ function ShareFlowApp() {
         </footer>
       </section>
     </main>
+  );
+}
+
+const playingFriends = [
+  { letter: 'S', className: 'bg-[#ff4f81] text-white' },
+  { letter: 'K', className: 'bg-[#20d67b] text-white' },
+  { letter: 'R', className: 'bg-[#4f95ff] text-white' },
+  { letter: 'N', className: 'bg-[#ffd43b] text-[#5b21b6]' },
+  { letter: 'A', className: 'bg-[#ff5757] text-white' },
+];
+
+function FriendsPlaying() {
+  return (
+    <div className="mb-[72px] flex flex-col items-center gap-3" role="status" aria-label="6 friends playing now">
+      <div className="flex items-center gap-3" aria-hidden="true">
+        <span className="relative flex h-3 w-3">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-[#22ff44] opacity-70 motion-safe:animate-ping" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-[#22ff44] shadow-[0_0_12px_4px_rgba(34,255,68,0.55)]" />
+        </span>
+        <div className="flex items-center">
+          {playingFriends.map((friend, index) => (
+            <span
+              key={friend.letter}
+              className={`flex h-[42px] w-[42px] items-center justify-center rounded-full text-[18px] font-black ${friend.className} ${index > 0 ? '-ml-2' : ''}`}
+            >
+              {friend.letter}
+            </span>
+          ))}
+        </div>
+      </div>
+      <p className="text-[20px] font-extrabold leading-none tracking-[-0.01em]">
+        👆 6 friends playing now 👆
+      </p>
+    </div>
   );
 }
 
