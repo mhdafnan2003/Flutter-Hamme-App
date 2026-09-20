@@ -296,6 +296,13 @@ const playingFriends = [
   { letter: 'A', className: 'bg-[#ff5757] text-white' },
 ];
 
+// Cuts a transparent 3px ring around the next avatar (42px wide, overlapped by 8px),
+// so the gap always matches the page background.
+const avatarCutout = {
+  WebkitMaskImage: 'radial-gradient(circle at 55px 21px, transparent 23.5px, #000 24.5px)',
+  maskImage: 'radial-gradient(circle at 55px 21px, transparent 23.5px, #000 24.5px)',
+};
+
 function FriendsPlaying() {
   return (
     <div className="mb-[72px] flex flex-col items-center gap-3" role="status" aria-label="6 friends playing now">
@@ -309,6 +316,7 @@ function FriendsPlaying() {
             <span
               key={friend.letter}
               className={`flex h-[42px] w-[42px] items-center justify-center rounded-full text-[18px] font-black ${friend.className} ${index > 0 ? '-ml-2' : ''}`}
+              style={index < playingFriends.length - 1 ? avatarCutout : undefined}
             >
               {friend.letter}
             </span>
