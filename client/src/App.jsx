@@ -276,7 +276,9 @@ function ShareFlowApp() {
 
         <footer className="mt-auto flex flex-col items-center">
           <FriendsPlaying />
-          <h1 className="brand-text text-[28px] font-black leading-none tracking-[-0.06em]">Hamme</h1>
+          <h1 className="m-0 leading-none">
+            <img src="/weblogohome.png" alt="Hamme" width={68} height={33} className="h-[33px] w-[68px] object-contain" />
+          </h1>
           <p className="mt-2 text-[12px] font-extrabold">play games &amp; meet people</p>
           <nav className="mt-6 flex items-center gap-4 text-[12px] font-bold text-white/70">
             <a href="/terms-of-service" className="transition hover:text-white">Terms</a>
@@ -296,26 +298,26 @@ const playingFriends = [
   { letter: 'A', className: 'bg-[#ff5757] text-white' },
 ];
 
-// Cuts a transparent 3px ring around the next avatar (42px wide, overlapped by 8px),
+// Cuts a transparent 1.5px ring around the next avatar (24px wide, overlapped by 4px),
 // so the gap always matches the page background.
 const avatarCutout = {
-  WebkitMaskImage: 'radial-gradient(circle at 55px 21px, transparent 23.5px, #000 24.5px)',
-  maskImage: 'radial-gradient(circle at 55px 21px, transparent 23.5px, #000 24.5px)',
+  WebkitMaskImage: 'radial-gradient(circle at 32px 12px, transparent 13.5px, #000 14.5px)',
+  maskImage: 'radial-gradient(circle at 32px 12px, transparent 13.5px, #000 14.5px)',
 };
 
 function FriendsPlaying() {
   return (
     <div className="mb-[72px] flex flex-col items-center gap-3" role="status" aria-label="6 friends playing now">
-      <div className="flex items-center gap-3" aria-hidden="true">
-        <span className="relative flex h-3 w-3">
+      <div className="flex h-6 w-[118px] items-center gap-1.5" aria-hidden="true">
+        <span className="relative flex h-2 w-2 shrink-0">
           <span className="absolute inline-flex h-full w-full rounded-full bg-[#22ff44] opacity-70 motion-safe:animate-ping" />
-          <span className="relative inline-flex h-3 w-3 rounded-full bg-[#22ff44] shadow-[0_0_12px_4px_rgba(34,255,68,0.55)]" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22ff44] shadow-[0_0_8px_3px_rgba(34,255,68,0.55)]" />
         </span>
         <div className="flex items-center">
           {playingFriends.map((friend, index) => (
             <span
               key={friend.letter}
-              className={`flex h-[42px] w-[42px] items-center justify-center rounded-full text-[18px] font-black ${friend.className} ${index > 0 ? '-ml-2' : ''}`}
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${friend.className} ${index > 0 ? '-ml-1' : ''}`}
               style={index < playingFriends.length - 1 ? avatarCutout : undefined}
             >
               {friend.letter}
@@ -323,7 +325,7 @@ function FriendsPlaying() {
           ))}
         </div>
       </div>
-      <p className="text-[20px] font-extrabold leading-none tracking-[-0.01em]">
+      <p className="flex h-[22px] w-[202px] items-center justify-center whitespace-nowrap text-[14px] font-extrabold leading-none tracking-[-0.01em]">
         👆 6 friends playing now 👆
       </p>
     </div>
@@ -1066,7 +1068,7 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
           What do you think of me?
         </div>
 
-        <p className="mt-4 text-[14px] font-medium text-white/95">Send anonymously</p>
+        <p className="mt-4 text-[14px] font-medium text-white/95">🙈 Send anonymously</p>
 
         <div className="mt-[10px] flex w-full flex-col gap-[10px]">
           <button onClick={() => onAnswer('friend')} disabled={!!submittingType} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#16c9e9,#0569f9)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
