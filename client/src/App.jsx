@@ -1056,16 +1056,30 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
   return (
     <>
       <div className="flex w-full flex-col items-center px-6">
-        <div className="relative z-10 h-[98px] w-[98px] overflow-hidden rounded-full border-[5px] border-white bg-[#d8b09f] shadow-[0_7px_14px_rgba(0,0,0,0.22)]">
-          <img
-            src={profileImage}
-            alt="Profile"
-            className="h-full w-full object-cover"
-          />
-        </div>
+        <div className="flex w-full flex-col items-center drop-shadow-[0_7px_10px_rgba(0,0,0,0.2)]">
+          <div className="relative z-10 h-[98px] w-[98px] overflow-hidden rounded-full border-[5px] border-white bg-[#d8b09f]">
+            <img
+              src={profileImage}
+              alt="Profile"
+              className="h-full w-full object-cover"
+            />
+          </div>
 
-        <div className="mt-[10px] flex h-[37px] w-full items-center justify-center rounded-xl bg-white px-4 text-[19px] font-black tracking-[0.01em] text-black shadow-[0_7px_0_rgba(0,0,0,0.18)]">
-          What do you think of me?
+          {/* Overlaps the avatar's white border so the two whites merge into one shape */}
+          <div className="relative -mt-[6px] flex h-[30px] w-full items-center justify-center rounded-xl bg-white px-4 text-[18px] font-black leading-none tracking-[0.01em] text-black">
+            {/* Concave fillets where the avatar meets the bar */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-[8px] h-[8px] w-[8px] [background:radial-gradient(circle_at_top_left,transparent_8px,#fff_8.5px)]"
+              style={{ left: 'calc(50% - 30px)' }}
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-[8px] h-[8px] w-[8px] [background:radial-gradient(circle_at_top_right,transparent_8px,#fff_8.5px)]"
+              style={{ right: 'calc(50% - 30px)' }}
+            />
+            What do you think of me?
+          </div>
         </div>
 
         <p className="mt-4 text-[14px] font-medium text-white/95">🙈 Send anonymously</p>
