@@ -275,7 +275,7 @@ function ShareFlowApp() {
         )}
 
         <footer className="mt-auto flex flex-col items-center">
-          <FriendsPlaying />
+          {/* <FriendsPlaying /> */}
           <h1 className="m-0 leading-none">
             <img src="/weblogohome.png" alt="Hamme" width={68} height={33} className="h-[33px] w-[68px] object-contain" />
           </h1>
