@@ -249,8 +249,8 @@ function ShareFlowApp() {
   const profileImage = profile.profileImageUrl || fallbackProfileImage;
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
-      <section className={`mx-auto flex min-h-screen w-full max-w-[360px] flex-col items-center px-4 pb-8 text-center ${isSent || alreadyVoted ? 'pt-[82px]' : 'pt-[132px]'}`}>
+    <main className="min-h-[100dvh] overflow-hidden bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
+      <section className={`mx-auto flex min-h-[100dvh] w-full max-w-[360px] flex-col items-center px-4 pb-6 text-center ${isSent || alreadyVoted ? 'pt-[clamp(24px,8vh,82px)]' : 'pt-[clamp(24px,9vh,132px)]'}`}>
         {isSent ? (
           <RevealScreen
             secondsLeft={secondsLeft}
@@ -280,7 +280,7 @@ function ShareFlowApp() {
             <img src="/weblogohome.png" alt="Hamme" width={68} height={33} className="h-[33px] w-[68px] object-contain" />
           </h1>
           <p className="mt-2 text-[12px] font-extrabold">play games &amp; meet people</p>
-          <nav className="mt-6 flex items-center gap-4 text-[12px] font-bold text-white/70">
+          <nav className="mt-4 flex items-center gap-4 text-[12px] font-bold text-white/70">
             <a href="/terms-of-service" className="transition hover:text-white">Terms</a>
             <a href="/privacy-policy" className="transition hover:text-white">Privacy</a>
           </nav>
@@ -307,7 +307,7 @@ const avatarCutout = {
 
 function FriendsPlaying() {
   return (
-    <div className="mb-[72px] flex flex-col items-center gap-3" role="status" aria-label="6 friends playing now">
+    <div className="mb-[clamp(20px,5vh,72px)] flex flex-col items-center gap-3" role="status" aria-label="6 friends playing now">
       <div className="flex h-6 w-[118px] items-center gap-1.5" aria-hidden="true">
         <span className="relative flex h-2 w-2 shrink-0">
           <span className="absolute inline-flex h-full w-full rounded-full bg-[#22ff44] opacity-70 motion-safe:animate-ping" />
