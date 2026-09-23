@@ -188,14 +188,21 @@ function cancelAnonymousVoteNotification(pendingToken) {
   }
 }
 
-/** Pushes "it's a match" to both sides of a newly created/updated Match doc (userA/userB populated). */
-async function notifyMatch(match) {
+/**
+ * Pushes "it's a match" to both sides of a newly created/updated Match doc
+ * (userA/userB populated), except `skipUserId` — the user whose vote created
+ * the match already sees the celebration in the app.
+ */
+async function notifyMatch(match, { skipUserId = null } = {}) {
   if (!match) return;
   try {
     const pairs = [
       [match.userA, match.userB],
       [match.userB, match.userA],
-    ];
+    ].filter(
+      ([recipient]) =>
+        !skipUserId || recipient.id.toString() !== skipUserId.toString()
+    );
     await Promise.all(
       pairs.map(([recipient, other]) =>
         pushService.sendToUser(recipient.id, {
@@ -493,7 +500,7 @@ async function createInteractionByTargetId({
 
     const payload = serializeMatch(match, fromUserId);
     emitMatchFound([fromUserId, targetUser.id], payload);
-    await notifyMatch(match);
+    await notifyMatch(match, { skipUserId: fromUserId });
   }
 
   // Must await so the DB write completes before the response is sent.
