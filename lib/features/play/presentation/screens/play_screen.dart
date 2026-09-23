@@ -48,15 +48,18 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   InteractionResult? _lastResult;
   InteractionRecord? _rewoundItem;
   InteractionRecord? _lastVotedItem;
-  // Cards already voted on (anonymous ones are resolved locally, see
-  // _buildLocalAnonymousResult, before the server confirms). Hiding by ID
-  // here keeps the card out of the queue immediately instead of waiting on
-  // pendingPlayInteractionsProvider to refetch and drop it.
+  // Cards already voted on (resolved locally, see _buildLocalResult, before
+  // the server confirms). Hiding by ID here keeps the card out of the queue
+  // immediately instead of waiting on pendingPlayInteractionsProvider to
+  // refetch and drop it.
   final Set<String> _locallyRespondedIds = {};
 
-  // Only the foreground (non-anonymous) request blocks the vote buttons.
-  // Anonymous votes save in the background and must not lock the next card.
-  bool _isSubmittingVote = false;
+  // "<matchedUserId>:<type>" for matches already celebrated from a local
+  // result. The server's match ID isn't known until the background save
+  // returns, and a matchesProvider refresh can land first, so this stops the
+  // poller-side overlay from showing a second "It's a match" screen.
+  final Set<String> _locallyShownMatchKeys = {};
+
   int _votesInFlight = 0;
   // Votes cast since the last limit status that already counts them.
   int _votesSinceLimitStatus = 0;
@@ -94,14 +97,22 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     ref.invalidate(playLimitStatusProvider);
   }
 
-  // The anonymous voter's original pick already ships down with the received
-  // interaction (InteractionRecord.type), so for anonymous poll cards we can
-  // resolve match/no-match instantly instead of waiting on a round trip.
-  InteractionResult _buildLocalAnonymousResult(
+  static const Duration _reciprocalVoteWindow = Duration(hours: 24);
+
+  // The voter's original pick already ships down with the received
+  // interaction (InteractionRecord.type), so we can resolve match/no-match
+  // instantly instead of waiting on a round trip. Mirrors the server rules:
+  // a registered voter's pick only counts within the 24 h reciprocal window.
+  InteractionResult _buildLocalResult(
     InteractionRecord effectiveItem,
-    InteractionType type,
-  ) {
-    final matchedLocally = effectiveItem.type == type;
+    InteractionType type, {
+    required bool isAnonymous,
+  }) {
+    final withinWindow =
+        isAnonymous ||
+        DateTime.now().difference(effectiveItem.createdAt) <
+            _reciprocalVoteWindow;
+    final matchedLocally = effectiveItem.type == type && withinWindow;
     return InteractionResult(
       interaction: effectiveItem.copyWith(
         respondedByCurrentUser: true,
@@ -109,7 +120,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
       ),
       matched: matchedLocally,
       match:
-          matchedLocally
+          !matchedLocally
+              ? null
+              : isAnonymous
               ? MatchRecord(
                 id: 'anonymous:${effectiveItem.id}',
                 type: type,
@@ -123,9 +136,27 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                 createdAt: DateTime.now(),
                 anonymous: true,
               )
-              : null,
+              : MatchRecord(
+                id: 'local:${effectiveItem.fromUser}:${type.name}',
+                type: type,
+                matchedUser: AppUser(
+                  id: effectiveItem.fromUser!,
+                  name:
+                      effectiveItem.fromUserName ??
+                      effectiveItem.fromUserUsername ??
+                      '',
+                  email: '',
+                  instagramId: effectiveItem.fromUserInstagramId ?? '',
+                  avatarUrl: effectiveItem.fromUserProfileImageUrl,
+                  shareCode: effectiveItem.fromUserShareCode ?? '',
+                ),
+                createdAt: DateTime.now(),
+              ),
     );
   }
+
+  static String _matchKey(String matchedUserId, InteractionType type) =>
+      '$matchedUserId:${type.name}';
 
   void _onDismiss() {
     setState(() {
@@ -241,6 +272,14 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     final cutoff = DateTime.now().toUtc().subtract(const Duration(hours: 24));
     for (final match in matches) {
       if (_shownMatchIds.contains(match.id)) continue;
+      // Already celebrated from this device's own vote before the server
+      // match ID was known — don't show a second overlay for it.
+      if (_locallyShownMatchKeys.contains(
+        _matchKey(match.matchedUser.id, match.type),
+      )) {
+        unawaited(_markMatchAsShown(match.id));
+        continue;
+      }
       // Skip matches older than 24 h — user can see them in the Matches tab.
       if (match.createdAt.toUtc().isBefore(cutoff)) {
         unawaited(_markMatchAsShown(match.id));
@@ -288,8 +327,16 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   /// covers the persistent bottom navigation bar.
   Future<void> _showMatchOverlay(InteractionResult result) async {
     // Mark as seen so the matchesProvider listener doesn't re-show it.
-    if (result.match?.id != null) {
-      await _markMatchAsShown(result.match!.id);
+    final match = result.match;
+    if (match != null) {
+      if (!match.anonymous) {
+        _locallyShownMatchKeys.add(_matchKey(match.matchedUser.id, match.type));
+      }
+      // A local placeholder ID never comes back from the server, so there is
+      // nothing worth persisting for it.
+      if (!match.id.startsWith('local:')) {
+        await _markMatchAsShown(match.id);
+      }
     }
     if (!mounted) return;
     final myImageUrl = ref.read(onboardingDraftProvider).value?.profileImageUrl;
@@ -433,28 +480,44 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   // stays the source of truth for history, notifications and rematch guards.
   // Goes through the repository rather than the controller so the controller's
   // loading state doesn't disable the vote buttons on the next card.
-  void _persistAnonymousResponseInBackground({
-    required String interactionId,
+  void _persistResponseInBackground({
+    required InteractionRecord effectiveItem,
     required InteractionType type,
+    required bool isAnonymous,
+    required InteractionResult localResult,
     required ScaffoldMessengerState messenger,
   }) {
+    final repository = ref.read(interactionRepositoryProvider);
+    final request =
+        isAnonymous
+            ? repository.respondToInteraction(
+              interactionId: effectiveItem.id,
+              type: type,
+            )
+            : repository.respondToInteraction(
+              targetUserId: effectiveItem.fromUser,
+              type: type,
+            );
     unawaited(
-      ref
-          .read(interactionRepositoryProvider)
-          .respondToInteraction(interactionId: interactionId, type: type)
-          .then((_) {
+      request
+          .then((serverResult) {
             ref.invalidate(matchesProvider);
             ref.invalidate(receivedInteractionsProvider);
             ref.invalidate(pendingPlayInteractionsProvider);
             if (!mounted) return;
             _onVoteFinished(counted: true);
+            _reconcileServerResult(
+              effectiveItem: effectiveItem,
+              localResult: localResult,
+              serverResult: serverResult,
+            );
           })
           .catchError((Object error) {
             if (!mounted) return;
             _onVoteFinished(counted: false);
             // Put the card back so the vote isn't lost; it can be cast again
             // once the cooldown ends.
-            setState(() => _locallyRespondedIds.remove(interactionId));
+            setState(() => _locallyRespondedIds.remove(effectiveItem.id));
             if (_isLimitError(error)) return;
             messenger.showSnackBar(
               SnackBar(
@@ -466,102 +529,99 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     );
   }
 
+  void _reconcileServerResult({
+    required InteractionRecord effectiveItem,
+    required InteractionResult localResult,
+    required InteractionResult serverResult,
+  }) {
+    final serverMatch = serverResult.match;
+    if (serverMatch == null) {
+      if (localResult.matched) {
+        debugPrint(
+          '[Play] local match for ${effectiveItem.id} not confirmed by server',
+        );
+      }
+      return;
+    }
+    if (localResult.matched) {
+      // Already celebrated locally; just remember the real ID so the
+      // poller-side listener never replays it.
+      unawaited(_markMatchAsShown(serverMatch.id));
+      return;
+    }
+    // Rare: the server found a match the local check missed. Show the same
+    // share-enabled celebration rather than the poller-side overlay.
+    unawaited(
+      _showMatchOverlay(_withCardVoterDetails(serverResult, effectiveItem)),
+    );
+  }
+
+  InteractionResult _withCardVoterDetails(
+    InteractionResult result,
+    InteractionRecord effectiveItem,
+  ) {
+    return result.copyWith(
+      interaction: result.interaction.copyWith(
+        fromUserName:
+            result.interaction.fromUserName ?? effectiveItem.fromUserName,
+        fromUserUsername:
+            result.interaction.fromUserUsername ??
+            effectiveItem.fromUserUsername,
+        fromUserProfileImageUrl:
+            result.interaction.fromUserProfileImageUrl ??
+            effectiveItem.fromUserProfileImageUrl,
+        fromUserInstagramId:
+            result.interaction.fromUserInstagramId ??
+            effectiveItem.fromUserInstagramId,
+        fromUserSnapchatId:
+            result.interaction.fromUserSnapchatId ??
+            effectiveItem.fromUserSnapchatId,
+      ),
+    );
+  }
+
   Future<void> _onSelect(
     InteractionRecord effectiveItem,
     InteractionType type,
   ) async {
-    if (_isSubmittingVote) return;
     final messenger = ScaffoldMessenger.of(context);
     final targetUserId = effectiveItem.fromUser;
     final isAnonymous = effectiveItem.metadata?['anonymous'] == true;
     if (!isAnonymous && (targetUserId == null || targetUserId.isEmpty)) {
       return;
     }
-    _lastVotedItem = effectiveItem;
-
-    if (isAnonymous) {
-      final localResult = _buildLocalAnonymousResult(effectiveItem, type);
-      setState(() {
-        _rewoundItem = null;
-        _locallyRespondedIds.add(effectiveItem.id);
-        _onVoteStarted();
-      });
-      if (localResult.matched) {
-        await _showMatchOverlay(localResult);
-        if (!mounted) return;
-        _refreshPlayData();
-      } else {
-        setState(() => _lastResult = localResult);
-      }
-      _persistAnonymousResponseInBackground(
-        interactionId: effectiveItem.id,
-        type: type,
-        messenger: messenger,
-      );
+    // Ignore a second tap on a card that was already answered, unless it was
+    // brought back with Rewind.
+    if (_locallyRespondedIds.contains(effectiveItem.id) &&
+        _rewoundItem?.id != effectiveItem.id) {
       return;
     }
+    _lastVotedItem = effectiveItem;
 
+    final localResult = _buildLocalResult(
+      effectiveItem,
+      type,
+      isAnonymous: isAnonymous,
+    );
     setState(() {
       _rewoundItem = null;
-      _isSubmittingVote = true;
+      _locallyRespondedIds.add(effectiveItem.id);
       _onVoteStarted();
     });
-    try {
-      final result = await ref
-          .read(interactionControllerProvider.notifier)
-          .respondToInteraction(
-            targetUserId: targetUserId,
-            interactionId: null,
-            type: type,
-          );
+    // Start saving before any overlay so the vote isn't held up by it.
+    _persistResponseInBackground(
+      effectiveItem: effectiveItem,
+      type: type,
+      isAnonymous: isAnonymous,
+      localResult: localResult,
+      messenger: messenger,
+    );
+    if (localResult.matched) {
+      await _showMatchOverlay(localResult);
       if (!mounted) return;
-      setState(() {
-        _isSubmittingVote = false;
-        // Hide the card now instead of waiting for the pending refetch, so it
-        // can't be voted on twice after the match overlay closes.
-        _locallyRespondedIds.add(effectiveItem.id);
-        _onVoteFinished(counted: true);
-      });
-
-      final mergedResult = result.copyWith(
-        interaction: result.interaction.copyWith(
-          fromUserName:
-              result.interaction.fromUserName ?? effectiveItem.fromUserName,
-          fromUserUsername:
-              result.interaction.fromUserUsername ??
-              effectiveItem.fromUserUsername,
-          fromUserProfileImageUrl:
-              result.interaction.fromUserProfileImageUrl ??
-              effectiveItem.fromUserProfileImageUrl,
-          fromUserInstagramId:
-              result.interaction.fromUserInstagramId ??
-              effectiveItem.fromUserInstagramId,
-          fromUserSnapchatId:
-              result.interaction.fromUserSnapchatId ??
-              effectiveItem.fromUserSnapchatId,
-        ),
-      );
-
-      if (mergedResult.matched) {
-        await _showMatchOverlay(mergedResult);
-        if (!mounted) return;
-        _refreshPlayData();
-      } else {
-        setState(() => _lastResult = mergedResult);
-      }
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isSubmittingVote = false;
-        _onVoteFinished(counted: false);
-      });
-      if (_isLimitError(error)) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Could not save response: $error'),
-          backgroundColor: TColors.error,
-        ),
-      );
+      _refreshPlayData();
+    } else {
+      setState(() => _lastResult = localResult);
     }
   }
 
@@ -580,7 +640,6 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
         return _PlayQueue(
           item: effectiveItem,
           remainingCount: visibleItems.length,
-          isSubmitting: _isSubmittingVote,
           onReport: () => _reportInteraction(effectiveItem),
           onSelect: (type) => _onSelect(effectiveItem, type),
         );
@@ -1677,14 +1736,12 @@ class _PlayQueue extends StatelessWidget {
   const _PlayQueue({
     required this.item,
     required this.remainingCount,
-    required this.isSubmitting,
     required this.onReport,
     required this.onSelect,
   });
 
   final InteractionRecord item;
   final int remainingCount;
-  final bool isSubmitting;
   final VoidCallback onReport;
   final ValueChanged<InteractionType> onSelect;
 
@@ -1846,8 +1903,7 @@ class _PlayQueue extends StatelessWidget {
                                           label: 'Report $name',
                                           child: IconButton(
                                             tooltip: 'Report user',
-                                            onPressed:
-                                                isSubmitting ? null : onReport,
+                                            onPressed: onReport,
                                             icon: Icon(
                                               CupertinoIcons.flag_fill,
                                               size: 18,
@@ -1992,7 +2048,6 @@ class _PlayQueue extends StatelessWidget {
             label: 'Friend',
             emoji: '🤝',
             colors: const [Color(0xFF00CCFE), Color(0xFF005EFB)],
-            disabled: isSubmitting,
             onTap: () => onSelect(InteractionType.friend),
           ),
           const SizedBox(height: 10),
@@ -2000,7 +2055,6 @@ class _PlayQueue extends StatelessWidget {
             label: 'Crush',
             emoji: '😍',
             colors: const [Color(0xFFCF59E7), Color(0xFFFF3C9E)],
-            disabled: isSubmitting,
             onTap: () => onSelect(InteractionType.crush),
           ),
           const SizedBox(height: 10),
@@ -2008,7 +2062,6 @@ class _PlayQueue extends StatelessWidget {
             label: 'Frenemy',
             emoji: '😈',
             colors: const [Color(0xFFBBADED), Color(0xFF50528D)],
-            disabled: isSubmitting,
             onTap: () => onSelect(InteractionType.frenemy),
           ),
 
@@ -2035,14 +2088,12 @@ class _ResponseButton extends StatelessWidget {
     required this.label,
     required this.emoji,
     required this.colors,
-    required this.disabled,
     required this.onTap,
   });
 
   final String label;
   final String emoji;
   final List<Color> colors;
-  final bool disabled;
   final VoidCallback onTap;
 
   @override
@@ -2067,13 +2118,10 @@ class _ResponseButton extends StatelessWidget {
           ],
         ),
         child: TextButton(
-          onPressed:
-              disabled
-                  ? null
-                  : () {
-                    HapticFeedback.mediumImpact();
-                    onTap();
-                  },
+          onPressed: () {
+            HapticFeedback.mediumImpact();
+            onTap();
+          },
           style: TextButton.styleFrom(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
