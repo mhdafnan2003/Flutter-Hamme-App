@@ -354,7 +354,20 @@ class BillingController extends Notifier<BillingState> {
 
   Future<void> _onPurchasesUpdated(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
-      if (!ProProducts.ids.contains(purchase.productID)) continue;
+      // On Android, backing out of the Play Billing sheet leaves no real
+      // purchase to read a product id from: in_app_purchase_android emits a
+      // synthetic PurchaseDetails with productID: '' for canceled/error
+      // results. Only one purchase can be in flight at a time (buyPro()
+      // returns early while state.busy), so still treat that as ours instead
+      // of silently dropping it here and leaving purchasePending stuck true.
+      final isUnattributedCancelOrError =
+          purchase.productID.isEmpty &&
+          (purchase.status == PurchaseStatus.canceled ||
+              purchase.status == PurchaseStatus.error);
+      if (!ProProducts.ids.contains(purchase.productID) &&
+          !isUnattributedCancelOrError) {
+        continue;
+      }
       switch (purchase.status) {
         case PurchaseStatus.pending:
           state = state.copyWith(purchasePending: true, error: null);
