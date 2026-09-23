@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/core/widgets/animated_spoiler.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
+import 'package:hamme_app/models/app_user.dart';
 import 'package:hamme_app/models/interaction_record.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
@@ -45,6 +46,11 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   InteractionResult? _lastResult;
   InteractionRecord? _rewoundItem;
   InteractionRecord? _lastVotedItem;
+  // Anonymous cards resolved locally (see _buildLocalAnonymousResult) before
+  // the background persist request confirms with the server. Hiding by ID
+  // here keeps the card out of the queue immediately instead of waiting on
+  // pendingPlayInteractionsProvider to refetch and drop it.
+  final Set<String> _locallyRespondedAnonymousIds = {};
 
   static const String _shownMatchIdsPreferenceKey = 'play_shown_match_ids_v1';
   static const String _shownPollerResultIdsPreferenceKey =
@@ -64,11 +70,81 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   Future<void>? _shownPollerResultIdsLoadFuture;
   Future<void> _shownPollerResultIdsWriteQueue = Future<void>.value();
 
+  int _visiblePendingCount(AsyncValue<List<InteractionRecord>> pending) {
+    final items = pending.value;
+    if (items == null) return 0;
+    return items
+        .where((item) => !_locallyRespondedAnonymousIds.contains(item.id))
+        .length;
+  }
+
   void _refreshPlayData() {
     ref.invalidate(receivedInteractionsProvider);
     ref.invalidate(pendingPlayInteractionsProvider);
     ref.invalidate(matchesProvider);
     ref.invalidate(playLimitStatusProvider);
+  }
+
+  // The anonymous voter's original pick already ships down with the received
+  // interaction (InteractionRecord.type), so for anonymous poll cards we can
+  // resolve match/no-match instantly instead of waiting on a round trip.
+  InteractionResult _buildLocalAnonymousResult(
+    InteractionRecord effectiveItem,
+    InteractionType type,
+  ) {
+    final matchedLocally = effectiveItem.type == type;
+    return InteractionResult(
+      interaction: effectiveItem.copyWith(
+        respondedByCurrentUser: true,
+        matched: matchedLocally,
+      ),
+      matched: matchedLocally,
+      match:
+          matchedLocally
+              ? MatchRecord(
+                id: 'anonymous:${effectiveItem.id}',
+                type: type,
+                matchedUser: const AppUser(
+                  id: 'anonymous',
+                  name: 'Anonymous',
+                  email: '',
+                  instagramId: '',
+                  shareCode: '',
+                ),
+                createdAt: DateTime.now(),
+                anonymous: true,
+              )
+              : null,
+    );
+  }
+
+  // Persists the response server-side without blocking the UI, which has
+  // already shown the locally-computed match/no-match result. The server
+  // stays the source of truth for history, notifications and rematch guards.
+  void _persistAnonymousResponseInBackground({
+    required String interactionId,
+    required InteractionType type,
+    required ScaffoldMessengerState messenger,
+  }) {
+    unawaited(
+      ref
+          .read(interactionControllerProvider.notifier)
+          .respondToInteraction(interactionId: interactionId, type: type)
+          .then((_) {
+            if (!mounted) return;
+            ref.invalidate(playLimitStatusProvider);
+          })
+          .catchError((error) {
+            if (!mounted) return;
+            ref.invalidate(playLimitStatusProvider);
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text('Could not save response: $error'),
+                backgroundColor: TColors.error,
+              ),
+            );
+          }),
+    );
   }
 
   void _onDismiss() {
@@ -377,7 +453,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                   if (_lastResult != null && !_lastResult!.matched) {
                     return _NotAMatchView(
                       result: _lastResult!,
-                      remainingCount: (pending.value?.length ?? 0),
+                      remainingCount: _visiblePendingCount(pending),
                       onSeeNext: _onDismiss,
                       onRewind: _triggerRewind,
                     );
@@ -393,14 +469,24 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
 
                   return pending.when(
                     data: (items) {
+                      final visibleItems =
+                          items
+                              .where(
+                                (item) =>
+                                    !_locallyRespondedAnonymousIds.contains(
+                                      item.id,
+                                    ),
+                              )
+                              .toList();
                       final effectiveItem =
-                          _rewoundItem ?? (items.isEmpty ? null : items.first);
+                          _rewoundItem ??
+                          (visibleItems.isEmpty ? null : visibleItems.first);
                       if (effectiveItem == null) {
                         return const _CompletedQueueView();
                       }
                       return _PlayQueue(
                         item: effectiveItem,
-                        remainingCount: items.length,
+                        remainingCount: visibleItems.length,
                         isSubmitting: controller.isLoading,
                         onReport: () => _reportInteraction(effectiveItem),
                         onSelect: (type) async {
@@ -414,14 +500,38 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                           }
                           _lastVotedItem = effectiveItem;
                           setState(() => _rewoundItem = null);
+
+                          if (isAnonymous) {
+                            final localResult = _buildLocalAnonymousResult(
+                              effectiveItem,
+                              type,
+                            );
+                            setState(() {
+                              _locallyRespondedAnonymousIds.add(
+                                effectiveItem.id,
+                              );
+                            });
+                            if (localResult.matched) {
+                              await _showMatchOverlay(localResult);
+                              if (!mounted) return;
+                              _refreshPlayData();
+                            } else {
+                              setState(() => _lastResult = localResult);
+                            }
+                            _persistAnonymousResponseInBackground(
+                              interactionId: effectiveItem.id,
+                              type: type,
+                              messenger: messenger,
+                            );
+                            return;
+                          }
+
                           try {
                             final result = await ref
                                 .read(interactionControllerProvider.notifier)
                                 .respondToInteraction(
-                                  targetUserId:
-                                      isAnonymous ? null : targetUserId,
-                                  interactionId:
-                                      isAnonymous ? effectiveItem.id : null,
+                                  targetUserId: targetUserId,
+                                  interactionId: null,
                                   type: type,
                                 );
                             if (!mounted) return;
@@ -492,7 +602,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                         _lastResult != null && !_lastResult!.matched
                             ? _NotAMatchView(
                               result: _lastResult!,
-                              remainingCount: (pending.value?.length ?? 0),
+                              remainingCount: _visiblePendingCount(pending),
                               onSeeNext: _onDismiss,
                               onRewind: _triggerRewind,
                             )
@@ -506,26 +616,38 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                         _lastResult != null && !_lastResult!.matched
                             ? _NotAMatchView(
                               result: _lastResult!,
-                              remainingCount: (pending.value?.length ?? 0),
+                              remainingCount: _visiblePendingCount(pending),
                               onSeeNext: _onDismiss,
                               onRewind: _triggerRewind,
                             )
                             : pending.when(
                               data: (items) {
+                                final visibleItems =
+                                    items
+                                        .where(
+                                          (item) =>
+                                              !_locallyRespondedAnonymousIds
+                                                  .contains(item.id),
+                                        )
+                                        .toList();
                                 final effectiveItem =
                                     _rewoundItem ??
-                                    (items.isEmpty ? null : items.first);
+                                    (visibleItems.isEmpty
+                                        ? null
+                                        : visibleItems.first);
                                 if (effectiveItem == null) {
                                   return const _CompletedQueueView();
                                 }
                                 return _PlayQueue(
                                   item: effectiveItem,
-                                  remainingCount: items.length,
+                                  remainingCount: visibleItems.length,
                                   isSubmitting: controller.isLoading,
                                   onReport:
                                       () => _reportInteraction(effectiveItem),
                                   onSelect: (type) async {
-                                    final messenger = ScaffoldMessenger.of(context);
+                                    final messenger = ScaffoldMessenger.of(
+                                      context,
+                                    );
                                     final targetUserId = effectiveItem.fromUser;
                                     final isAnonymous =
                                         effectiveItem.metadata?['anonymous'] ==
@@ -537,6 +659,35 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                     }
                                     _lastVotedItem = effectiveItem;
                                     setState(() => _rewoundItem = null);
+
+                                    if (isAnonymous) {
+                                      final localResult =
+                                          _buildLocalAnonymousResult(
+                                            effectiveItem,
+                                            type,
+                                          );
+                                      setState(() {
+                                        _locallyRespondedAnonymousIds.add(
+                                          effectiveItem.id,
+                                        );
+                                      });
+                                      if (localResult.matched) {
+                                        await _showMatchOverlay(localResult);
+                                        if (!mounted) return;
+                                        _refreshPlayData();
+                                      } else {
+                                        setState(
+                                          () => _lastResult = localResult,
+                                        );
+                                      }
+                                      _persistAnonymousResponseInBackground(
+                                        interactionId: effectiveItem.id,
+                                        type: type,
+                                        messenger: messenger,
+                                      );
+                                      return;
+                                    }
+
                                     try {
                                       final result = await ref
                                           .read(
@@ -544,14 +695,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                                                 .notifier,
                                           )
                                           .respondToInteraction(
-                                            targetUserId:
-                                                isAnonymous
-                                                    ? null
-                                                    : targetUserId,
-                                            interactionId:
-                                                isAnonymous
-                                                    ? effectiveItem.id
-                                                    : null,
+                                            targetUserId: targetUserId,
+                                            interactionId: null,
                                             type: type,
                                           );
                                       if (!mounted) return;

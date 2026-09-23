@@ -10,7 +10,7 @@ const pushService = require('./pushService');
 const env = require('../config/env');
 
 const allowedTypes = new Set(['friend', 'crush', 'frenemy']);
-const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 60);
+const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 180);
 const pendingTtlSeconds = Number.isFinite(pendingTtlSecondsRaw)
   ? Math.max(30, pendingTtlSecondsRaw)
   : 60;

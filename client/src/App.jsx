@@ -6,7 +6,7 @@ const flutterWebBaseUrl = import.meta.env.VITE_FLUTTER_WEB_URL ?? '';
 const sessionStorageKey = 'hamme_web_session_id';
 const votedCodesKey = 'hamme_voted_codes';
 const voteCooldownMs = 24 * 60 * 60 * 1000;
-const pendingTtlSeconds = Math.max(30, Number(import.meta.env.VITE_PENDING_TTL_SECONDS) || 60);
+const pendingTtlSeconds = Math.max(30, Number(import.meta.env.VITE_PENDING_TTL_SECONDS) || 180);
 const pendingTtlMs = pendingTtlSeconds * 1000;
 const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
 const isPrivacyPolicyRoute = currentPath === '/privacy-policy';
