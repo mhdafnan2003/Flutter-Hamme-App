@@ -147,11 +147,12 @@ async function notifyVote({ toUserId, fromUser }) {
 }
 
 /**
- * Schedules a delayed anonymous vote push. If the voter has the app installed and
- * reveals/finalizes within the buffer (e.g. 3s), the anonymous push is canceled
- * and only the single username notification is delivered.
+ * Schedules the single "someone voted" push for an anonymous web vote, fired only
+ * once the PENDING_TTL_SECONDS reveal window has fully elapsed. Whichever way the
+ * voter's identity resolved by then decides the push: anonymous, or (if they
+ * installed and created an account in time) their real name and photo.
  */
-function scheduleAnonymousVoteNotification({ toUserId, pendingToken, delayMs = 3000 }) {
+function scheduleAnonymousVoteNotification({ toUserId, pendingToken, delayMs = PENDING_TTL_MS }) {
   if (!pendingToken) return;
 
   cancelAnonymousVoteNotification(pendingToken);
@@ -163,8 +164,13 @@ function scheduleAnonymousVoteNotification({ toUserId, pendingToken, delayMs = 3
         toUser: toUserId,
         'metadata.pendingToken': pendingToken,
       });
-      // If the interaction is still anonymous (user never opened the app), send the anonymous push.
-      if (interaction && !interaction.fromUser) {
+      if (!interaction) return;
+      if (interaction.fromUser) {
+        const fromUser = await User.findById(interaction.fromUser).select(
+          'username name profileImageUrl'
+        );
+        await notifyVote({ toUserId, fromUser });
+      } else {
         await notifyVote({ toUserId, fromUser: null });
       }
     } catch (err) {
@@ -373,6 +379,10 @@ async function createAnonymousResponse({
   }
 
   // Create an Interaction record so the play card shows and the poll counts.
+  // It stays hidden from the creator's Play queue (see getReceivedInteractions)
+  // until pendingRevealUntil passes, giving the voter the full reveal window to
+  // install and create an account before the creator ever sees or is notified
+  // about the vote.
   await Interaction.create({
     fromUser: fromUserId || null,
     toUser: targetUser.id,
@@ -381,6 +391,7 @@ async function createAnonymousResponse({
       anonymous: !fromUserId,
       pendingReveal: !fromUserId,
       pendingToken: pending.pendingToken,
+      ...(fromUserId ? {} : { pendingRevealUntil: pending.expiresAt }),
       source,
       sessionId: sessionId || null,
     },
@@ -389,12 +400,12 @@ async function createAnonymousResponse({
   if (fromUser) {
     await notifyVote({ toUserId: targetUser.id, fromUser });
   } else {
-    // Wait 2.5s buffer before sending an anonymous push.
-    // If the voter opens their installed app, finalize will cancel this and send with their username instead.
+    // Fires once the reveal window fully elapses. If the voter installs and
+    // creates an account before then, finalizePendingInteraction attributes the
+    // interaction to them and this same timer sends the real-name push instead.
     scheduleAnonymousVoteNotification({
       toUserId: targetUser.id,
       pendingToken: pending.pendingToken,
-      delayMs: 2500,
     });
   }
 
@@ -600,6 +611,13 @@ async function getReceivedInteractions(userId) {
   const interactions = await Interaction.find({
     toUser: userId,
     fromUser: { $nin: blockedUserIds },
+    // Hide an anonymous web vote until its reveal window fully elapses, whether
+    // it ends up staying anonymous or gets attributed to a new account in the
+    // meantime — see createAnonymousResponse / finalizePendingInteraction.
+    $or: [
+      { 'metadata.pendingRevealUntil': { $exists: false } },
+      { 'metadata.pendingRevealUntil': { $lte: new Date() } },
+    ],
   })
     .sort({ createdAt: -1 })
     .populate('fromUser', 'name username instagramId snapchatId profileImageUrl shareCode');
@@ -765,7 +783,10 @@ async function detectMatchAndBuildResult({ fromUserId, targetUserId, type }) {
 }
 
 async function finalizePendingInteraction({ token, currentUserId }) {
-  cancelAnonymousVoteNotification(token);
+  // Deliberately does NOT cancel the scheduled push here — that same timer
+  // (see scheduleAnonymousVoteNotification) fires once at the end of the reveal
+  // window and reads the interaction's fromUser at that point, so attributing it
+  // here just changes which version of the push it ends up sending.
   const pending = await PendingInteraction.findOne({ deepLinkToken: token });
   if (!pending) {
     throw new ApiError(404, 'Invalid or expired reveal link.');
@@ -877,11 +898,10 @@ async function finalizePendingInteraction({ token, currentUserId }) {
       type: pending.type,
       enforceCardLimit: false,
     });
-
-    if (!result.matched) {
-      const fromUser = await User.findById(currentUserId).select('username name profileImageUrl');
-      await notifyVote({ toUserId: pending.targetUserId, fromUser });
-    }
+    // No immediate "voted on your poll" push here: the creator can't have seen
+    // this card yet (it's still hidden behind pendingRevealUntil), so the
+    // scheduled timer from createAnonymousResponse will send it, with this
+    // now-attributed fromUser, once the reveal window elapses.
   } else {
     // Backward compatibility for records created before pendingToken metadata existed.
     result = await createInteractionByTargetId({
