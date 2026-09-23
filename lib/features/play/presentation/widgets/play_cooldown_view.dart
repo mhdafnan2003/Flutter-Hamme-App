@@ -22,11 +22,13 @@ class PlayCooldownView extends StatefulWidget {
 class _PlayCooldownViewState extends State<PlayCooldownView> {
   late final Timer _tickTimer;
   late Duration _remaining;
+  late final Duration _initialRemaining;
 
   @override
   void initState() {
     super.initState();
     _remaining = _computeRemaining();
+    _initialRemaining = _remaining;
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
 
@@ -67,9 +69,12 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
 
   double get _progress {
     final cooldownMinutes = widget.status.cooldownMinutes;
-    if (cooldownMinutes == null || cooldownMinutes <= 0) return 0;
-
-    final totalSeconds = cooldownMinutes * 60;
+    // Fall back to the remaining time at first build when the backend
+    // doesn't send the cooldown length, so the bar still moves.
+    final totalSeconds = (cooldownMinutes != null && cooldownMinutes > 0)
+        ? cooldownMinutes * 60
+        : _initialRemaining.inSeconds;
+    if (totalSeconds <= 0) return 0;
     return 1 - (_remaining.inSeconds / totalSeconds).clamp(0.0, 1.0);
   }
 
@@ -266,7 +271,7 @@ class _CooldownProgress extends StatelessWidget {
             child: const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF9B5BFF), Color(0xFFD676F0)],
+                  colors: [Color(0xFF9662FF), Color(0xFFE092FF)],
                 ),
               ),
             ),

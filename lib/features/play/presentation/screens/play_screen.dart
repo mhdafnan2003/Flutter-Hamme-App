@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/utils/app_exception.dart';
 import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/core/widgets/animated_spoiler.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
@@ -15,6 +16,7 @@ import 'package:hamme_app/models/interaction_record.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
 import 'package:hamme_app/models/match_record.dart';
+import 'package:hamme_app/models/play_limit_status.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/billing_providers.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
@@ -46,11 +48,18 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   InteractionResult? _lastResult;
   InteractionRecord? _rewoundItem;
   InteractionRecord? _lastVotedItem;
-  // Anonymous cards resolved locally (see _buildLocalAnonymousResult) before
-  // the background persist request confirms with the server. Hiding by ID
+  // Cards already voted on (anonymous ones are resolved locally, see
+  // _buildLocalAnonymousResult, before the server confirms). Hiding by ID
   // here keeps the card out of the queue immediately instead of waiting on
   // pendingPlayInteractionsProvider to refetch and drop it.
-  final Set<String> _locallyRespondedAnonymousIds = {};
+  final Set<String> _locallyRespondedIds = {};
+
+  // Only the foreground (non-anonymous) request blocks the vote buttons.
+  // Anonymous votes save in the background and must not lock the next card.
+  bool _isSubmittingVote = false;
+  int _votesInFlight = 0;
+  // Votes cast since the last limit status that already counts them.
+  int _votesSinceLimitStatus = 0;
 
   static const String _shownMatchIdsPreferenceKey = 'play_shown_match_ids_v1';
   static const String _shownPollerResultIdsPreferenceKey =
@@ -74,7 +83,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     final items = pending.value;
     if (items == null) return 0;
     return items
-        .where((item) => !_locallyRespondedAnonymousIds.contains(item.id))
+        .where((item) => !_locallyRespondedIds.contains(item.id))
         .length;
   }
 
@@ -115,35 +124,6 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                 anonymous: true,
               )
               : null,
-    );
-  }
-
-  // Persists the response server-side without blocking the UI, which has
-  // already shown the locally-computed match/no-match result. The server
-  // stays the source of truth for history, notifications and rematch guards.
-  void _persistAnonymousResponseInBackground({
-    required String interactionId,
-    required InteractionType type,
-    required ScaffoldMessengerState messenger,
-  }) {
-    unawaited(
-      ref
-          .read(interactionControllerProvider.notifier)
-          .respondToInteraction(interactionId: interactionId, type: type)
-          .then((_) {
-            if (!mounted) return;
-            ref.invalidate(playLimitStatusProvider);
-          })
-          .catchError((error) {
-            if (!mounted) return;
-            ref.invalidate(playLimitStatusProvider);
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text('Could not save response: $error'),
-                backgroundColor: TColors.error,
-              ),
-            );
-          }),
     );
   }
 
@@ -421,10 +401,217 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     }
   }
 
+  bool _isLimitError(Object error) =>
+      error is AppException &&
+      (error.statusCode == 429 ||
+          error.message.toLowerCase().contains('limit'));
+
+  // The server's limit status lags behind votes that are still being saved,
+  // so without this the next card stays votable after the last free vote and
+  // that vote gets rejected. Count local votes against viewsLeft instead.
+  bool _isLimitReached(PlayLimitStatus status) {
+    if (status.limited) return true;
+    if (status.isPro) return false;
+    final viewsLeft = status.viewsLeft;
+    return viewsLeft != null && viewsLeft - _votesSinceLimitStatus <= 0;
+  }
+
+  void _onVoteStarted() {
+    _votesInFlight++;
+    _votesSinceLimitStatus++;
+  }
+
+  void _onVoteFinished({required bool counted}) {
+    _votesInFlight--;
+    if (!counted) _votesSinceLimitStatus--;
+    // Fetch after the vote is saved so the new status includes it.
+    ref.invalidate(playLimitStatusProvider);
+  }
+
+  // Persists the response server-side without blocking the UI, which has
+  // already shown the locally-computed match/no-match result. The server
+  // stays the source of truth for history, notifications and rematch guards.
+  // Goes through the repository rather than the controller so the controller's
+  // loading state doesn't disable the vote buttons on the next card.
+  void _persistAnonymousResponseInBackground({
+    required String interactionId,
+    required InteractionType type,
+    required ScaffoldMessengerState messenger,
+  }) {
+    unawaited(
+      ref
+          .read(interactionRepositoryProvider)
+          .respondToInteraction(interactionId: interactionId, type: type)
+          .then((_) {
+            ref.invalidate(matchesProvider);
+            ref.invalidate(receivedInteractionsProvider);
+            ref.invalidate(pendingPlayInteractionsProvider);
+            if (!mounted) return;
+            _onVoteFinished(counted: true);
+          })
+          .catchError((Object error) {
+            if (!mounted) return;
+            _onVoteFinished(counted: false);
+            // Put the card back so the vote isn't lost; it can be cast again
+            // once the cooldown ends.
+            setState(() => _locallyRespondedIds.remove(interactionId));
+            if (_isLimitError(error)) return;
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text('Could not save response: $error'),
+                backgroundColor: TColors.error,
+              ),
+            );
+          }),
+    );
+  }
+
+  Future<void> _onSelect(
+    InteractionRecord effectiveItem,
+    InteractionType type,
+  ) async {
+    if (_isSubmittingVote) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final targetUserId = effectiveItem.fromUser;
+    final isAnonymous = effectiveItem.metadata?['anonymous'] == true;
+    if (!isAnonymous && (targetUserId == null || targetUserId.isEmpty)) {
+      return;
+    }
+    _lastVotedItem = effectiveItem;
+
+    if (isAnonymous) {
+      final localResult = _buildLocalAnonymousResult(effectiveItem, type);
+      setState(() {
+        _rewoundItem = null;
+        _locallyRespondedIds.add(effectiveItem.id);
+        _onVoteStarted();
+      });
+      if (localResult.matched) {
+        await _showMatchOverlay(localResult);
+        if (!mounted) return;
+        _refreshPlayData();
+      } else {
+        setState(() => _lastResult = localResult);
+      }
+      _persistAnonymousResponseInBackground(
+        interactionId: effectiveItem.id,
+        type: type,
+        messenger: messenger,
+      );
+      return;
+    }
+
+    setState(() {
+      _rewoundItem = null;
+      _isSubmittingVote = true;
+      _onVoteStarted();
+    });
+    try {
+      final result = await ref
+          .read(interactionControllerProvider.notifier)
+          .respondToInteraction(
+            targetUserId: targetUserId,
+            interactionId: null,
+            type: type,
+          );
+      if (!mounted) return;
+      setState(() {
+        _isSubmittingVote = false;
+        // Hide the card now instead of waiting for the pending refetch, so it
+        // can't be voted on twice after the match overlay closes.
+        _locallyRespondedIds.add(effectiveItem.id);
+        _onVoteFinished(counted: true);
+      });
+
+      final mergedResult = result.copyWith(
+        interaction: result.interaction.copyWith(
+          fromUserName:
+              result.interaction.fromUserName ?? effectiveItem.fromUserName,
+          fromUserUsername:
+              result.interaction.fromUserUsername ??
+              effectiveItem.fromUserUsername,
+          fromUserProfileImageUrl:
+              result.interaction.fromUserProfileImageUrl ??
+              effectiveItem.fromUserProfileImageUrl,
+          fromUserInstagramId:
+              result.interaction.fromUserInstagramId ??
+              effectiveItem.fromUserInstagramId,
+          fromUserSnapchatId:
+              result.interaction.fromUserSnapchatId ??
+              effectiveItem.fromUserSnapchatId,
+        ),
+      );
+
+      if (mergedResult.matched) {
+        await _showMatchOverlay(mergedResult);
+        if (!mounted) return;
+        _refreshPlayData();
+      } else {
+        setState(() => _lastResult = mergedResult);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmittingVote = false;
+        _onVoteFinished(counted: false);
+      });
+      if (_isLimitError(error)) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Could not save response: $error'),
+          backgroundColor: TColors.error,
+        ),
+      );
+    }
+  }
+
+  Widget _buildQueue(AsyncValue<List<InteractionRecord>> pending) {
+    return pending.when(
+      data: (items) {
+        final visibleItems =
+            items
+                .where((item) => !_locallyRespondedIds.contains(item.id))
+                .toList();
+        final effectiveItem =
+            _rewoundItem ?? (visibleItems.isEmpty ? null : visibleItems.first);
+        if (effectiveItem == null) {
+          return const _CompletedQueueView();
+        }
+        return _PlayQueue(
+          item: effectiveItem,
+          remainingCount: visibleItems.length,
+          isSubmitting: _isSubmittingVote,
+          onReport: () => _reportInteraction(effectiveItem),
+          onSelect: (type) => _onSelect(effectiveItem, type),
+        );
+      },
+      loading:
+          () => const Center(
+            child: CircularProgressIndicator(color: TColors.hammePrimary),
+          ),
+      error:
+          (error, _) => Center(
+            child: Text(
+              'Could not load voters.\n$error',
+              textAlign: TextAlign.center,
+            ),
+          ),
+    );
+  }
+
+  Widget? _buildNotAMatch(AsyncValue<List<InteractionRecord>> pending) {
+    if (_lastResult == null || _lastResult!.matched) return null;
+    return _NotAMatchView(
+      result: _lastResult!,
+      remainingCount: _visiblePendingCount(pending),
+      onSeeNext: _onDismiss,
+      onRewind: _triggerRewind,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pending = ref.watch(pendingPlayInteractionsProvider);
-    final controller = ref.watch(interactionControllerProvider);
     final limitStatus = ref.watch(playLimitStatusProvider);
 
     // Listen for new matches that the poller should see (arrived from the other side).
@@ -441,6 +628,14 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
       },
     );
 
+    // A status fetched while no vote is being saved already includes every
+    // vote cast so far, so the local count starts over from it.
+    ref.listen<AsyncValue<PlayLimitStatus>>(playLimitStatusProvider, (_, next) {
+      if (next.hasValue && !next.isLoading && _votesInFlight == 0) {
+        _votesSinceLimitStatus = 0;
+      }
+    });
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
       body: SafeArea(
@@ -450,322 +645,40 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
             Expanded(
               child: limitStatus.when(
                 data: (status) {
-                  if (_lastResult != null && !_lastResult!.matched) {
-                    return _NotAMatchView(
-                      result: _lastResult!,
-                      remainingCount: _visiblePendingCount(pending),
-                      onSeeNext: _onDismiss,
-                      onRewind: _triggerRewind,
-                    );
-                  }
+                  final notAMatch = _buildNotAMatch(pending);
+                  if (notAMatch != null) return notAMatch;
 
                   // Show cooldown wall for free users who hit the limit
-                  if (status.limited) {
+                  if (_isLimitReached(status)) {
+                    if (!status.limited) {
+                      // The last free vote is still being saved; the fresh
+                      // status (with the reset time) follows right after.
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: TColors.hammePrimary,
+                        ),
+                      );
+                    }
                     return PlayCooldownView(
+                      key: ValueKey(status.resetAt),
                       status: status,
                       onCooldownEnd: _refreshPlayData,
                     );
                   }
 
-                  return pending.when(
-                    data: (items) {
-                      final visibleItems =
-                          items
-                              .where(
-                                (item) =>
-                                    !_locallyRespondedAnonymousIds.contains(
-                                      item.id,
-                                    ),
-                              )
-                              .toList();
-                      final effectiveItem =
-                          _rewoundItem ??
-                          (visibleItems.isEmpty ? null : visibleItems.first);
-                      if (effectiveItem == null) {
-                        return const _CompletedQueueView();
-                      }
-                      return _PlayQueue(
-                        item: effectiveItem,
-                        remainingCount: visibleItems.length,
-                        isSubmitting: controller.isLoading,
-                        onReport: () => _reportInteraction(effectiveItem),
-                        onSelect: (type) async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final targetUserId = effectiveItem.fromUser;
-                          final isAnonymous =
-                              effectiveItem.metadata?['anonymous'] == true;
-                          if (!isAnonymous &&
-                              (targetUserId == null || targetUserId.isEmpty)) {
-                            return;
-                          }
-                          _lastVotedItem = effectiveItem;
-                          setState(() => _rewoundItem = null);
-
-                          if (isAnonymous) {
-                            final localResult = _buildLocalAnonymousResult(
-                              effectiveItem,
-                              type,
-                            );
-                            setState(() {
-                              _locallyRespondedAnonymousIds.add(
-                                effectiveItem.id,
-                              );
-                            });
-                            if (localResult.matched) {
-                              await _showMatchOverlay(localResult);
-                              if (!mounted) return;
-                              _refreshPlayData();
-                            } else {
-                              setState(() => _lastResult = localResult);
-                            }
-                            _persistAnonymousResponseInBackground(
-                              interactionId: effectiveItem.id,
-                              type: type,
-                              messenger: messenger,
-                            );
-                            return;
-                          }
-
-                          try {
-                            final result = await ref
-                                .read(interactionControllerProvider.notifier)
-                                .respondToInteraction(
-                                  targetUserId: targetUserId,
-                                  interactionId: null,
-                                  type: type,
-                                );
-                            if (!mounted) return;
-                            // Refresh limit status after each vote
-                            ref.invalidate(playLimitStatusProvider);
-
-                            final mergedResult = result.copyWith(
-                              interaction: result.interaction.copyWith(
-                                fromUserName:
-                                    result.interaction.fromUserName ??
-                                    effectiveItem.fromUserName,
-                                fromUserUsername:
-                                    result.interaction.fromUserUsername ??
-                                    effectiveItem.fromUserUsername,
-                                fromUserProfileImageUrl:
-                                    result
-                                        .interaction
-                                        .fromUserProfileImageUrl ??
-                                    effectiveItem.fromUserProfileImageUrl,
-                                fromUserInstagramId:
-                                    result.interaction.fromUserInstagramId ??
-                                    effectiveItem.fromUserInstagramId,
-                                fromUserSnapchatId:
-                                    result.interaction.fromUserSnapchatId ??
-                                    effectiveItem.fromUserSnapchatId,
-                              ),
-                            );
-
-                            if (mergedResult.matched) {
-                              await _showMatchOverlay(mergedResult);
-                              if (!mounted) return;
-                              _refreshPlayData();
-                            } else {
-                              setState(() => _lastResult = mergedResult);
-                            }
-                          } catch (error) {
-                            if (!mounted) return;
-                            ref.invalidate(playLimitStatusProvider);
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Could not save response: $error',
-                                ),
-                                backgroundColor: TColors.error,
-                              ),
-                            );
-                          }
-                        },
-                      );
-                    },
-                    loading:
-                        () => const Center(
+                  return _buildQueue(pending);
+                },
+                loading:
+                    () =>
+                        _buildNotAMatch(pending) ??
+                        const Center(
                           child: CircularProgressIndicator(
                             color: TColors.hammePrimary,
                           ),
                         ),
-                    error:
-                        (error, _) => Center(
-                          child: Text(
-                            'Could not load voters.\n$error',
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                  );
-                },
-                loading:
-                    () =>
-                        _lastResult != null && !_lastResult!.matched
-                            ? _NotAMatchView(
-                              result: _lastResult!,
-                              remainingCount: _visiblePendingCount(pending),
-                              onSeeNext: _onDismiss,
-                              onRewind: _triggerRewind,
-                            )
-                            : const Center(
-                              child: CircularProgressIndicator(
-                                color: TColors.hammePrimary,
-                              ),
-                            ),
                 error:
                     (_, __) =>
-                        _lastResult != null && !_lastResult!.matched
-                            ? _NotAMatchView(
-                              result: _lastResult!,
-                              remainingCount: _visiblePendingCount(pending),
-                              onSeeNext: _onDismiss,
-                              onRewind: _triggerRewind,
-                            )
-                            : pending.when(
-                              data: (items) {
-                                final visibleItems =
-                                    items
-                                        .where(
-                                          (item) =>
-                                              !_locallyRespondedAnonymousIds
-                                                  .contains(item.id),
-                                        )
-                                        .toList();
-                                final effectiveItem =
-                                    _rewoundItem ??
-                                    (visibleItems.isEmpty
-                                        ? null
-                                        : visibleItems.first);
-                                if (effectiveItem == null) {
-                                  return const _CompletedQueueView();
-                                }
-                                return _PlayQueue(
-                                  item: effectiveItem,
-                                  remainingCount: visibleItems.length,
-                                  isSubmitting: controller.isLoading,
-                                  onReport:
-                                      () => _reportInteraction(effectiveItem),
-                                  onSelect: (type) async {
-                                    final messenger = ScaffoldMessenger.of(
-                                      context,
-                                    );
-                                    final targetUserId = effectiveItem.fromUser;
-                                    final isAnonymous =
-                                        effectiveItem.metadata?['anonymous'] ==
-                                        true;
-                                    if (!isAnonymous &&
-                                        (targetUserId == null ||
-                                            targetUserId.isEmpty)) {
-                                      return;
-                                    }
-                                    _lastVotedItem = effectiveItem;
-                                    setState(() => _rewoundItem = null);
-
-                                    if (isAnonymous) {
-                                      final localResult =
-                                          _buildLocalAnonymousResult(
-                                            effectiveItem,
-                                            type,
-                                          );
-                                      setState(() {
-                                        _locallyRespondedAnonymousIds.add(
-                                          effectiveItem.id,
-                                        );
-                                      });
-                                      if (localResult.matched) {
-                                        await _showMatchOverlay(localResult);
-                                        if (!mounted) return;
-                                        _refreshPlayData();
-                                      } else {
-                                        setState(
-                                          () => _lastResult = localResult,
-                                        );
-                                      }
-                                      _persistAnonymousResponseInBackground(
-                                        interactionId: effectiveItem.id,
-                                        type: type,
-                                        messenger: messenger,
-                                      );
-                                      return;
-                                    }
-
-                                    try {
-                                      final result = await ref
-                                          .read(
-                                            interactionControllerProvider
-                                                .notifier,
-                                          )
-                                          .respondToInteraction(
-                                            targetUserId: targetUserId,
-                                            interactionId: null,
-                                            type: type,
-                                          );
-                                      if (!mounted) return;
-                                      final mergedResult = result.copyWith(
-                                        interaction: result.interaction.copyWith(
-                                          fromUserName:
-                                              result.interaction.fromUserName ??
-                                              effectiveItem.fromUserName,
-                                          fromUserUsername:
-                                              result
-                                                  .interaction
-                                                  .fromUserUsername ??
-                                              effectiveItem.fromUserUsername,
-                                          fromUserProfileImageUrl:
-                                              result
-                                                  .interaction
-                                                  .fromUserProfileImageUrl ??
-                                              effectiveItem
-                                                  .fromUserProfileImageUrl,
-                                          fromUserInstagramId:
-                                              result
-                                                  .interaction
-                                                  .fromUserInstagramId ??
-                                              effectiveItem.fromUserInstagramId,
-                                          fromUserSnapchatId:
-                                              result
-                                                  .interaction
-                                                  .fromUserSnapchatId ??
-                                              effectiveItem.fromUserSnapchatId,
-                                        ),
-                                      );
-                                      if (mergedResult.matched) {
-                                        await _showMatchOverlay(mergedResult);
-                                        if (!mounted) return;
-                                        _refreshPlayData();
-                                      } else {
-                                        setState(
-                                          () => _lastResult = mergedResult,
-                                        );
-                                      }
-                                    } catch (error) {
-                                      if (!mounted) return;
-                                      ref.invalidate(playLimitStatusProvider);
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Could not save response: $error',
-                                          ),
-                                          backgroundColor: TColors.error,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              },
-                              loading:
-                                  () => const Center(
-                                    child: CircularProgressIndicator(
-                                      color: TColors.hammePrimary,
-                                    ),
-                                  ),
-                              error:
-                                  (error, _) => Center(
-                                    child: Text(
-                                      'Could not load voters.\n$error',
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                            ),
+                        _buildNotAMatch(pending) ?? _buildQueue(pending),
               ),
             ),
           ],
