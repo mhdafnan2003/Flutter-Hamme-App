@@ -1328,11 +1328,11 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: _totalSeconds),
-      value: 1.0, // starts full
+      value: 0.0, // starts empty
     );
 
-    // Smooth progress bar
-    _animController.animateTo(0.0, curve: Curves.linear);
+    // Smooth progress bar (fills 0 → 1)
+    _animController.animateTo(1.0, curve: Curves.linear);
 
     // 1-second tick just for the numeric label
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -1593,14 +1593,21 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                   letterSpacing: 0.8,
                 ),
               ),
-              Text(
-                '${_secondsRemaining}s',
-                style: const TextStyle(
-                  fontFamily: TFonts.nunito,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 11,
-                  color: Color(0xFFB18DFF),
-                ),
+              AnimatedBuilder(
+                animation: _animController,
+                builder:
+                    (_, __) => Text(
+                      '${_secondsRemaining}s',
+                      style: TextStyle(
+                        fontFamily: TFonts.nunito,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                        color:
+                            _animController.value > 0.8
+                                ? Colors.red
+                                : const Color(0xFFB18DFF),
+                      ),
+                    ),
               ),
             ],
           ),
@@ -1616,8 +1623,10 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                   (_, __) => LinearProgressIndicator(
                     value: _animController.value,
                     backgroundColor: const Color(0xFFE8DFFF),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFFB18DFF),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _animController.value > 0.8
+                          ? Colors.red
+                          : const Color(0xFFB18DFF),
                     ),
                     minHeight: 5,
                   ),
