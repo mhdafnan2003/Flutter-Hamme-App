@@ -320,6 +320,10 @@ class BillingController extends Notifier<BillingState> {
       debugPrint('[Billing] restorePurchases failed: $error');
       state = state.copyWith(
         restoring: false,
+        // Also clears purchasePending: the "already owned" recovery path
+        // re-sets it to true before calling this with showProgress: false,
+        // and nothing else would reset it if restorePurchases() throws.
+        purchasePending: false,
         error: showProgress ? 'Could not restore purchases.' : null,
       );
       if (!restoreCompleter.isCompleted) restoreCompleter.complete(false);
@@ -379,7 +383,11 @@ class BillingController extends Notifier<BillingState> {
           _completeRestore(false);
           break;
         case PurchaseStatus.canceled:
-          state = state.copyWith(purchasePending: false, restoring: false);
+          state = state.copyWith(
+            purchasePending: false,
+            restoring: false,
+            error: 'Payment failed. Please try again.',
+          );
           _completeRestore(false);
           break;
         case PurchaseStatus.purchased:

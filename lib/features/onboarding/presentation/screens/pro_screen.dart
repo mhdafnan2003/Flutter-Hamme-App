@@ -58,6 +58,16 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     await ref.read(billingControllerProvider.notifier).buyPro();
   }
 
+  /// Onboarding Continue: starts the real purchase (it resolves later via
+  /// the billing stream, independently of this screen) and finishes
+  /// onboarding regardless of the purchase outcome. Buying Pro and
+  /// finishing signup are separate concerns — same as the X (skip) button
+  /// already treats them.
+  Future<void> _continueOnboardingWithPurchase() async {
+    unawaited(_buyPro());
+    await _completeOnboarding();
+  }
+
   Future<void> _uploadSelectedProfileImageInBackground() async {
     final selectedImage = ref.read(onboardingProfileImageProvider);
     if (selectedImage == null) {
@@ -209,7 +219,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     final bool ctaBusy = isUpgrade ? billing.busy : _isSubmitting;
     final String ctaLabel = 'Continue';
     final Future<void> Function() onCta =
-        isUpgrade ? _buyPro : _completeOnboarding;
+        isUpgrade ? _buyPro : _continueOnboardingWithPurchase;
     final String? errorText = _errorText ?? (isUpgrade ? billing.error : null);
 
     return Scaffold(
