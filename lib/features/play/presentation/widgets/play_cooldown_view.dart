@@ -20,6 +20,10 @@ class PlayCooldownView extends StatefulWidget {
 }
 
 class _PlayCooldownViewState extends State<PlayCooldownView> {
+  // Figma: 110 from the logo's bottom to the avatar's top. HammeTopBar puts
+  // the logo bottom 19 above this view (12 padding + 40 row, 26 logo).
+  static const double _topSpacing = 91;
+
   late final Timer _tickTimer;
   late Duration _remaining;
   late final Duration _initialRemaining;
@@ -80,42 +84,35 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
 
   @override
   Widget build(BuildContext context) {
-    final maxCards = widget.status.maxCards ?? 10;
-
     return LayoutBuilder(
       builder: (context, constraints) {
-        final topSpacing = ((constraints.maxHeight - 610) * 0.72).clamp(
-          48.0,
-          118.0,
-        );
-
         return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 23),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Column(
               children: [
-                SizedBox(height: topSpacing),
+                const SizedBox(height: _topSpacing),
                 _CountdownCard(
                   countdown: _formatDuration(_remaining),
                   progress: _progress,
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  "You've seen all $maxCards free profiles\n"
-                  'Your next match could be in the queue 😳',
+                const SizedBox(height: 20),
+                const Text(
+                  "You've seen all free profiles\n"
+                  'Your next match could be in the queue😳',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: TFonts.nunito,
                     fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    height: 1.35,
+                    fontSize: 14,
+                    height: 1.36,
                     color: Color(0xFF6E6E6E),
                   ),
                 ),
                 const SizedBox(height: 24),
                 const _OrDivider(),
-                const SizedBox(height: 30),
+                const SizedBox(height: 26),
                 _PlayNowButton(onPressed: () => context.push('/pro')),
                 const SizedBox(height: 24),
               ],
@@ -133,47 +130,59 @@ class _CountdownCard extends StatelessWidget {
   final String countdown;
   final double progress;
 
+  static const double _avatarSize = 120;
+  static const double _cardTop = 51;
+  static const double _cardHeight = 190;
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 269,
+      height: _cardTop + _cardHeight,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.topCenter,
         children: [
+          // Two stacked "deck" cards peeking out behind the main card.
           Positioned(
-            top: 29,
-            left: 72,
-            right: 72,
+            top: 22,
+            left: 70,
+            right: 70,
             child: Container(
               height: 54,
               decoration: BoxDecoration(
-                color: const Color(0xFFF4F4F4),
-                borderRadius: BorderRadius.circular(24),
+                color: const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(28),
               ),
             ),
           ),
           Positioned(
-            top: 42,
-            left: 35,
-            right: 35,
+            top: 34,
+            left: 31,
+            right: 31,
             child: Container(
               height: 54,
               decoration: BoxDecoration(
-                color: const Color(0xFFEEEEEE),
-                borderRadius: BorderRadius.circular(24),
+                color: const Color(0xFFEBEBEB),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
               ),
             ),
           ),
           Positioned(
-            top: 59,
+            top: _cardTop,
             left: 0,
             right: 0,
             child: Container(
-              height: 210,
+              height: _cardHeight,
               decoration: BoxDecoration(
                 color: const Color(0xFFF0EAFE),
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.08),
@@ -183,8 +192,8 @@ class _CountdownCard extends StatelessWidget {
                 ],
               ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Spacer(),
                   Text.rich(
                     TextSpan(
                       children: [
@@ -198,14 +207,14 @@ class _CountdownCard extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
                       color: Colors.black,
                     ),
                   ),
-                  const SizedBox(height: 23),
+                  const SizedBox(height: 21),
                   _CooldownProgress(value: progress),
-                  const SizedBox(height: 31),
+                  const SizedBox(height: 28),
                 ],
               ),
             ),
@@ -213,21 +222,21 @@ class _CountdownCard extends StatelessWidget {
           Positioned(
             top: 0,
             child: SizedBox(
-              width: 140,
-              height: 140,
+              width: _avatarSize,
+              height: _avatarSize,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   Image.asset(
                     'assets/images/Rectangle 126.png',
-                    width: 140,
-                    height: 140,
+                    width: _avatarSize,
+                    height: _avatarSize,
                     fit: BoxFit.contain,
                   ),
                   Image.asset(
                     'assets/images/lock.png',
-                    width: 32,
-                    height: 36,
+                    width: 22,
+                    height: 25,
                     fit: BoxFit.contain,
                   ),
                 ],
@@ -245,36 +254,44 @@ class _CooldownProgress extends StatelessWidget {
 
   final double value;
 
+  static const double _width = 107;
+  static const double _height = 17;
+
   @override
   Widget build(BuildContext context) {
+    // Never narrower than the track height, so a small value still reads
+    // as a rounded pill instead of a sliver.
+    final fillWidth = value <= 0
+        ? 0.0
+        : (value * _width).clamp(_height, _width).toDouble();
+
     return Container(
-      width: 124,
-      height: 18,
-      padding: const EdgeInsets.all(2),
+      width: _width,
+      height: _height,
+      alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(99),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
-            blurRadius: 7,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: ClipRRect(
+      // Inner shadow along the top edge of the track.
+      foregroundDecoration: BoxDecoration(
         borderRadius: BorderRadius.circular(99),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: FractionallySizedBox(
-            widthFactor: value,
-            child: const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF9662FF), Color(0xFFE092FF)],
-                ),
-              ),
-            ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.center,
+          colors: [
+            Colors.black.withValues(alpha: 0.16),
+            Colors.black.withValues(alpha: 0),
+          ],
+        ),
+      ),
+      child: Container(
+        width: fillWidth,
+        height: _height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(99),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF9662FF), Color(0xFFE092FF)],
           ),
         ),
       ),
@@ -289,7 +306,7 @@ class _OrDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Row(
       children: [
-        Expanded(child: Divider(color: Color(0xFFE7E0FF), thickness: 1)),
+        Expanded(child: Divider(color: Color(0xFFE9E8FE), thickness: 1)),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 13),
           child: Text(
@@ -297,12 +314,12 @@ class _OrDivider extends StatelessWidget {
             style: TextStyle(
               fontFamily: TFonts.nunito,
               fontWeight: FontWeight.w900,
-              fontSize: 17,
-              color: Color(0xFFB2A2FF),
+              fontSize: 15,
+              color: Color(0xFFB0B1FD),
             ),
           ),
         ),
-        Expanded(child: Divider(color: Color(0xFFE7E0FF), thickness: 1)),
+        Expanded(child: Divider(color: Color(0xFFE9E8FE), thickness: 1)),
       ],
     );
   }
@@ -316,71 +333,75 @@ class _PlayNowButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 88,
+      width: double.infinity,
+      height: 73,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(27),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF8752F4), Color(0xFFA25BFF)],
-        ),
+        color: const Color(0xFF9A62FC),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: const [
-          BoxShadow(color: Color(0xFF7E47E9), offset: Offset(0, 7)),
+          BoxShadow(color: Color(0xFFAF83FD), offset: Offset(0, 6)),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(27),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            fit: StackFit.expand,
+            alignment: Alignment.center,
+            children: [
+              // Centred on the whole button, not on the space left between
+              // the icon and the pro badge.
+              const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Play Now',
+                    style: TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      height: 1.2,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 9),
+                  Text(
+                    'Skip the wait & play now',
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      height: 1.2,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              Positioned(
+                left: 17,
+                child: Container(
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(17),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.all_inclusive_rounded,
-                    color: Color(0xFF777777),
-                    size: 37,
+                    color: Color(0xFF6D6D6D),
+                    size: 34,
                   ),
                 ),
-                const Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Play Now',
-                        style: TextStyle(
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 21,
-                          height: 1.1,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 7),
-                      Text(
-                        'Skip the wait & play now',
-                        style: TextStyle(
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          height: 1,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 4,
-                  ),
+              ),
+              Positioned(
+                right: 22,
+                child: Container(
+                  height: 23,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(99),
@@ -392,12 +413,12 @@ class _PlayNowButton extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       fontSize: 16,
                       height: 1,
-                      color: Color(0xFFC247F1),
+                      color: Color(0xFFDC33ED),
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
