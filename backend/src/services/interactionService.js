@@ -18,6 +18,11 @@ const PENDING_TTL_MS = pendingTtlSeconds * 1000;
 const REVEAL_EXTEND_MS = 5 * 60 * 1000; // 5 min grace after user taps Reveal
 const VISIBLE_MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const INTERACTION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const PENDING_TOKEN_PATTERN = /^[a-f0-9]{32}$/;
+// The web client hands the voter a reveal token before its create request
+// finishes, so the app can ask about a token that is still being written.
+const PENDING_LOOKUP_WAIT_MS = 6000;
+const PENDING_LOOKUP_POLL_MS = 300;
 
 async function assertInteractionCooldownElapsed(fromUserId, targetUserId) {
   const cutoff = new Date(Date.now() - INTERACTION_COOLDOWN_MS);
@@ -332,6 +337,7 @@ async function createAnonymousResponse({
   timestamp,
   sessionId,
   fromUserId = null,
+  pendingToken: clientPendingToken = null,
 }) {
   const normalizedType = normalizeType(type);
   const rawIdentifier = (shareCode || identifier || '').trim();
@@ -374,7 +380,16 @@ async function createAnonymousResponse({
     }
   }
 
-  const [pending, fromUser] = await Promise.all([
+  // The web client may generate the reveal token itself so its Reveal button
+  // works before this request returns; otherwise generate one here. Knowing the
+  // token and expiry up front lets both writes below run in parallel.
+  const deepLinkToken =
+    clientPendingToken && PENDING_TOKEN_PATTERN.test(clientPendingToken)
+      ? clientPendingToken
+      : crypto.randomBytes(16).toString('hex');
+  const expiresAt = new Date(Date.now() + PENDING_TTL_MS);
+
+  const [pendingResult, fromUserResult, interactionResult] = await Promise.allSettled([
     createPendingInteraction({
       targetUserId: targetUser.id,
       type: normalizedType,
@@ -382,30 +397,50 @@ async function createAnonymousResponse({
       sessionId,
       shareCode: targetUser.shareCode,
       targetUser,
+      deepLinkToken,
+      expiresAt,
     }),
     fromUserId
       ? User.findById(fromUserId).select('username name profileImageUrl')
       : Promise.resolve(null),
+    // Create an Interaction record so the play card shows and the poll counts.
+    // It stays hidden from the creator's Play queue (see getReceivedInteractions)
+    // until pendingRevealUntil passes, giving the voter the full reveal window to
+    // install and create an account before the creator ever sees or is notified
+    // about the vote.
+    Interaction.create({
+      fromUser: fromUserId || null,
+      toUser: targetUser.id,
+      type: normalizedType,
+      metadata: {
+        anonymous: !fromUserId,
+        pendingReveal: !fromUserId,
+        pendingToken: deepLinkToken,
+        ...(fromUserId ? {} : { pendingRevealUntil: expiresAt }),
+        source,
+        sessionId: sessionId || null,
+      },
+    }),
   ]);
 
-  // Create an Interaction record so the play card shows and the poll counts.
-  // It stays hidden from the creator's Play queue (see getReceivedInteractions)
-  // until pendingRevealUntil passes, giving the voter the full reveal window to
-  // install and create an account before the creator ever sees or is notified
-  // about the vote.
-  await Interaction.create({
-    fromUser: fromUserId || null,
-    toUser: targetUser.id,
-    type: normalizedType,
-    metadata: {
-      anonymous: !fromUserId,
-      pendingReveal: !fromUserId,
-      pendingToken: pending.pendingToken,
-      ...(fromUserId ? {} : { pendingRevealUntil: pending.expiresAt }),
-      source,
-      sessionId: sessionId || null,
-    },
-  });
+  const failed = [pendingResult, fromUserResult, interactionResult].find(
+    (result) => result.status === 'rejected'
+  );
+  if (failed) {
+    // Don't leave a vote behind whose reveal token was never stored.
+    if (interactionResult.status === 'fulfilled') {
+      await Interaction.deleteOne({ _id: interactionResult.value._id }).catch(() => {});
+    }
+    if (pendingResult.status === 'fulfilled') {
+      await PendingInteraction.deleteOne({ deepLinkToken }).catch(() => {});
+    }
+    if (failed.reason?.code === 11000) {
+      throw new ApiError(409, 'This interaction has already been sent.');
+    }
+    throw failed.reason;
+  }
+  const pending = pendingResult.value;
+  const fromUser = fromUserResult.value;
 
   if (fromUser) {
     await notifyVote({ toUserId: targetUser.id, fromUser });
@@ -717,6 +752,8 @@ async function createPendingInteraction({
   sessionId = null,
   shareCode = null,
   targetUser: resolvedTargetUser = null,
+  deepLinkToken = crypto.randomBytes(16).toString('hex'),
+  expiresAt = new Date(Date.now() + PENDING_TTL_MS),
 }) {
   const normalizedType = normalizeType(type);
   // Callers that already loaded the user pass it in to skip a round trip.
@@ -724,9 +761,6 @@ async function createPendingInteraction({
   if (!targetUser) {
     throw new ApiError(404, 'Target profile not found.');
   }
-
-  const deepLinkToken = crypto.randomBytes(16).toString('hex');
-  const expiresAt = new Date(Date.now() + PENDING_TTL_MS);
 
   const pending = await PendingInteraction.create({
     targetUserId: targetUser.id,
@@ -746,6 +780,23 @@ async function createPendingInteraction({
     pendingToken: pending.deepLinkToken,
     expiresAt: pending.expiresAt,
   };
+}
+
+/**
+ * Finds a pending interaction by token, briefly waiting for it to appear if it
+ * is not there yet (the web client's create request may still be in flight).
+ */
+async function findPendingByToken(token, populate = null) {
+  const deadline = Date.now() + PENDING_LOOKUP_WAIT_MS;
+  for (;;) {
+    const query = PendingInteraction.findOne({ deepLinkToken: token });
+    if (populate) query.populate(...populate);
+    const pending = await query;
+    if (pending || !PENDING_TOKEN_PATTERN.test(token || '') || Date.now() >= deadline) {
+      return pending;
+    }
+    await new Promise((resolve) => setTimeout(resolve, PENDING_LOOKUP_POLL_MS));
+  }
 }
 
 async function detectMatchAndBuildResult({ fromUserId, targetUserId, type }) {
@@ -799,7 +850,7 @@ async function finalizePendingInteraction({ token, currentUserId }) {
   // (see scheduleAnonymousVoteNotification) fires once at the end of the reveal
   // window and reads the interaction's fromUser at that point, so attributing it
   // here just changes which version of the push it ends up sending.
-  const pending = await PendingInteraction.findOne({ deepLinkToken: token });
+  const pending = await findPendingByToken(token);
   if (!pending) {
     throw new ApiError(404, 'Invalid or expired reveal link.');
   }
@@ -930,7 +981,7 @@ async function finalizePendingInteraction({ token, currentUserId }) {
 }
 
 async function touchPendingInteraction(token) {
-  const pending = await PendingInteraction.findOne({ deepLinkToken: token });
+  const pending = await findPendingByToken(token);
   if (!pending) {
     throw new ApiError(404, 'Interaction not found or expired.');
   }
@@ -953,7 +1004,7 @@ async function touchPendingInteraction(token) {
 }
 
 async function getPendingInteraction(token) {
-  const pending = await PendingInteraction.findOne({ deepLinkToken: token }).populate('targetUserId', 'name profileImageUrl');
+  const pending = await findPendingByToken(token, ['targetUserId', 'name profileImageUrl']);
   if (!pending) {
     throw new ApiError(404, 'Interaction not found or expired.');
   }

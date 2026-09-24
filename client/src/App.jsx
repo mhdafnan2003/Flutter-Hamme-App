@@ -95,6 +95,14 @@ function generateSessionId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// 128-bit hex reveal token, same format the backend generates. Creating it here
+// lets the Reveal button work before the vote request finishes.
+function generatePendingToken() {
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function buildDeepLink({ shareCode, type, token }) {
   const params = new URLSearchParams();
   if (shareCode) params.set('code', shareCode);
@@ -130,6 +138,7 @@ function ShareFlowApp() {
   const [selectedType, setSelectedType] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [interactionResult, setInteractionResult] = useState(null);
+  const [pendingToken, setPendingToken] = useState(null);
   const isExpired = secondsLeft === 0;
 
   useEffect(() => {
@@ -150,20 +159,23 @@ function ShareFlowApp() {
   // If the user already has the app installed, try opening it directly as
   // soon as the response is sent. If the app isn't installed, this is a
   // no-op and the user just stays on the reveal screen below.
+  // Waits for the server to confirm the vote so opening the app can't
+  // background the page while the request is still in flight.
   useEffect(() => {
-    if (!isSent || !interactionResult) {
+    if (!isSent || !interactionResult || !pendingToken) {
       return;
     }
 
     const deepLink = buildDeepLink({
       shareCode,
       type: selectedType,
-      token: interactionResult.pendingToken,
+      token: pendingToken,
     });
 
     window.location.href = deepLink;
     console.info('[Web] auto app-open attempted', { deepLink });
-  }, [isSent, interactionResult, shareCode, selectedType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSent, interactionResult]);
 
   useEffect(() => {
     let cancelled = false;
@@ -211,6 +223,8 @@ function ShareFlowApp() {
     }
 
     const now = Date.now();
+    const token = generatePendingToken();
+    setPendingToken(token);
     setSubmittingType(type);
     setSelectedType(type);
     setSubmitError('');
@@ -228,11 +242,14 @@ function ShareFlowApp() {
       const response = await fetch(`${apiBaseUrl}/anonymous-response`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // The voter may tap Reveal and leave for the app before this finishes.
+        keepalive: true,
         body: JSON.stringify({
           shareCode,
           type,
           timestamp: now,
           sessionId,
+          pendingToken: token,
           source: 'web_local',
         }),
       });
@@ -241,6 +258,7 @@ function ShareFlowApp() {
       }
       const data = await response.json();
       setInteractionResult(data);
+      if (data.pendingToken) setPendingToken(data.pendingToken);
       markAsVoted(shareCode);
       if (data.expiresAt) {
         const expires = new Date(data.expiresAt);
@@ -252,6 +270,7 @@ function ShareFlowApp() {
     } catch {
       setIsSent(false);
       setExpiresAt(null);
+      setPendingToken(null);
       setSubmitError('Could not submit response. Please try again.');
     } finally {
       setSubmittingType('');
@@ -291,7 +310,7 @@ function ShareFlowApp() {
             profileName={profileName}
             profileImage={profileImage}
             isMatch={interactionResult?.isMatch ?? interactionResult?.matched}
-            pendingToken={interactionResult?.pendingToken}
+            pendingToken={pendingToken}
             shareCode={shareCode}
             selectedType={selectedType}
           />
@@ -1146,7 +1165,6 @@ function RevealScreen({
   selectedType,
 }) {
   const [copyStatus, setCopyStatus] = useState('');
-  const [revealQueued, setRevealQueued] = useState(false);
   // Display-only countdown: show 30s even though the real TTL (VITE_PENDING_TTL_SECONDS)
   // is longer. When the displayed countdown hits 0 the screen behaves as expired.
   const displaySeconds = Math.max(secondsLeft - (pendingTtlSeconds - displayTtlSeconds), 0);
@@ -1180,12 +1198,7 @@ function RevealScreen({
   };
 
   const handleReveal = async () => {
-    if (!pendingToken) {
-      // The "Sent!" screen shows before the server responds; if tapped early,
-      // wait for the token and continue in the effect below.
-      setRevealQueued(true);
-      return;
-    }
+    if (!pendingToken && !shareCode) return;
 
     if (pendingToken) {
       // Fire-and-forget: waiting for this round trip delayed opening the app.
@@ -1224,13 +1237,6 @@ function RevealScreen({
       }
     }, 2500);
   };
-
-  useEffect(() => {
-    if (!revealQueued || !pendingToken) return;
-    setRevealQueued(false);
-    if (!isExpired) handleReveal();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revealQueued, pendingToken]);
 
   return (
     <div className="w-full">
@@ -1274,11 +1280,11 @@ function RevealScreen({
 
       <button
         onClick={handleReveal}
-        disabled={isExpired || revealQueued}
+        disabled={isExpired}
         className="reveal-button mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] bg-white px-8 text-[20px] font-black text-[#c000df] shadow-[0_7px_0_rgba(0,0,0,0.10)] transition active:translate-y-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:active:translate-y-0"
       >
-        <span className="flex-1">{isExpired ? 'Link Expired' : revealQueued ? 'Opening...' : 'Reveal'}</span>
-        {!isExpired && !revealQueued && <span className="text-[27px] font-light">{"->"}</span>}
+        <span className="flex-1">{isExpired ? 'Link Expired' : 'Reveal'}</span>
+        {!isExpired && <span className="text-[27px] font-light">{"->"}</span>}
       </button>
 
       {/* <button

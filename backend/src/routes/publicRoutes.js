@@ -41,6 +41,7 @@ router.post(
     body('timestamp').isNumeric(),
     body('sessionId').optional({ values: 'falsy' }).trim(),
     body('source').optional({ values: 'falsy' }).trim(),
+    body('pendingToken').optional({ values: 'falsy' }).matches(/^[a-f0-9]{32}$/),
   ],
   validateRequest,
   publicController.createAnonymousResponse
