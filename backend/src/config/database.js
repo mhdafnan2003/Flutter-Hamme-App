@@ -6,6 +6,20 @@ const Interaction = require('../models/Interaction');
 
 let connectionPromise = null;
 
+async function migrateInteractionIndexes() {
+  // Remove only the former permanent uniqueness lock. Avoid syncIndexes()
+  // here because it can also remove operational indexes created outside
+  // Mongoose. The replacement query index is declared on the model.
+  try {
+    await Interaction.collection.dropIndex('fromUser_1_toUser_1_type_1');
+  } catch (error) {
+    if (error?.codeName !== 'IndexNotFound' && error?.code !== 27) {
+      throw error;
+    }
+  }
+  await Interaction.createIndexes();
+}
+
 async function connectDatabase() {
   if (mongoose.connection.readyState === 1) {
     return mongoose.connection;
@@ -18,19 +32,13 @@ async function connectDatabase() {
 
   connectionPromise = mongoose
     .connect(env.mongoUri)
-    .then(async () => {
-      // Remove only the former permanent uniqueness lock. Avoid syncIndexes()
-      // here because it can also remove operational indexes created outside
-      // Mongoose. The replacement query index is declared on the model.
-      try {
-        await Interaction.collection.dropIndex('fromUser_1_toUser_1_type_1');
-      } catch (error) {
-        if (error?.codeName !== 'IndexNotFound' && error?.code !== 27) {
-          throw error;
-        }
-      }
-      await Interaction.createIndexes();
+    .then(() => {
       logger.info(`MongoDB connected to ${mongoose.connection.name}`);
+      // Index maintenance runs in the background so it doesn't add extra
+      // round trips to the first request on every serverless cold start.
+      migrateInteractionIndexes().catch((error) => {
+        logger.error(`Interaction index migration failed: ${error.message}`);
+      });
       return mongoose.connection;
     })
     .catch((error) => {

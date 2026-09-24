@@ -120,11 +120,13 @@ async function getPublicProfile(identifier) {  const rawValue = (identifier || '
     throw new ApiError(404, 'Profile not found.');
   }
 
-  const user = await User.findOne({ shareCode: { $in: [rawValue, normalizedValue] } });
+  // Only load the fields the public page shows, not the whole user document.
+  const user = await User.findOne({ shareCode: { $in: [rawValue, normalizedValue] } })
+    .select('name username instagramId profileImageUrl shareCode');
   if (user) {
     if (!user.profileImageUrl) {
       user.profileImageUrl = buildDefaultAvatarUrl(user.name);
-      await user.save();
+      await User.updateOne({ _id: user._id }, { $set: { profileImageUrl: user.profileImageUrl } });
     }
     return { user, matchedBy: 'shareCode' };
   }

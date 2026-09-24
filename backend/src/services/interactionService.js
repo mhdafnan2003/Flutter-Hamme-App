@@ -351,10 +351,12 @@ async function createAnonymousResponse({
     throw new ApiError(400, 'This link has expired.');
   }
 
+  // shareCode is uniquely indexed; username has no index, so looking it up
+  // first scanned the whole users collection on every web vote. Try the
+  // indexed field first and only fall back to username when it misses.
   const targetUser =
-    (await User.findOne({ username: normalized })) ||
-    (await User.findOne({ shareCode: normalized })) ||
-    (await User.findOne({ shareCode: rawIdentifier }));
+    (await User.findOne({ shareCode: { $in: [normalized, rawIdentifier] } })) ||
+    (await User.findOne({ username: normalized }));
   if (!targetUser) {
     throw new ApiError(404, 'Target profile not found.');
   }
@@ -372,18 +374,19 @@ async function createAnonymousResponse({
     }
   }
 
-  const pending = await createPendingInteraction({
-    targetUserId: targetUser.id,
-    type: normalizedType,
-    source,
-    sessionId,
-    shareCode: targetUser.shareCode,
-  });
-
-  let fromUser = null;
-  if (fromUserId) {
-    fromUser = await User.findById(fromUserId).select('username name profileImageUrl');
-  }
+  const [pending, fromUser] = await Promise.all([
+    createPendingInteraction({
+      targetUserId: targetUser.id,
+      type: normalizedType,
+      source,
+      sessionId,
+      shareCode: targetUser.shareCode,
+      targetUser,
+    }),
+    fromUserId
+      ? User.findById(fromUserId).select('username name profileImageUrl')
+      : Promise.resolve(null),
+  ]);
 
   // Create an Interaction record so the play card shows and the poll counts.
   // It stays hidden from the creator's Play queue (see getReceivedInteractions)
@@ -713,9 +716,11 @@ async function createPendingInteraction({
   source = 'web',
   sessionId = null,
   shareCode = null,
+  targetUser: resolvedTargetUser = null,
 }) {
   const normalizedType = normalizeType(type);
-  const targetUser = await User.findById(targetUserId);
+  // Callers that already loaded the user pass it in to skip a round trip.
+  const targetUser = resolvedTargetUser || (await User.findById(targetUserId));
   if (!targetUser) {
     throw new ApiError(404, 'Target profile not found.');
   }

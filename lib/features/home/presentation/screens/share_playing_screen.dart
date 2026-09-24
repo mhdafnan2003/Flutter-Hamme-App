@@ -245,7 +245,7 @@ class StoryExportWidget extends StatelessWidget {
       height: 1920,
       color: const Color(0xFF9F6FFF), // Solid purple
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           const SizedBox(height: 120), // Top Safe Zone
           // Profile Image
@@ -337,7 +337,8 @@ class StoryExportWidget extends StatelessWidget {
             height: 460,
             fit: BoxFit.contain,
           ),
-          const SizedBox(height: 150),
+          // Flexible gap so the content always fits the 1920px canvas.
+          const Spacer(),
           // Footer
           Image.asset(TImages.hammeLogo, height: 90),
           const SizedBox(height: 10),

@@ -88,11 +88,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                 await _storyChannel.invokeMethod<bool>('isSnapchatInstalled') ??
                 false;
             if (isInstalled) {
-              await _storyChannel.invokeMethod('shareToSnapchatStory', {
-                'imagePath': tempPath,
-                'attributionUrl': shareLink,
-              });
-              return;
+              final launchResult = await _storyChannel.invokeMethod<String>(
+                'shareToSnapchatStory',
+                {'imagePath': tempPath, 'attributionUrl': shareLink},
+              );
+              if (launchResult == 'SUCCESS') return;
             }
           }
           // iOS or fallback — use system share sheet (Snapchat will offer Story option)

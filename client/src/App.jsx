@@ -8,6 +8,7 @@ const votedCodesKey = 'hamme_voted_codes';
 const voteCooldownMs = 24 * 60 * 60 * 1000;
 const pendingTtlSeconds = Math.max(30, Number(import.meta.env.VITE_PENDING_TTL_SECONDS) || 180);
 const pendingTtlMs = pendingTtlSeconds * 1000;
+const displayTtlSeconds = Math.min(30, pendingTtlSeconds);
 const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
 const isPrivacyPolicyRoute = currentPath === '/privacy-policy';
 const isTermsOfServiceRoute = currentPath === '/terms-of-service' || currentPath === '/terms';
@@ -53,6 +54,39 @@ function readShareCodeFromPath() {
   }
   return null;
 }
+
+// Profile photos are stored at original camera resolution (often several MB).
+// Ask Cloudinary for a small, auto-format/quality version sized for the avatar.
+function optimizeProfileImage(url) {
+  if (!url || !url.includes('res.cloudinary.com') || !url.includes('/upload/')) {
+    return url;
+  }
+  return url.replace('/upload/', '/upload/c_fill,g_face,w_240,h_240,f_auto,q_auto/');
+}
+
+// Start fetching the profile as soon as the bundle runs instead of waiting for
+// React to mount and run effects.
+const initialShareCode = readShareCodeFromPath();
+const profileRequest =
+  initialShareCode && !isPrivacyPolicyRoute && !isTermsOfServiceRoute && !isSupportRoute
+    ? fetch(`${apiBaseUrl}/public-profile/${encodeURIComponent(initialShareCode)}`, {
+        // Don't leave visitors on "Loading profile..." forever if the API stalls.
+        signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(15000) : undefined,
+      }).then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        const imageUrl = optimizeProfileImage(data.user?.profileImageUrl);
+        if (imageUrl) {
+          // Warm the image cache while React renders.
+          new Image().src = imageUrl;
+        }
+        return data;
+      })
+    : null;
+// Avoid an unhandled-rejection warning before the component attaches its handler.
+profileRequest?.catch(() => {});
 
 function generateSessionId() {
   if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -103,9 +137,11 @@ function ShareFlowApp() {
       return undefined;
     }
 
+    const expiresAtMs = new Date(expiresAt).getTime();
     const timer = setInterval(() => {
-      const remainingMs = new Date(expiresAt).getTime() - Date.now();
-      setSecondsLeft(Math.max(Math.ceil(remainingMs / 1000), 0));
+      const remaining = Math.max(Math.ceil((expiresAtMs - Date.now()) / 1000), 0);
+      setSecondsLeft(remaining);
+      if (remaining === 0) clearInterval(timer);
     }, 1000);
 
     return () => clearInterval(timer);
@@ -130,24 +166,18 @@ function ShareFlowApp() {
   }, [isSent, interactionResult, shareCode, selectedType]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
 
     async function loadProfile() {
-      if (!shareCode) {
+      if (!shareCode || !profileRequest) {
         setProfileError('Invalid share link.');
         setLoadingProfile(false);
         return;
       }
 
       try {
-        const response = await fetch(
-          `${apiBaseUrl}/public-profile/${encodeURIComponent(shareCode)}`,
-          { signal: controller.signal },
-        );
-        if (!response.ok) {
-          throw new Error(`Failed with status ${response.status}`);
-        }
-        const data = await response.json();
+        const data = await profileRequest;
+        if (cancelled) return;
         setProfile(data.user ?? null);
         if (data.expiresAt) {
           const expires = new Date(data.expiresAt);
@@ -161,29 +191,35 @@ function ShareFlowApp() {
         }
         setProfileError('');
         console.info('[Web] link opened', { shareCode });
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          setProfileError('Profile not found.');
-        }
+      } catch {
+        if (!cancelled) setProfileError('Profile not found.');
       } finally {
-        setLoadingProfile(false);
+        if (!cancelled) setLoadingProfile(false);
       }
     }
 
     loadProfile();
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+    };
   }, [shareCode]);
 
   const handleAnswer = async (type) => {
+    if (!shareCode) {
+      setSubmitError('Could not submit response. Please try again.');
+      return;
+    }
+
+    const now = Date.now();
     setSubmittingType(type);
     setSelectedType(type);
     setSubmitError('');
+    // Show the "Sent!" screen immediately; the server's token and expiry fill
+    // in when the request finishes, and we roll back if it fails.
+    setIsSent(true);
+    setExpiresAt(new Date(now + pendingTtlMs).toISOString());
+    setSecondsLeft(pendingTtlSeconds);
     try {
-      if (!shareCode) {
-        throw new Error('Missing share code');
-      }
-
-      const now = Date.now();
       const sessionId =
         window.localStorage.getItem(sessionStorageKey) ??
         generateSessionId();
@@ -205,20 +241,17 @@ function ShareFlowApp() {
       }
       const data = await response.json();
       setInteractionResult(data);
-      setIsSent(true);
       markAsVoted(shareCode);
       if (data.expiresAt) {
         const expires = new Date(data.expiresAt);
         setExpiresAt(expires.toISOString());
         const remainingMs = expires.getTime() - Date.now();
         setSecondsLeft(Math.max(Math.ceil(remainingMs / 1000), 0));
-      } else {
-        const fallbackExpires = new Date(now + pendingTtlMs);
-        setExpiresAt(fallbackExpires.toISOString());
-        setSecondsLeft(pendingTtlSeconds);
       }
       console.info('[Web] option selected', { shareCode, type });
     } catch {
+      setIsSent(false);
+      setExpiresAt(null);
       setSubmitError('Could not submit response. Please try again.');
     } finally {
       setSubmittingType('');
@@ -246,7 +279,7 @@ function ShareFlowApp() {
   }
 
   const profileName = profile.name ?? 'User';
-  const profileImage = profile.profileImageUrl || fallbackProfileImage;
+  const profileImage = optimizeProfileImage(profile.profileImageUrl) || fallbackProfileImage;
 
   return (
     <main className="min-h-[100dvh] overflow-hidden bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
@@ -1104,7 +1137,7 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
 
 function RevealScreen({
   secondsLeft,
-  isExpired,
+  isExpired: isLinkExpired,
   profileName,
   profileImage,
   isMatch,
@@ -1113,6 +1146,11 @@ function RevealScreen({
   selectedType,
 }) {
   const [copyStatus, setCopyStatus] = useState('');
+  const [revealQueued, setRevealQueued] = useState(false);
+  // Display-only countdown: show 30s even though the real TTL (VITE_PENDING_TTL_SECONDS)
+  // is longer. When the displayed countdown hits 0 the screen behaves as expired.
+  const displaySeconds = Math.max(secondsLeft - (pendingTtlSeconds - displayTtlSeconds), 0);
+  const isExpired = isLinkExpired || displaySeconds === 0;
 
   const buildFlutterWebFallbackUrl = () => {
     if (!flutterWebBaseUrl) {
@@ -1142,13 +1180,20 @@ function RevealScreen({
   };
 
   const handleReveal = async () => {
-    if (!pendingToken && !shareCode) return;
+    if (!pendingToken) {
+      // The "Sent!" screen shows before the server responds; if tapped early,
+      // wait for the token and continue in the effect below.
+      setRevealQueued(true);
+      return;
+    }
 
     if (pendingToken) {
-      try {
-        await fetch(`${apiBaseUrl}/interactions/pending/${pendingToken}/touch`, { method: 'POST' });
-      } catch {
-      }
+      // Fire-and-forget: waiting for this round trip delayed opening the app.
+      // keepalive lets the request finish even as the page navigates away.
+      fetch(`${apiBaseUrl}/interactions/pending/${pendingToken}/touch`, {
+        method: 'POST',
+        keepalive: true,
+      }).catch(() => {});
     }
 
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -1180,6 +1225,13 @@ function RevealScreen({
     }, 2500);
   };
 
+  useEffect(() => {
+    if (!revealQueued || !pendingToken) return;
+    setRevealQueued(false);
+    if (!isExpired) handleReveal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealQueued, pendingToken]);
+
   return (
     <div className="w-full">
       <div className="mx-auto flex h-[25px] w-[96px] items-center justify-center rounded-full border border-white/80 bg-white/10 text-[18px] font-extrabold">
@@ -1210,23 +1262,23 @@ function RevealScreen({
       <div className="mt-[51px] px-4">
         <div className="mb-[6px] flex items-center justify-between text-[11px] font-black text-white/65">
           <span>{isExpired ? 'LINK EXPIRED' : 'LINK EXPIRES IN'}</span>
-          <span className={secondsLeft <= 20 ? 'text-[#ff4545]' : 'text-white'}>{String(secondsLeft).padStart(2, '0')}s</span>
+          <span className={displaySeconds <= 20 ? 'text-[#ff4545]' : 'text-white'}>{String(displaySeconds).padStart(2, '0')}s</span>
         </div>
         <div className="h-[3px] overflow-hidden rounded-full bg-white/35">
           <div
-            className={`h-full rounded-full ${secondsLeft <= 20 ? 'bg-[#ff4545]' : 'bg-white'}`}
-            style={{ width: `${(secondsLeft / pendingTtlSeconds) * 100}%` }}
+            className={`h-full rounded-full ${displaySeconds <= 20 ? 'bg-[#ff4545]' : 'bg-white'}`}
+            style={{ width: `${(displaySeconds / displayTtlSeconds) * 100}%` }}
           />
         </div>
       </div>
 
       <button
         onClick={handleReveal}
-        disabled={isExpired}
+        disabled={isExpired || revealQueued}
         className="reveal-button mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] bg-white px-8 text-[20px] font-black text-[#c000df] shadow-[0_7px_0_rgba(0,0,0,0.10)] transition active:translate-y-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:active:translate-y-0"
       >
-        <span className="flex-1">{isExpired ? 'Link Expired' : 'Reveal'}</span>
-        {!isExpired && <span className="text-[27px] font-light">{"->"}</span>}
+        <span className="flex-1">{isExpired ? 'Link Expired' : revealQueued ? 'Opening...' : 'Reveal'}</span>
+        {!isExpired && !revealQueued && <span className="text-[27px] font-light">{"->"}</span>}
       </button>
 
       {/* <button

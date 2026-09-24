@@ -24,18 +24,16 @@ class MatchReplyScreen extends StatelessWidget {
 
   bool get _isAnonymous => match.anonymous;
 
+  // Prefer the matched user's Instagram; fall back to Snapchat when that is
+  // the only handle they added.
   bool get _isSnapchat {
     final user = match.matchedUser;
-    return _handle.toLowerCase().contains('snap') ||
-        user.email.toLowerCase().contains('snap') ||
-        user.name.toLowerCase().contains('snap') ||
-        user.id.toLowerCase().contains('snap');
+    return user.instagramId.trim().isEmpty && user.snapchatId.trim().isNotEmpty;
   }
 
   String get _handle {
     final user = match.matchedUser;
-    final value =
-        user.instagramId.trim().isNotEmpty ? user.instagramId : user.shareCode;
+    final value = _isSnapchat ? user.snapchatId : user.instagramId;
     return value.replaceAll('@', '').trim();
   }
 

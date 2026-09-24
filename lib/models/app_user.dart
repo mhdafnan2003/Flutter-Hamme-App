@@ -10,6 +10,7 @@ abstract class AppUser with _$AppUser {
     required String name,
     required String email,
     required String instagramId,
+    @Default('') String snapchatId,
     String? avatarUrl,
     required String shareCode,
     @Default(false) bool isPro,

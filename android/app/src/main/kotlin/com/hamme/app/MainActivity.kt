@@ -41,7 +41,7 @@ class MainActivity : FlutterActivity() {
                         result.error("INVALID_PATH", "imagePath is required", null)
                         return@setMethodCallHandler
                     }
-                    shareToSocialStory(path, link, "com.snapchat.android", "com.snapchat.android.intent.action.ADD_STORY_CONTENT", "attachmentUrl", result)
+                    shareToSnapchat(path, link, result)
                 }
                 "isInstagramInstalled" -> {
                     result.success(isPackageInstalled("com.instagram.android"))
@@ -60,6 +60,45 @@ class MainActivity : FlutterActivity() {
             true
         } catch (_: Exception) {
             false
+        }
+    }
+
+    // Snapchat has no public "add to story" intent (that requires the Snap Kit
+    // Creative Kit SDK). A targeted ACTION_SEND opens Snapchat's preview with the
+    // image loaded, where the user can post it to My Story.
+    private fun shareToSnapchat(imagePath: String, attributionUrl: String?, result: MethodChannel.Result) {
+        val packageName = "com.snapchat.android"
+        try {
+            val imageFile = File(imagePath)
+            if (!imageFile.exists()) {
+                result.error("FILE_NOT_FOUND", "PNG file does not exist at path: $imagePath", null)
+                return
+            }
+
+            val authority = "${applicationContext.packageName}.fileprovider"
+            val contentUri: Uri = FileProvider.getUriForFile(applicationContext, authority, imageFile)
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, contentUri)
+                if (!attributionUrl.isNullOrBlank()) {
+                    putExtra(Intent.EXTRA_TEXT, attributionUrl)
+                }
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                setPackage(packageName)
+            }
+
+            if (intent.resolveActivity(packageManager) == null) {
+                result.success("${packageName.uppercase()}_INTENT_NOT_RESOLVED")
+                return
+            }
+
+            grantUriPermission(packageName, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(intent)
+            result.success("SUCCESS")
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception while launching Snapchat share", e)
+            result.error("LAUNCH_FAILED", e.message, e.stackTraceToString())
         }
     }
 

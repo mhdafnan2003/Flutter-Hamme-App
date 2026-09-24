@@ -41,12 +41,15 @@ body {
   position: absolute;
   z-index: 0;
   top: -50%;
-  left: -35%;
+  left: 0;
   width: 24%;
   height: 200%;
   content: "";
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.86), transparent);
-  transform: skewX(-22deg);
+  /* Animate transform (GPU-composited) instead of `left`, which forced a
+     layout + repaint on every frame and janked low-end phones. */
+  transform: translateX(-146%) skewX(-22deg);
+  will-change: transform;
   animation: reveal-button-glaze 2.7s ease-in-out infinite;
   pointer-events: none;
 }
@@ -61,12 +64,14 @@ body {
 }
 
 @keyframes reveal-button-glaze {
+  /* translateX % is relative to the pseudo-element's own width (24% of the
+     button), so -146% ≈ left:-35% and 467% ≈ left:112%. */
   0%, 22% {
-    left: -35%;
+    transform: translateX(-146%) skewX(-22deg);
   }
 
   62%, 100% {
-    left: 112%;
+    transform: translateX(467%) skewX(-22deg);
   }
 }
 
