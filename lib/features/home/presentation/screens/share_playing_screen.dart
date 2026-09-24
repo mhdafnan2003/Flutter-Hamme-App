@@ -176,6 +176,18 @@ Future<Uint8List> _captureStoryFromHiddenOverlay(
         ),
   );
 
+  // Download the profile photo first so it is not blank in the capture.
+  final profileImageUrl = draft.profileImageUrl;
+  if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+    try {
+      await precacheImage(
+        NetworkImage(profileImageUrl),
+        context,
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+  if (!context.mounted) throw StateError('Share context is no longer mounted.');
+
   Overlay.of(context, rootOverlay: true).insert(entry);
   try {
     await Future.delayed(const Duration(milliseconds: 500));
@@ -234,126 +246,191 @@ class StoryExportWidget extends StatelessWidget {
   final OnboardingDraft draft;
   const StoryExportWidget({super.key, required this.draft});
 
+  static const double _avatarSize = 270;
+  static const double _contentWidth = 750;
+
   @override
   Widget build(BuildContext context) {
     final profileImageUrl = draft.profileImageUrl;
     final hasProfileImage =
         profileImageUrl != null && profileImageUrl.isNotEmpty;
 
-    return Container(
-      width: 1080,
-      height: 1920,
-      color: const Color(0xFF9F6FFF), // Solid purple
-      child: Column(
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          const SizedBox(height: 120), // Top Safe Zone
-          // Profile Image
-          Container(
-            width: 250,
-            height: 250,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
+    const avatarFallback = ColoredBox(
+      color: Color(0xFFB99BFF),
+      child: Center(
+        child: Icon(
+          CupertinoIcons.person_solid,
+          size: 130,
+          color: Colors.white,
+        ),
+      ),
+    );
+
+    // The story is captured in an overlay with no Material ancestor, so give
+    // it a text style; otherwise Flutter's yellow debug underline shows.
+    return DefaultTextStyle(
+      style: const TextStyle(decoration: TextDecoration.none),
+      child: Container(
+        width: 1080,
+        height: 1920,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFA47CFF), Color(0xFF7B3FF2)],
+          ),
+        ),
+        child: Column(
+          children: [
+            const Spacer(),
+            // The card covers the bottom of the avatar's white ring, so the
+            // two white shapes join into one.
+            SizedBox(
+              width: _contentWidth,
+              height: _avatarSize + 96 - 12,
+              child: Stack(
+                alignment: Alignment.topCenter,
+                children: [
+                  // Shadows first, so neither white shape casts onto the other
+                  // and the ring and card read as one joined shape.
+                  Container(
+                    width: _avatarSize,
+                    height: _avatarSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 96,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: _avatarSize,
+                    height: _avatarSize,
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                    child: ClipOval(
+                      child:
+                          hasProfileImage
+                              ? Image.network(
+                                profileImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => avatarFallback,
+                              )
+                              : avatarFallback,
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 96,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: const Text(
+                        'What do you think of me?',
+                        style: TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 48,
+                          color: Colors.black,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Anonymous Text
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const EmojiImage(emoji: '\u{1F648}', size: 34),
+                const SizedBox(width: 10),
+                Text(
+                  'send anonymously',
+                  style: TextStyle(
+                    fontFamily: TFonts.nunito,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 34,
+                    color: Colors.white.withValues(alpha: 0.85),
+                    decoration: TextDecoration.none,
+                  ),
                 ),
               ],
             ),
-            child:
-                hasProfileImage
-                    ? ClipOval(
-                      child: Image.network(profileImageUrl, fit: BoxFit.cover),
-                    )
-                    : const Icon(
-                      CupertinoIcons.person_solid,
-                      size: 120,
-                      color: Colors.white,
-                    ),
-          ),
-          const SizedBox(height: 40),
-          // Question Pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(100),
+            const SizedBox(height: 28),
+            // Buttons
+            const _StoryButton(
+              text: 'Friend',
+              emoji: '\u{1F91D}',
+              colors: [Color(0xFF14D5F5), Color(0xFF3A63FF)],
             ),
-            child: const Text(
-              'What do you think of me?',
+            const SizedBox(height: 24),
+            const _StoryButton(
+              text: 'Crush',
+              emoji: '\u{1F60D}',
+              colors: [Color(0xFFD74CDB), Color(0xFFFF3190)],
+            ),
+            const SizedBox(height: 24),
+            const _StoryButton(
+              text: 'Frenemy',
+              emoji: '\u{1F608}',
+              colors: [Color(0xFFB6A8EA), Color(0xFF595A96)],
+            ),
+            const SizedBox(height: 80),
+            Image.asset(
+              'assets/images/placelink.png',
+              width: 410,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 70),
+            // Footer
+            Image.asset(TImages.hammeLogo, height: 95),
+            const SizedBox(height: 10),
+            Text(
+              'play games & meet people',
               style: TextStyle(
                 fontFamily: TFonts.nunito,
-                fontWeight: FontWeight.w900,
-                fontSize: 42,
-                color: Colors.black,
+                fontWeight: FontWeight.w700,
+                fontSize: 30,
+                color: Colors.white.withValues(alpha: 0.85),
                 decoration: TextDecoration.none,
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          // Anonymous Text
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              EmojiImage(emoji: '🙈', size: 32),
-              const SizedBox(width: 8),
-              const Text(
-                'send anonymously',
-                style: TextStyle(
-                  fontFamily: TFonts.nunito,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 32,
-                  color: Colors.white70,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 50),
-          // Buttons
-          _StoryButton(
-            text: 'Friend',
-            emoji: '\u{1F91D}',
-            colors: [Color(0xFF14D5F5), Color(0xFF0067FF)],
-          ),
-          const SizedBox(height: 25),
-          _StoryButton(
-            text: 'Crush',
-            emoji: '\u{1F60D}',
-            colors: [Color(0xFFD74CDB), Color(0xFFFF3190)],
-          ),
-          const SizedBox(height: 25),
-          _StoryButton(
-            text: 'Frenemy',
-            emoji: '\u{1F608}',
-            colors: [Color(0xFFB6A8EA), Color(0xFF595A96)],
-          ),
-          const SizedBox(height: 60),
-          Image.asset(
-            'assets/images/placelink.png',
-            height: 460,
-            fit: BoxFit.contain,
-          ),
-          // Flexible gap so the content always fits the 1920px canvas.
-          const Spacer(),
-          // Footer
-          Image.asset(TImages.hammeLogo, height: 90),
-          const SizedBox(height: 10),
-          const Text(
-            'play games & meet people',
-            style: TextStyle(
-              fontFamily: TFonts.nunito,
-              fontWeight: FontWeight.w800,
-              fontSize: 32,
-              color: Colors.white,
-              decoration: TextDecoration.none,
-            ),
-          ),
-          const SizedBox(height: 130), // Bottom Safe Zone
-        ],
+            const Spacer(),
+          ],
+        ),
       ),
     );
   }
@@ -374,28 +451,29 @@ class _StoryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 700,
-      height: 120,
+      height: 128,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: colors),
-        borderRadius: BorderRadius.circular(50),
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            emoji,
-            style: const TextStyle(
-              fontSize: 42,
-              decoration: TextDecoration.none,
-            ),
-          ),
-          const SizedBox(width: 15),
+          EmojiImage(emoji: emoji, size: 46),
+          const SizedBox(width: 6),
           Text(
             text,
             style: const TextStyle(
               fontFamily: TFonts.nunito,
               fontWeight: FontWeight.w900,
-              fontSize: 42,
+              fontSize: 46,
               color: Colors.white,
               decoration: TextDecoration.none,
             ),
