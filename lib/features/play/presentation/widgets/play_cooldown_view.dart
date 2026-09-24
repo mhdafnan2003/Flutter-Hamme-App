@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/models/play_limit_status.dart';
@@ -227,11 +229,18 @@ class _CountdownCard extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Image.asset(
-                    'assets/images/Rectangle 126.png',
-                    width: _avatarSize,
-                    height: _avatarSize,
-                    fit: BoxFit.contain,
+                  // Same blurred placeholder shown for anonymous play cards.
+                  ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                    child: const CircleAvatar(
+                      radius: _avatarSize / 2,
+                      backgroundColor: Color(0xFFD7D7D7),
+                      child: Icon(
+                        CupertinoIcons.person_fill,
+                        color: Color(0xFFAAAAAA),
+                        size: 58,
+                      ),
+                    ),
                   ),
                   Image.asset(
                     'assets/images/lock.png',
