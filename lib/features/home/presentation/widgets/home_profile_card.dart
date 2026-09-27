@@ -11,6 +11,7 @@ import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class HomeProfileCard extends ConsumerStatefulWidget {
   const HomeProfileCard({super.key});
@@ -46,10 +47,10 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
 
     if (!_allowedExtensions.contains(extension)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please upload a JPG, JPEG, PNG, or WEBP image.'),
-        ),
+      AppSnackBar.show(
+        context,
+        'Please upload a JPG, JPEG, PNG, or WEBP image.',
+        type: AppSnackBarType.error,
       );
       return;
     }
@@ -57,8 +58,10 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
     final bytes = await pickedFile.readAsBytes();
     if (bytes.length > _maxImageBytes) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Image size must be less than 10 MB.')),
+      AppSnackBar.show(
+        context,
+        'Image size must be less than 10 MB.',
+        type: AppSnackBarType.error,
       );
       return;
     }
@@ -78,13 +81,17 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
           .read(onboardingDraftProvider.notifier)
           .setProfileImageUrl(imageUrl);
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppSnackBar.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Profile photo updated!')));
+        'Profile photo updated!',
+        type: AppSnackBarType.success,
+      );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Upload failed. Please try again.')),
+      AppSnackBar.show(
+        context,
+        'Upload failed. Please try again.',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) {

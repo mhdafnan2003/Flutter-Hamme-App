@@ -9,6 +9,7 @@ import '../../../../utils/constants/colors.dart';
 import '../../../../utils/constants/fonts.dart';
 import '../../../../utils/constants/image_strings.dart';
 import '../../../settings/presentation/widgets/delete_account_dialog.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 /// Blocking gate for signed-in users who haven't agreed to the current Terms
 /// of Use and Community Guidelines (accounts created before the agreement
@@ -68,10 +69,10 @@ class _TermsAcceptanceScreenState extends ConsumerState<TermsAcceptanceScreen> {
       await ref.read(authControllerProvider.notifier).deleteAccount();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not delete your account. Please try again.'),
-          ),
+        AppSnackBar.show(
+          context,
+          'Could not delete your account. Please try again.',
+          type: AppSnackBarType.error,
         );
       }
     } finally {

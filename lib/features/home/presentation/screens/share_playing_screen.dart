@@ -16,6 +16,7 @@ import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:appinio_social_share/appinio_social_share.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class SharePlayingScreen extends ConsumerStatefulWidget {
   final bool autoShare;
@@ -90,10 +91,10 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
             'Instagram Stories is disabled: META_APP_ID is missing or invalid.',
           );
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Instagram Stories is temporarily unavailable.'),
-              ),
+            AppSnackBar.show(
+              context,
+              'Instagram Stories is temporarily unavailable.',
+              type: AppSnackBarType.error,
             );
           }
           return;

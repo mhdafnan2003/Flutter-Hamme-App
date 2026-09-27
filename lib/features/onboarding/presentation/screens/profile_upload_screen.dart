@@ -13,6 +13,7 @@ import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../core/widgets/onboarding_validation_dialog.dart';
 import '../widgets/dob_top_bar.dart';
 import '../widgets/profile_avatar_stack.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class ProfileUploadScreen extends ConsumerStatefulWidget {
   const ProfileUploadScreen({super.key});
@@ -66,11 +67,12 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
       setState(() {
         _previewBytes = bytes;
       });
-      ref.read(onboardingProfileImageProvider.notifier).state =
-          OnboardingProfileImage(
-            bytes: bytes,
-            filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
-          );
+      ref
+          .read(onboardingProfileImageProvider.notifier)
+          .state = OnboardingProfileImage(
+        bytes: bytes,
+        filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
+      );
     } finally {
       _isPickingImage = false;
     }
@@ -78,9 +80,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message, type: AppSnackBarType.error);
   }
 
   @override
@@ -136,14 +136,13 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                   if ((profileImageUrl == null || profileImageUrl.isEmpty) &&
                       selectedImage == null) {
                     HapticFeedback.mediumImpact();
-                    final shouldPickImage =
-                        await showOnboardingValidationDialog(
-                          context,
-                          title: 'Add a profile photo',
-                          message:
-                              'Choose a clear photo of yourself before continuing.',
-                          actionLabel: 'Choose photo',
-                        );
+                    final shouldPickImage = await showOnboardingValidationDialog(
+                      context,
+                      title: 'Add a profile photo',
+                      message:
+                          'Choose a clear photo of yourself before continuing.',
+                      actionLabel: 'Choose photo',
+                    );
                     if (shouldPickImage && mounted) await _pickProfileImage();
                     return;
                   }

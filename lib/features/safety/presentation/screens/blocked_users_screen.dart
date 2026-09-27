@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../providers/safety_providers.dart';
 import '../../../../utils/constants/colors.dart';
 import '../../../../utils/constants/fonts.dart';
+import '../../../../utils/popups/app_snack_bar.dart';
 import '../../../settings/presentation/widgets/settings_page_scaffold.dart';
 import '../../domain/models/blocked_users.dart';
 import '../safety_error_message.dart';
@@ -127,9 +128,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.maybeOf(context)
-      ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message, type: AppSnackBarType.success);
   }
 
   Future<void> _refresh() async {

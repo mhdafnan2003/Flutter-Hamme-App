@@ -38,6 +38,7 @@ import '../widgets/match_share_export_widget.dart';
 import '../widgets/match_success_overlay.dart';
 import '../widgets/play_cooldown_view.dart';
 import '../widgets/poll_match_overlay.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class PlayScreen extends ConsumerStatefulWidget {
   const PlayScreen({super.key});
@@ -571,10 +572,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
               ref
                   .read(safetyFilterProvider.notifier)
                   .hideInteraction(effectiveItem.id);
-              messenger.showSnackBar(
-                const SnackBar(
-                  content: Text("This vote isn't available anymore."),
-                ),
+              AppSnackBar.showOn(
+                messenger,
+                "This vote isn't available anymore.",
               );
               return;
             }
@@ -592,11 +592,10 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
               }
               return;
             }
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text('Could not save response: $error'),
-                backgroundColor: TColors.error,
-              ),
+            AppSnackBar.showOn(
+              messenger,
+              'Could not save response: $error',
+              type: AppSnackBarType.error,
             );
           }),
     );
@@ -951,11 +950,10 @@ class _MatchViewState extends ConsumerState<_MatchView> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to share: $e'),
-            backgroundColor: Colors.red,
-          ),
+        AppSnackBar.show(
+          context,
+          'Failed to share: $e',
+          type: AppSnackBarType.error,
         );
       }
     } finally {

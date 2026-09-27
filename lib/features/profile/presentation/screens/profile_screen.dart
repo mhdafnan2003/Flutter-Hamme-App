@@ -14,6 +14,7 @@ import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -38,8 +39,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // The router redirects signed-out users to onboarding automatically.
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not log out. Please try again.')),
+        AppSnackBar.show(
+          context,
+          'Could not log out. Please try again.',
+          type: AppSnackBarType.error,
         );
       }
     } finally {
@@ -67,13 +70,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final extension =
           fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
       if (!_allowedExtensions.contains(extension)) {
-        _showMessage('Please upload a JPG, JPEG, PNG, or WEBP image.');
+        _showMessage(
+          'Please upload a JPG, JPEG, PNG, or WEBP image.',
+          AppSnackBarType.error,
+        );
         return;
       }
 
       final bytes = await image.readAsBytes();
       if (bytes.length > _maxImageBytes) {
-        _showMessage('Image size must be less than 10 MB.');
+        _showMessage(
+          'Image size must be less than 10 MB.',
+          AppSnackBarType.error,
+        );
         return;
       }
       if (!mounted) return;
@@ -92,19 +101,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ).updateMe(avatarUrl: imageUrl);
       await draftNotifier.setProfileImageUrl(imageUrl);
       authController.setUser(updatedUser);
-      _showMessage('Profile photo updated!');
+      _showMessage('Profile photo updated!', AppSnackBarType.success);
     } catch (_) {
-      _showMessage('Could not update your profile photo.');
+      _showMessage(
+        'Could not update your profile photo.',
+        AppSnackBarType.error,
+      );
     } finally {
       if (mounted) setState(() => _isUploadingImage = false);
     }
   }
 
-  void _showMessage(String message) {
+  void _showMessage(String message, AppSnackBarType type) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message, type: type);
   }
 
   @override

@@ -12,6 +12,7 @@ import '../../../../utils/constants/colors.dart';
 import '../../../../utils/constants/fonts.dart';
 import '../widgets/delete_account_dialog.dart';
 import '../widgets/settings_page_scaffold.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -33,10 +34,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await ref.read(authControllerProvider.notifier).deleteAccount();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not delete your account. Please try again.'),
-          ),
+        AppSnackBar.show(
+          context,
+          'Could not delete your account. Please try again.',
+          type: AppSnackBarType.error,
         );
       }
     } finally {

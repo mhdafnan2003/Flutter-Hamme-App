@@ -22,6 +22,7 @@ import 'package:hamme_app/features/shared/presentation/widgets/hamme_top_bar.dar
 import '../widgets/inbox_share_export_widget.dart';
 import '../widgets/inbox_reaction_card.dart';
 import '../widgets/inbox_votes_section.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class InboxScreen extends ConsumerStatefulWidget {
   const InboxScreen({super.key});
@@ -101,12 +102,18 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           }
           // iOS or fallback — use system share sheet (Snapchat will offer Story option)
           await SharePlus.instance.share(
-            ShareParams(files: [XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink'),
+            ShareParams(
+              files: [XFile(tempPath)],
+              text: 'Check out my reactions on Hamme! $shareLink',
+            ),
           );
         } catch (e) {
           debugPrint('Snapchat share failed: $e');
           await SharePlus.instance.share(
-            ShareParams(files: [XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink'),
+            ShareParams(
+              files: [XFile(tempPath)],
+              text: 'Check out my reactions on Hamme! $shareLink',
+            ),
           );
         }
       } else {
@@ -118,10 +125,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
             'Instagram Stories is disabled: META_APP_ID is missing or invalid.',
           );
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Instagram Stories is temporarily unavailable.'),
-              ),
+            AppSnackBar.show(
+              context,
+              'Instagram Stories is temporarily unavailable.',
+              type: AppSnackBarType.error,
             );
           }
           return;
@@ -165,13 +172,18 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
       // Final Fallback
       await SharePlus.instance.share(
-        ShareParams(files: [XFile(tempPath)], text: 'Check out my reactions on Hamme! $shareLink'),
+        ShareParams(
+          files: [XFile(tempPath)],
+          text: 'Check out my reactions on Hamme! $shareLink',
+        ),
       );
     } catch (e) {
       debugPrint('Error in _captureAndShare: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to share. Please try again.')),
+        AppSnackBar.show(
+          context,
+          'Failed to share. Please try again.',
+          type: AppSnackBarType.error,
         );
       }
     } finally {

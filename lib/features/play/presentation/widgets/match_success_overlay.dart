@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'match_share_export_widget.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class MatchThemeConfig {
   final List<Color> bgGradient;
@@ -176,11 +177,10 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
       );
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to share: $error'),
-            backgroundColor: Colors.red,
-          ),
+        AppSnackBar.show(
+          context,
+          'Failed to share: $error',
+          type: AppSnackBarType.error,
         );
       }
     } finally {

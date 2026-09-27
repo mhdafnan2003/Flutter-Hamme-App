@@ -12,6 +12,7 @@ import '../../../../core/widgets/gradient_button.dart';
 import '../../../shared/presentation/widgets/hamme_top_bar.dart';
 import '../widgets/home_profile_card.dart';
 import '../widgets/home_step_card.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -55,13 +56,11 @@ class HomeScreen extends ConsumerWidget {
                         child: GestureDetector(
                           onTap: () {
                             Clipboard.setData(ClipboardData(text: shareLink));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Link copied to clipboard!'),
-                                duration: const Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: TColors.hammePrimaryDark,
-                              ),
+                            AppSnackBar.show(
+                              context,
+                              'Link copied to clipboard!',
+                              type: AppSnackBarType.success,
+                              duration: const Duration(seconds: 2),
                             );
                           },
                           child: Container(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../utils/popups/app_snack_bar.dart';
 import '../constants/app_constants.dart';
 
 /// Opens [url] outside the app, with a snack bar when that isn't possible.
@@ -17,9 +18,11 @@ Future<void> openExternalLink(BuildContext context, String url) async {
     opened = false;
   }
   if (!opened && context.mounted) {
-    ScaffoldMessenger.of(
+    AppSnackBar.show(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Could not open this link.')));
+      'Could not open this link.',
+      type: AppSnackBarType.error,
+    );
   }
 }
 
@@ -75,9 +78,11 @@ Future<void> showSupportEmailDialog(BuildContext context) {
     }
     if (dialogContext.mounted) Navigator.of(dialogContext).pop();
     if (context.mounted) {
-      ScaffoldMessenger.of(
+      AppSnackBar.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Email address copied.')));
+        'Email address copied.',
+        type: AppSnackBarType.success,
+      );
     }
   }
 

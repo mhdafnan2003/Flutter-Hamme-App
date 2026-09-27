@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../providers/safety_providers.dart';
+import '../../../../utils/popups/app_snack_bar.dart';
 import '../../domain/models/report_result.dart';
 import '../../domain/models/safety_target.dart';
 import '../safety_error_message.dart';
@@ -75,9 +76,10 @@ Future<void> showSafetyActions(
       );
       if (outcome == _Outcome.failed) return;
       onRemoved?.call();
-      _showSnackBar(
+      AppSnackBar.showOn(
         messenger,
         outcome == _Outcome.gone ? _goneMessage(target) : 'Vote hidden.',
+        type: AppSnackBarType.success,
       );
 
     case _SafetyAction.report:
@@ -85,7 +87,7 @@ Future<void> showSafetyActions(
       if (outcome == null) return;
       onRemoved?.call();
       if (outcome.alreadyRemoved) {
-        _showSnackBar(messenger, _goneMessage(target));
+        AppSnackBar.showOn(messenger, _goneMessage(target));
       } else if (navigator.mounted) {
         await _showReportConfirmation(
           navigator.context,
@@ -103,11 +105,12 @@ Future<void> showSafetyActions(
       );
       if (outcome == _Outcome.failed) return;
       onRemoved?.call();
-      _showSnackBar(
+      AppSnackBar.showOn(
         messenger,
         outcome == _Outcome.gone
             ? _goneMessage(target)
             : 'Blocked. They can no longer vote for you.',
+        type: AppSnackBarType.success,
       );
   }
 }
@@ -226,10 +229,4 @@ Future<void> _showReportConfirmation(
           ],
         ),
   );
-}
-
-void _showSnackBar(ScaffoldMessengerState? messenger, String message) {
-  messenger
-    ?..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
 }

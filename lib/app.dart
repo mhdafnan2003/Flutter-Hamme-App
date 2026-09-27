@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'routes/app_router.dart';
+import 'utils/popups/app_snack_bar.dart';
 import 'utils/theme/theme.dart';
 import 'providers/deferred_interaction_provider.dart';
 import 'models/interaction_type.dart';
@@ -198,17 +199,12 @@ class _HammeAppState extends ConsumerState<HammeApp> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final messenger = _scaffoldMessengerKey.currentState;
         if (messenger == null) return;
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(message),
-              action: SnackBarAction(
-                label: 'OK',
-                onPressed: () => messenger.hideCurrentSnackBar(),
-              ),
-            ),
-          );
+        AppSnackBar.showOn(
+          messenger,
+          message,
+          type: AppSnackBarType.error,
+          duration: const Duration(seconds: 5),
+        );
         ref.read(deferredInteractionErrorProvider.notifier).state = null;
       });
     });

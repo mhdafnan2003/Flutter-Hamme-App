@@ -20,6 +20,7 @@ import 'package:hamme_app/utils/constants/image_strings.dart';
 import '../widgets/avatar_bubble.dart';
 import '../widgets/footer_link.dart';
 import '../widgets/pro_feature.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class ProScreen extends ConsumerStatefulWidget {
   const ProScreen({super.key, this.isOnboarding = true});
@@ -211,9 +212,11 @@ class _ProScreenState extends ConsumerState<ProScreen> {
       if (next == true && (previous != true)) {
         if (_isRestoringProfile) return;
         if (!mounted) return;
-        ScaffoldMessenger.of(
+        AppSnackBar.show(
           context,
-        ).showSnackBar(const SnackBar(content: Text('You are now Pro! 🎉')));
+          'You are now Pro! 🎉',
+          type: AppSnackBarType.success,
+        );
         if (context.canPop()) {
           context.pop();
         } else {
@@ -573,10 +576,7 @@ class _UnlimitedPlayIcon extends StatelessWidget {
       );
     }
 
-    return const Text(
-      '♾️',
-      style: TextStyle(fontSize: 32),
-    );
+    return const Text('♾️', style: TextStyle(fontSize: 32));
   }
 }
 
