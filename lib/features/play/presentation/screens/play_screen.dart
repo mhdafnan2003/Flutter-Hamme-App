@@ -87,6 +87,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   int _votesInFlight = 0;
   // Votes cast since the last limit status that already counts them.
   int _votesSinceLimitStatus = 0;
+  // The limit status the server returned with the votes of the current burst
+  // (the one that counted the most), applied once the burst is saved.
+  PlayLimitStatus? _burstLimitStatus;
 
   static const String _shownMatchIdsPreferenceKey = 'play_shown_match_ids_v1';
 
@@ -447,21 +450,57 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     _votesSinceLimitStatus++;
   }
 
-  void _onVoteFinished({required bool counted, bool limitReached = false}) {
+  void _onVoteFinished({
+    required bool counted,
+    bool limitReached = false,
+    PlayLimitStatus? serverStatus,
+  }) {
     _votesInFlight--;
     if (!counted) _votesSinceLimitStatus--;
-    // Refresh once per burst of votes, after the last one is saved, so the new
-    // status and queue include all of them. A card-limit rejection refreshes
-    // the status right away so the cooldown view shows. Pro users resolve the
-    // status locally, so this costs them no request.
+    if (serverStatus != null) {
+      _burstLimitStatus = _laterLimitStatus(_burstLimitStatus, serverStatus);
+    }
+    // Update the status once per burst of votes, after the last one is saved,
+    // so it includes all of them. Each vote's response carries the status
+    // after it was counted, so no request is needed; fetch only when a
+    // response had none. A card-limit rejection applies at once so the
+    // cooldown view shows.
     if (limitReached || _votesInFlight == 0) {
-      _refresh(playLimitStatusProvider, minGap: Duration.zero);
+      final status = _burstLimitStatus;
+      if (status != null) {
+        ref.read(playLimitStatusProvider.notifier).apply(status);
+      } else {
+        _refresh(playLimitStatusProvider, minGap: Duration.zero);
+      }
     }
     if (_votesInFlight > 0) return;
+    _burstLimitStatus = null;
     _postVoteRefreshTimer?.cancel();
     _postVoteRefreshTimer = Timer(const Duration(seconds: 2), () {
       if (_votesInFlight == 0) _refreshQueue(minGap: Duration.zero);
     });
+  }
+
+  /// Of two statuses returned during one burst, the one that counted more
+  /// votes. Responses can arrive in a different order than the server
+  /// counted them.
+  static PlayLimitStatus _laterLimitStatus(
+    PlayLimitStatus? current,
+    PlayLimitStatus next,
+  ) {
+    if (current == null) return next;
+    if (current.limited != next.limited) return next.limited ? next : current;
+    final currentLeft = current.viewsLeft;
+    final nextLeft = next.viewsLeft;
+    if (currentLeft == null || nextLeft == null) return next;
+    return nextLeft < currentLeft ? next : current;
+  }
+
+  /// The status in a 429 card-limit error's details, if the server sent one.
+  static PlayLimitStatus? _limitStatusIn(Object error) {
+    final details = error is AppException ? error.details : null;
+    final json = details is Map ? details['cardLimitStatus'] : null;
+    return json is Map<String, dynamic> ? PlayLimitStatus.fromJson(json) : null;
   }
 
   void _onCooldownEnd() {
@@ -496,13 +535,16 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
             );
     unawaited(
       request
-          .then((serverResult) {
+          .then((response) {
             if (!mounted) return;
-            _onVoteFinished(counted: true);
+            _onVoteFinished(
+              counted: true,
+              serverStatus: response.cardLimitStatus,
+            );
             _reconcileServerResult(
               effectiveItem: effectiveItem,
               localResult: localResult,
-              serverResult: serverResult,
+              serverResult: response.result,
             );
           })
           .catchError((Object error) {
@@ -519,7 +561,11 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                 error.code == AppErrorCodes.voteBlocked;
             final limitReached =
                 !alreadyAnswered && !voteBlocked && _isLimitError(error);
-            _onVoteFinished(counted: false, limitReached: limitReached);
+            _onVoteFinished(
+              counted: false,
+              limitReached: limitReached,
+              serverStatus: limitReached ? _limitStatusIn(error) : null,
+            );
             if (alreadyAnswered) return;
             if (voteBlocked) {
               ref

@@ -2,6 +2,7 @@ import '../../../../models/interaction_result.dart';
 import '../../../../models/interaction_record.dart';
 import '../../../../models/interaction_type.dart';
 import '../../../../models/match_record.dart';
+import '../../../../models/vote_response.dart';
 
 /// Voting and the vote/match feeds. Reporting, hiding and blocking live in
 /// `SafetyRepository` (lib/features/safety).
@@ -11,7 +12,8 @@ abstract interface class InteractionRepository {
     required InteractionType type,
   });
 
-  Future<InteractionResult> respondToInteraction({
+  /// Also returns the card-limit status after this vote was counted.
+  Future<VoteResponse> respondToInteraction({
     String? targetUserId,
     String? interactionId,
     required InteractionType type,

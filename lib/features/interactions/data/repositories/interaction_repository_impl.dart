@@ -2,6 +2,7 @@ import '../../../../models/interaction_result.dart';
 import '../../../../models/interaction_record.dart';
 import '../../../../models/interaction_type.dart';
 import '../../../../models/match_record.dart';
+import '../../../../models/vote_response.dart';
 import '../datasources/interaction_remote_data_source.dart';
 import '../../domain/repositories/interaction_repository.dart';
 
@@ -27,7 +28,7 @@ class InteractionRepositoryImpl implements InteractionRepository {
   }
 
   @override
-  Future<InteractionResult> respondToInteraction({
+  Future<VoteResponse> respondToInteraction({
     String? targetUserId,
     String? interactionId,
     required InteractionType type,

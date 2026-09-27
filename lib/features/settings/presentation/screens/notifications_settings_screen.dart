@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,11 +7,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../providers/settings_providers.dart';
 import '../widgets/settings_page_scaffold.dart';
 
-class NotificationsSettingsScreen extends ConsumerWidget {
+class NotificationsSettingsScreen extends ConsumerStatefulWidget {
   const NotificationsSettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsSettingsScreen> createState() =>
+      _NotificationsSettingsScreenState();
+}
+
+class _NotificationsSettingsScreenState
+    extends ConsumerState<NotificationsSettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // The server decides which pushes are sent, and another device may have
+    // changed the settings since they were saved here.
+    unawaited(
+      ref.read(notificationSettingsProvider.notifier).syncWithServer(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(notificationSettingsProvider);
     final controller = ref.read(notificationSettingsProvider.notifier);
 

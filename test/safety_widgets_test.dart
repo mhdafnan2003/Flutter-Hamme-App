@@ -17,6 +17,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'safety_test_fakes.dart';
 
+class _UnrestrictedPlayLimit extends PlayLimitStatusNotifier {
+  @override
+  Future<PlayLimitStatus> build() async => PlayLimitStatus.unrestricted;
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -41,9 +46,7 @@ void main() {
             votes: votes,
             matches: matches,
           ),
-          playLimitStatusProvider.overrideWith(
-            (ref) async => PlayLimitStatus.unrestricted,
-          ),
+          playLimitStatusProvider.overrideWith(_UnrestrictedPlayLimit.new),
         ],
         child: MaterialApp(home: screen),
       ),

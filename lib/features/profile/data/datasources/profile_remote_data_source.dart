@@ -59,6 +59,41 @@ class ProfileRemoteDataSource {
     return AppUser.fromJson(response['user'] as Map<String, dynamic>);
   }
 
+  /// The signed-in user's notification settings as stored on the server
+  /// (`matches`, `messages`, `reminders`).
+  Future<Map<String, bool>> getNotificationSettings() async {
+    final response =
+        await _apiService.get('/profiles/me/notifications', authenticated: true)
+            as Map<String, dynamic>;
+    return _notificationSettingsFrom(response);
+  }
+
+  /// Saves the given notification settings; the server only sends the pushes
+  /// that are on. Returns all settings after the change.
+  Future<Map<String, bool>> updateNotificationSettings(
+    Map<String, bool> changes,
+  ) async {
+    final response =
+        await _apiService.patch(
+              '/profiles/me/notifications',
+              body: changes,
+              authenticated: true,
+            )
+            as Map<String, dynamic>;
+    return _notificationSettingsFrom(response);
+  }
+
+  static Map<String, bool> _notificationSettingsFrom(
+    Map<String, dynamic> response,
+  ) {
+    final settings = response['notifications'];
+    if (settings is! Map) return const {};
+    return {
+      for (final entry in settings.entries)
+        if (entry.value is bool) entry.key.toString(): entry.value as bool,
+    };
+  }
+
   /// Permanently deletes the signed-in user's Hamme profile and its data.
   Future<void> deleteMe() async {
     await _apiService.delete('/profiles/me', authenticated: true);

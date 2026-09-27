@@ -3,6 +3,8 @@ import '../../../../models/interaction_result.dart';
 import '../../../../models/interaction_record.dart';
 import '../../../../models/interaction_type.dart';
 import '../../../../models/match_record.dart';
+import '../../../../models/play_limit_status.dart';
+import '../../../../models/vote_response.dart';
 
 class InteractionRemoteDataSource {
   InteractionRemoteDataSource(this._apiService);
@@ -24,7 +26,7 @@ class InteractionRemoteDataSource {
     return InteractionResult.fromJson(response);
   }
 
-  Future<InteractionResult> respondToInteraction({
+  Future<VoteResponse> respondToInteraction({
     String? targetUserId,
     String? interactionId,
     required InteractionType type,
@@ -45,7 +47,14 @@ class InteractionRemoteDataSource {
             )
             as Map<String, dynamic>;
 
-    return InteractionResult.fromJson(response);
+    final statusJson = response['cardLimitStatus'];
+    return (
+      result: InteractionResult.fromJson(response),
+      cardLimitStatus:
+          statusJson is Map<String, dynamic>
+              ? PlayLimitStatus.fromJson(statusJson)
+              : null,
+    );
   }
 
   Future<List<MatchRecord>> getMatches() async {

@@ -43,9 +43,10 @@ final matchesProvider = FutureProvider<List<MatchRecord>>((ref) async {
   return allMatches.where((m) => m.createdAt.isAfter(cutoff)).toList();
 });
 
-/// Every vote the server returns for the user. Invalidate this to refetch;
-/// show [visibleReceivedInteractionsProvider] so hidden, reported and blocked
-/// votes stay out.
+/// The Play queue from the server: votes still waiting for the user's answer
+/// (see [inboxInteractionsProvider] for every vote). Invalidate this to
+/// refetch; show [visibleReceivedInteractionsProvider] so hidden, reported and
+/// blocked votes stay out.
 final receivedInteractionsProvider = FutureProvider<List<InteractionRecord>>((
   ref,
 ) async {
@@ -353,11 +354,12 @@ class InteractionController extends AsyncNotifier<void> {
   }) async {
     state = const AsyncLoading();
     try {
-      final result = await _repository.respondToInteraction(
-        targetUserId: targetUserId,
-        interactionId: interactionId,
-        type: type,
-      );
+      final (:result, cardLimitStatus: _) = await _repository
+          .respondToInteraction(
+            targetUserId: targetUserId,
+            interactionId: interactionId,
+            type: type,
+          );
       ref.invalidate(matchesProvider);
       ref.invalidate(receivedInteractionsProvider);
       ref.invalidate(pendingPlayInteractionsProvider);

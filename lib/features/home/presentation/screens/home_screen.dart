@@ -1,11 +1,9 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hamme_app/core/constants/app_constants.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
-import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
@@ -14,7 +12,6 @@ import '../../../../core/widgets/gradient_button.dart';
 import '../../../shared/presentation/widgets/hamme_top_bar.dart';
 import '../widgets/home_profile_card.dart';
 import '../widgets/home_step_card.dart';
-import 'share_playing_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -116,45 +113,9 @@ class HomeScreen extends ConsumerWidget {
                           child: GradientButton(
                             label: TTexts.homeShareAction,
                             fontSize: 20,
-                            onTap: () async {
-                              // Wait for the saved flag: `.value` is still
-                              // null on the first read after launch, which
-                              // showed the tutorial again every time.
-                              final hasSeenTutorial = await ref.read(
-                                shareTutorialCompletionProvider.future,
-                              );
-                              if (!context.mounted) return;
-                              if (hasSeenTutorial) {
-                                // Silent sharing from home screen. The dialog
-                                // is shown on the root navigator; the nearest
-                                // navigator here is the Home tab's, and popping
-                                // that removes the Home page itself.
-                                final rootNavigator = Navigator.of(
-                                  context,
-                                  rootNavigator: true,
-                                );
-                                showCupertinoDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder:
-                                      (context) => const Center(
-                                        child: CupertinoActivityIndicator(
-                                          color: Colors.white,
-                                          radius: 15,
-                                        ),
-                                      ),
-                                );
-                                await SharePlayingScreen.shareStory(
-                                  context,
-                                  ref,
-                                );
-                                if (rootNavigator.mounted) {
-                                  rootNavigator.pop();
-                                }
-                              } else {
-                                context.push('/share');
-                              }
-                            },
+                            // Always open the share intro so the user can
+                            // pick Snapchat or Instagram each time.
+                            onTap: () => context.push('/share'),
                           ),
                         ),
                       ),

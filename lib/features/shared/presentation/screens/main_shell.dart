@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/providers/push_data_refresh_provider.dart';
+import 'package:hamme_app/providers/settings_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import '../widgets/hamme_bottom_nav_bar.dart';
 
@@ -30,6 +31,8 @@ class MainShell extends ConsumerWidget {
     // New votes and matches arrive by push while the app is open; this keeps
     // the Play data fresh without polling.
     ref.watch(pushDataRefreshProvider);
+    // A notification setting changed while offline still reaches the server.
+    ref.watch(notificationSettingsRetryProvider);
 
     final pendingPlay = ref.watch(pendingPlayInteractionsProvider);
     final playCount = pendingPlay.maybeWhen(
