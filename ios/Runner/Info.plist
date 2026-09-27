@@ -48,7 +48,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>MetaAppID</key>
-	<string></string>
+	<string>1635269851545313</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Hamme uses your camera so you can take a profile photo directly within the app.</string>
 	<key>NSMicrophoneUsageDescription</key>
