@@ -46,6 +46,19 @@ async function unregisterDeviceToken(req, res) {
   return res.status(200).json({ message: 'Device token removed.' });
 }
 
+async function getNotificationPrefs(req, res) {
+  const notifications = await userService.getNotificationPrefs(req.auth.userId);
+  return res.status(200).json({ notifications });
+}
+
+async function updateNotificationPrefs(req, res) {
+  const notifications = await userService.updateNotificationPrefs(
+    req.auth.userId,
+    req.body
+  );
+  return res.status(200).json({ notifications });
+}
+
 async function acceptTerms(req, res) {
   const version = req.body?.version ?? CURRENT_TERMS_VERSION;
   const user = await userService.acceptTerms(req.auth.userId, version);
@@ -85,6 +98,8 @@ async function clearAnonymousBlocks(req, res) {
 }
 
 module.exports = {
+  getNotificationPrefs,
+  updateNotificationPrefs,
   getMe,
   updateMe,
   deleteMe,

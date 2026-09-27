@@ -181,6 +181,14 @@ const userSchema = new mongoose.Schema(
       default: [],
       select: false,
     },
+    // Push notifications the user wants (Settings → Notifications); checked
+    // by pushService before sending. `messages` covers new votes on their
+    // poll (Inbox activity).
+    notificationPrefs: {
+      matches: { type: Boolean, default: true },
+      messages: { type: Boolean, default: true },
+      reminders: { type: Boolean, default: true },
+    },
   },
   {
     timestamps: true,
@@ -202,6 +210,8 @@ const userSchema = new mongoose.Schema(
         delete ret.blockedVoterSessions;
         delete ret.profileImageUrl;
         delete ret.proPurchaseToken;
+        // Served by GET /profiles/me/notifications instead.
+        delete ret.notificationPrefs;
         return ret;
       },
     },

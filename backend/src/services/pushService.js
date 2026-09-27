@@ -52,8 +52,12 @@ async function pruneTokens(userId, tokens) {
   });
 }
 
+// The notification setting (User.notificationPrefs) that gates each push type.
+const PREF_BY_PUSH_TYPE = { vote: 'messages', match: 'matches', reminder: 'reminders' };
+
 /**
- * Sends a push notification to every device registered to a user.
+ * Sends a push notification to every device registered to a user, unless they
+ * turned that kind of notification off.
  * Never throws — a push failure must not affect the caller's request.
  */
 async function sendToUser(userId, { title, body, data = {}, imageUrl = null }) {
@@ -65,6 +69,14 @@ async function sendToUser(userId, { title, body, data = {}, imageUrl = null }) {
     }
 
     const user = await User.findById(userId).select('+deviceTokens');
+    const pref = PREF_BY_PUSH_TYPE[data.type];
+    if (pref && user?.notificationPrefs?.[pref] === false) {
+      logger.info('[Push] sendToUser skipped: turned off in settings', {
+        userId: userId?.toString?.(),
+        type: data.type,
+      });
+      return;
+    }
     const rawTokens = (user?.deviceTokens || []).map((entry) => entry.token).filter(Boolean);
     const tokens = Array.from(new Set(rawTokens));
     if (!tokens.length) {

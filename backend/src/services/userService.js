@@ -244,6 +244,39 @@ async function registerDeviceToken(userId, { token, platform }) {
   );
 }
 
+const NOTIFICATION_PREF_KEYS = ['matches', 'messages', 'reminders'];
+
+// Every setting defaults to on, including for accounts created before they
+// existed.
+function toNotificationPrefs(prefs) {
+  return Object.fromEntries(
+    NOTIFICATION_PREF_KEYS.map((key) => [key, prefs?.[key] !== false])
+  );
+}
+
+async function getNotificationPrefs(userId) {
+  const user = await User.findById(userId).select('notificationPrefs').lean();
+  if (!user) throw new ApiError(404, 'User not found.');
+  return toNotificationPrefs(user.notificationPrefs);
+}
+
+/** Updates only the settings present in `updates`. */
+async function updateNotificationPrefs(userId, updates) {
+  const $set = {};
+  for (const key of NOTIFICATION_PREF_KEYS) {
+    if (typeof updates[key] === 'boolean') {
+      $set[`notificationPrefs.${key}`] = updates[key];
+    }
+  }
+  const user = Object.keys($set).length
+    ? await User.findByIdAndUpdate(userId, { $set }, { new: true })
+        .select('notificationPrefs')
+        .lean()
+    : await User.findById(userId).select('notificationPrefs').lean();
+  if (!user) throw new ApiError(404, 'User not found.');
+  return toNotificationPrefs(user.notificationPrefs);
+}
+
 /** Removes a push token, e.g. on logout, so a signed-out device stops receiving pushes. */
 async function unregisterDeviceToken(userId, token) {
   await User.updateOne(
@@ -278,4 +311,6 @@ module.exports = {
   setProStatus,
   registerDeviceToken,
   unregisterDeviceToken,
+  getNotificationPrefs,
+  updateNotificationPrefs,
 };

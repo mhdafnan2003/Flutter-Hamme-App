@@ -66,6 +66,21 @@ router.post(
 
 router.get('/me/blocked', authMiddleware, profileController.listBlocked);
 
+// Settings → Notifications. pushService skips pushes the user turned off.
+router.get('/me/notifications', authMiddleware, profileController.getNotificationPrefs);
+
+router.patch(
+  '/me/notifications',
+  authMiddleware,
+  [
+    body('matches').optional().isBoolean().toBoolean(),
+    body('messages').optional().isBoolean().toBoolean(),
+    body('reminders').optional().isBoolean().toBoolean(),
+  ],
+  validateRequest,
+  profileController.updateNotificationPrefs
+);
+
 router.delete('/me/blocked-anonymous', authMiddleware, profileController.clearAnonymousBlocks);
 
 router.delete(

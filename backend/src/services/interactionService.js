@@ -730,11 +730,12 @@ async function createAnonymousInteraction({ targetUserId, type, source = 'web' }
 }
 
 // Votes the Play queue shows: those still waiting for an answer (the app's
-// isActionablePlayInteraction). Play and its tab badge refresh this often, so
-// it is kept small instead of returning the whole history each time.
+// isActionablePlayInteraction), newest first. Play and its tab badge refresh
+// this often, so it returns at most this many cards, not the whole history.
 const PLAY_QUEUE_LIMIT = 100;
-// Registered-voter candidates read before answered ones are dropped.
-const PLAY_QUEUE_SCAN_LIMIT = 300;
+// Named votes checked for an answer, newest first. Only their sender and time
+// are read here; the cards returned are loaded in full afterwards.
+const PLAY_QUEUE_SCAN_LIMIT = 2000;
 // The full list (`scope=all`: Inbox counts and its hide/report/block list).
 const RECEIVED_HISTORY_LIMIT = 500;
 const RECEIVED_VOTER_FIELDS = 'name username instagramId snapchatId profileImageUrl shareCode';
@@ -759,30 +760,33 @@ function serializeRegisteredVote(vote, { respondedByCurrentUser, matched }) {
   };
 }
 
-/** Times of the user's own votes per target, to tell answered cards apart. */
-async function outgoingVoteTimes(userId, voterIds, since = null) {
-  if (!voterIds.length) return new Map();
+/** When the user last voted on each of `targetIds`, in ms (see isAnswered). */
+async function latestVoteTimes(userId, targetIds) {
+  if (!targetIds.length) return new Map();
   const outgoing = await Interaction.find({
     fromUser: userId,
-    toUser: { $in: voterIds },
-    ...(since ? { createdAt: { $gte: since } } : {}),
+    toUser: { $in: targetIds },
   })
     .select('toUser createdAt')
     .lean();
-  const byUserId = new Map();
-  for (const interaction of outgoing) {
-    const targetId = interaction.toUser.toString();
-    const existing = byUserId.get(targetId) || [];
-    existing.push(interaction.createdAt.getTime());
-    byUserId.set(targetId, existing);
+  const latestByUserId = new Map();
+  for (const vote of outgoing) {
+    const targetId = vote.toUser.toString();
+    const votedAt = vote.createdAt.getTime();
+    const previous = latestByUserId.get(targetId);
+    if (previous === undefined || votedAt > previous) {
+      latestByUserId.set(targetId, votedAt);
+    }
   }
-  return byUserId;
+  return latestByUserId;
 }
 
-function answeredWithinWindow(outgoingByUserId, voterId, voteTime) {
-  return (outgoingByUserId.get(voterId) || []).some(
-    (outgoingAt) => Math.abs(outgoingAt - voteTime) < INTERACTION_COOLDOWN_MS
-  );
+// A named vote is answered once the user voted on its sender at any time after
+// it, or within the 24h before it (that earlier vote already decided the
+// match). Answering later than 24h still counts; it just can't match anymore.
+function isAnswered(latestByUserId, voterId, voteTime) {
+  const answeredAt = latestByUserId.get(voterId);
+  return answeredAt !== undefined && answeredAt >= voteTime - INTERACTION_COOLDOWN_MS;
 }
 
 /**
@@ -811,24 +815,18 @@ async function getReceivedInteractions(userId, { scope = null } = {}) {
 
   return scope === 'all'
     ? getReceivedHistory(userId, visibleVotes, blockedUserIds)
-    : getPlayQueue(userId, visibleVotes, blockedUserIds, now);
+    : getPlayQueue(userId, visibleVotes, blockedUserIds);
 }
 
-async function getPlayQueue(userId, visibleVotes, blockedUserIds, now) {
-  // Answering a card only counts within 24h of the vote (see
-  // answeredWithinWindow), and an older vote can no longer produce a match, so
-  // older registered-voter cards could never leave the queue.
-  const answerWindowStart = new Date(now.getTime() - INTERACTION_COOLDOWN_MS);
-
-  const [registeredVotes, anonymousVotes] = await Promise.all([
+async function getPlayQueue(userId, visibleVotes, blockedUserIds) {
+  const [namedVotes, anonymousVotes] = await Promise.all([
     Interaction.find({
       ...visibleVotes,
       fromUser: { $ne: null, $nin: blockedUserIds },
-      createdAt: { $gte: answerWindowStart },
     })
       .sort({ createdAt: -1 })
       .limit(PLAY_QUEUE_SCAN_LIMIT)
-      .populate('fromUser', RECEIVED_VOTER_FIELDS)
+      .select('fromUser createdAt')
       .lean(),
     // Anonymous votes can only be answered when vote-back is enabled; they
     // track their own answer, so keep them until the creator responds.
@@ -844,30 +842,31 @@ async function getPlayQueue(userId, visibleVotes, blockedUserIds, now) {
       : [],
   ]);
 
-  // Votes whose voter no longer exists can't be answered.
-  const liveVotes = registeredVotes.filter((vote) => vote.fromUser);
-  const voterIds = [...new Set(liveVotes.map((vote) => vote.fromUser._id.toString()))];
-  const outgoingByUserId = await outgoingVoteTimes(
-    userId,
-    voterIds,
-    new Date(answerWindowStart.getTime() - INTERACTION_COOLDOWN_MS)
-  );
-
-  const unanswered = liveVotes
+  const voterIds = [...new Set(namedVotes.map((vote) => vote.fromUser.toString()))];
+  const latestByUserId = await latestVoteTimes(userId, voterIds);
+  const unansweredIds = namedVotes
     .filter(
       (vote) =>
-        !answeredWithinWindow(
-          outgoingByUserId,
-          vote.fromUser._id.toString(),
-          vote.createdAt.getTime()
-        )
+        !isAnswered(latestByUserId, vote.fromUser.toString(), vote.createdAt.getTime())
     )
-    // A match needs an answer, so an unanswered vote is never matched.
-    .map((vote) =>
-      serializeRegisteredVote(vote, { respondedByCurrentUser: false, matched: false })
-    );
+    .slice(0, PLAY_QUEUE_LIMIT)
+    .map((vote) => vote._id);
+  const unanswered = unansweredIds.length
+    ? await Interaction.find({ _id: { $in: unansweredIds } })
+        .populate('fromUser', RECEIVED_VOTER_FIELDS)
+        .lean()
+    : [];
 
-  return [...unanswered, ...anonymousVotes.map(serializeAnonymousInteraction)]
+  return [
+    ...unanswered
+      // Votes whose voter no longer exists can't be answered.
+      .filter((vote) => vote.fromUser)
+      // A match needs an answer, so an unanswered vote is never matched.
+      .map((vote) =>
+        serializeRegisteredVote(vote, { respondedByCurrentUser: false, matched: false })
+      ),
+    ...anonymousVotes.map(serializeAnonymousInteraction),
+  ]
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, PLAY_QUEUE_LIMIT);
 }
@@ -891,8 +890,8 @@ async function getReceivedHistory(userId, visibleVotes, blockedUserIds) {
   ];
 
   const pairIds = voterIds.map((voterId) => buildCanonicalPair(userId, voterId));
-  const [outgoingByUserId, matches] = await Promise.all([
-    outgoingVoteTimes(userId, voterIds),
+  const [latestByUserId, matches] = await Promise.all([
+    latestVoteTimes(userId, voterIds),
     pairIds.length
       ? Match.find({
           $or: pairIds.map((pair) => ({ userA: pair.userA, userB: pair.userB })),
@@ -921,11 +920,7 @@ async function getReceivedHistory(userId, visibleVotes, blockedUserIds) {
     const interactionTime = interaction.createdAt.getTime();
     const matchedAt = matchesByKey.get(`${fromUserId}:${interaction.type}`);
     return serializeRegisteredVote(interaction, {
-      respondedByCurrentUser: answeredWithinWindow(
-        outgoingByUserId,
-        fromUserId,
-        interactionTime
-      ),
+      respondedByCurrentUser: isAnswered(latestByUserId, fromUserId, interactionTime),
       matched:
         Boolean(matchedAt) &&
         Math.abs(matchedAt.getTime() - interactionTime) < INTERACTION_COOLDOWN_MS,
