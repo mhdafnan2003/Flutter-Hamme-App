@@ -203,8 +203,6 @@ async function guestRegister({
   if (!normalizedUsername) {
     throw new ApiError(400, 'A valid username is required.');
   }
-  assertCleanFields({ displayName, username, instagramId, snapchatId });
-
   const terms = termsAcceptance(acceptedTermsVersion);
 
   if (deviceId) {
@@ -228,6 +226,10 @@ async function guestRegister({
       return tokens;
     }
   }
+
+  // Checked only for new accounts: a returning device gets its existing account
+  // back and the submitted fields are never saved.
+  assertCleanFields({ displayName, username, instagramId, snapchatId });
 
   const shareCode = await createUniqueShareCode(displayName);
   const guestPasswordHash = await bcrypt.hash(randomGuestPassword(), 12);

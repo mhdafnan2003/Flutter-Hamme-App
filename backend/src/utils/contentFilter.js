@@ -3,7 +3,10 @@ const {
   RegExpMatcher,
   englishDataset,
   englishRecommendedTransformers,
+  englishRecommendedWhitelistMatcherTransformers,
   pattern,
+  resolveConfusablesTransformer,
+  resolveLeetSpeakTransformer,
 } = require('obscenity');
 
 const { objectionableContentError } = require('./safety');
@@ -157,6 +160,13 @@ function buildMatcher() {
     blacklistedTerms,
     whitelistedTerms: [...whitelistedTerms, ...NAME_WHITELIST],
     ...englishRecommendedTransformers,
+    // The stock whitelist transformers skip leetspeak, so "sh1tal" matched the
+    // "shit" pattern but not the "shital" whitelist entry.
+    whitelistMatcherTransformers: [
+      resolveConfusablesTransformer(),
+      resolveLeetSpeakTransformer(),
+      ...englishRecommendedWhitelistMatcherTransformers,
+    ],
   });
 }
 
