@@ -59,7 +59,7 @@ void main() {
     );
   }
 
-  ProviderContainer container() {
+  ProviderContainer makeContainer() {
     final container = ProviderContainer(
       overrides: [apiServiceProvider.overrideWithValue(api())],
     );
@@ -71,7 +71,9 @@ void main() {
       request.body.isEmpty ? null : jsonDecode(request.body);
 
   test('a changed switch is saved on the device and on the server', () async {
-    final settings = container().read(notificationSettingsProvider.notifier);
+    final settings = makeContainer().read(
+      notificationSettingsProvider.notifier,
+    );
 
     await settings.setMessages(false);
 
@@ -94,7 +96,7 @@ void main() {
           }),
           200,
         );
-    final container = this.container();
+    final container = makeContainer();
 
     await container.read(notificationSettingsProvider.notifier).syncWithServer();
 
@@ -111,7 +113,7 @@ void main() {
 
   test('a change that could not be sent is sent again later', () async {
     respond = (_) => http.Response(jsonEncode({'message': 'down'}), 503);
-    final container = this.container();
+    final container = makeContainer();
     final settings = container.read(notificationSettingsProvider.notifier);
 
     await settings.setMatches(false);

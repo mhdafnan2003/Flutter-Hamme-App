@@ -93,14 +93,11 @@ class NotificationSettingsController
     );
   }
 
-  Future<void> setMatches(bool value) =>
-      _update(state.copyWith(matches: value), {'matches': value});
+  Future<void> setMatches(bool value) => _update({'matches': value});
 
-  Future<void> setMessages(bool value) =>
-      _update(state.copyWith(messages: value), {'messages': value});
+  Future<void> setMessages(bool value) => _update({'messages': value});
 
-  Future<void> setReminders(bool value) =>
-      _update(state.copyWith(reminders: value), {'reminders': value});
+  Future<void> setReminders(bool value) => _update({'reminders': value});
 
   /// Shows the server's settings (they may have been changed on another
   /// device), or first sends a change that couldn't reach the server earlier.
@@ -134,12 +131,17 @@ class NotificationSettingsController
   ProfileRemoteDataSource get _remote =>
       ProfileRemoteDataSource(_ref.read(apiServiceProvider));
 
-  Future<void> _update(
-    NotificationSettings settings,
-    Map<String, bool> change,
-  ) async {
-    state = settings;
-    await _saveLocally(settings);
+  Future<void> _update(Map<String, bool> change) async {
+    // Apply on top of the saved settings, which the load would otherwise
+    // overwrite a change made before it finished.
+    await _loaded;
+    if (!mounted) return;
+    state = state.copyWith(
+      matches: change['matches'],
+      messages: change['messages'],
+      reminders: change['reminders'],
+    );
+    await _saveLocally(state);
     // Only the changed switch: quick changes to different switches then
     // can't overwrite each other on the server.
     await _saveToServer(change);
