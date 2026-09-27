@@ -33,9 +33,9 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
 
     final XFile? pickedFile = await _imagePicker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1600,
-      maxHeight: 1600,
+      imageQuality: 80,
+      maxWidth: 1024,
+      maxHeight: 1024,
     );
 
     if (pickedFile == null) return;

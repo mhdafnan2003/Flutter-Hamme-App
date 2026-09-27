@@ -1,39 +1,46 @@
 const ApiError = require('../utils/ApiError');
 const { verifyAccessToken } = require('../services/tokenService');
+const { getAccountStatus } = require('../services/accountStatusService');
+const { accountBannedError } = require('../utils/safety');
 
-function maskToken(token) {
-  if (!token) return 'missing';
-  if (token.length <= 12) return `${token[0]}***${token[token.length - 1]}`;
-  return `${token.slice(0, 6)}...${token.slice(-4)} (len=${token.length})`;
-}
-
-function authMiddleware(req, res, next) {
+// Rejections are logged once by errorHandler; logging here too doubled every
+// 401 (one per expired token every 15 minutes per device).
+async function authMiddleware(req, res, next) {
   const authorization = req.headers.authorization || '';
   const [scheme, rawToken] = authorization.split(' ');
   const isBearer = scheme?.toLowerCase() === 'bearer';
   const token = isBearer ? rawToken?.trim() : '';
 
   if (!token) {
-    console.warn(
-      `[Auth] missing token: path=${req.method} ${req.originalUrl} authHeader=${authorization || 'none'}`
-    );
     return next(new ApiError(401, 'Authorization token is required.'));
   }
 
+  let payload;
   try {
-    const payload = verifyAccessToken(token, { clockTolerance: 5 });
-    req.auth = { userId: payload.sub, email: payload.email };
-    return next();
+    payload = verifyAccessToken(token, { clockTolerance: 5 });
   } catch (error) {
-    console.warn(
-      `[Auth] token rejected: path=${req.method} ${req.originalUrl} ` +
-        `reason=${error?.name || 'unknown'} token=${maskToken(token)}`
-    );
     if (error?.name === 'TokenExpiredError') {
       return next(new ApiError(401, 'Authorization token is expired.'));
     }
     return next(new ApiError(401, 'Authorization token is invalid.'));
   }
+
+  // A still-valid token must not outlive a ban or an account deletion.
+  // Cached for up to a minute, so this is not a query per request.
+  try {
+    const status = await getAccountStatus(payload.sub);
+    if (status === 'banned') {
+      return next(accountBannedError());
+    }
+    if (status === 'missing') {
+      return next(new ApiError(401, 'This account no longer exists.'));
+    }
+  } catch (error) {
+    return next(error);
+  }
+
+  req.auth = { userId: payload.sub, email: payload.email };
+  return next();
 }
 
 module.exports = authMiddleware;

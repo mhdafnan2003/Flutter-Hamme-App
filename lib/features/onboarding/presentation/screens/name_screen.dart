@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/routes/route_paths.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
 
+import '../../../../../core/utils/content_filter.dart';
 import '../../../../../core/widgets/gradient_button.dart';
 import '../widgets/dob_top_bar.dart';
 
@@ -46,6 +48,11 @@ class _NameScreenState extends ConsumerState<NameScreen> {
       });
       return;
     }
+    final filterError = ContentFilter.validate(name, ContentFilterField.name);
+    if (filterError != null) {
+      setState(() => _nameError = filterError);
+      return;
+    }
     ref.read(onboardingDraftProvider.notifier).setName(name);
     context.go('/onboarding/profile_upload');
   }
@@ -59,7 +66,7 @@ class _NameScreenState extends ConsumerState<NameScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             DobTopBar(
-              onBack: () => context.go('/onboarding/dob'),
+              onBack: () => context.go(RoutePaths.onboardingCommunityRules),
               progress: _progress,
             ),
             Expanded(

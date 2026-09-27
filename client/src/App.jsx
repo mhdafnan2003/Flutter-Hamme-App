@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
@@ -13,6 +13,13 @@ const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
 const isPrivacyPolicyRoute = currentPath === '/privacy-policy';
 const isTermsOfServiceRoute = currentPath === '/terms-of-service' || currentPath === '/terms';
 const isSupportRoute = currentPath === '/support';
+const isCommunityGuidelinesRoute = currentPath === '/community-guidelines';
+const voteBlockedMessage = "You can't vote for this profile.";
+const submitErrorMessage = 'Could not submit response. Please try again.';
+const rateLimitedMessage = 'Too many votes right now. Please try again in a minute.';
+// The API allows 10 votes per minute per IP, so a retry within that window
+// can only fail again.
+const rateLimitPauseMs = 60 * 1000;
 
 function hasAlreadyVoted(code) {
   if (!code) return false;
@@ -50,7 +57,10 @@ function readShareCodeFromPath() {
   // Continue accepting /u links when they reach the website for compatibility.
   if (parts.length >= 2 && (parts[0] === 'poll' || parts[0] === 'u')) {
     const rawCode = decodeURIComponent(parts[1]);
-    return rawCode.replace(/[.,;:]+$/, '');
+    // Share codes are generated lowercase and the API matches them
+    // case-insensitively. Lowercasing keeps one "already voted" key per profile
+    // even when a link's case was changed (e.g. /u/Name-ab12cd).
+    return rawCode.replace(/[.,;:]+$/, '').toLowerCase();
   }
   return null;
 }
@@ -68,7 +78,11 @@ function optimizeProfileImage(url) {
 // React to mount and run effects.
 const initialShareCode = readShareCodeFromPath();
 const profileRequest =
-  initialShareCode && !isPrivacyPolicyRoute && !isTermsOfServiceRoute && !isSupportRoute
+  initialShareCode &&
+  !isPrivacyPolicyRoute &&
+  !isTermsOfServiceRoute &&
+  !isSupportRoute &&
+  !isCommunityGuidelinesRoute
     ? fetch(`${apiBaseUrl}/public-profile/${encodeURIComponent(initialShareCode)}`, {
         // Don't leave visitors on "Loading profile..." forever if the API stalls.
         signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(15000) : undefined,
@@ -121,6 +135,9 @@ function App() {
   if (isSupportRoute) {
     return <SupportPage />;
   }
+  if (isCommunityGuidelinesRoute) {
+    return <CommunityGuidelinesPage />;
+  }
 
   return <ShareFlowApp />;
 }
@@ -128,7 +145,7 @@ function App() {
 function ShareFlowApp() {
   const shareCode = readShareCodeFromPath();
   const [isSent, setIsSent] = useState(false);
-  const [alreadyVoted] = useState(() => hasAlreadyVoted(shareCode));
+  const [alreadyVoted, setAlreadyVoted] = useState(() => hasAlreadyVoted(shareCode));
   const [secondsLeft, setSecondsLeft] = useState(pendingTtlSeconds);
   const [expiresAt, setExpiresAt] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -137,9 +154,15 @@ function ShareFlowApp() {
   const [submittingType, setSubmittingType] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [voteBlocked, setVoteBlocked] = useState(false);
+  // True for about a minute after a 429, so the buttons can't invite retries.
+  const [votingPaused, setVotingPaused] = useState(false);
+  const votePauseTimer = useRef(null);
   const [interactionResult, setInteractionResult] = useState(null);
   const [pendingToken, setPendingToken] = useState(null);
   const isExpired = secondsLeft === 0;
+
+  useEffect(() => () => clearTimeout(votePauseTimer.current), []);
 
   useEffect(() => {
     if (!isSent || !expiresAt) {
@@ -218,7 +241,10 @@ function ShareFlowApp() {
 
   const handleAnswer = async (type) => {
     if (!shareCode) {
-      setSubmitError('Could not submit response. Please try again.');
+      setSubmitError(submitErrorMessage);
+      return;
+    }
+    if (voteBlocked || votingPaused) {
       return;
     }
 
@@ -234,27 +260,47 @@ function ShareFlowApp() {
     setExpiresAt(new Date(now + pendingTtlMs).toISOString());
     setSecondsLeft(pendingTtlSeconds);
     try {
+      // One ID per browser, kept across visits: recipients block anonymous
+      // voters (and moderators ban them) by this ID, so never regenerate it
+      // per vote. Only create one when none is stored yet.
       const sessionId =
-        window.localStorage.getItem(sessionStorageKey) ??
+        window.localStorage.getItem(sessionStorageKey) ||
         generateSessionId();
       window.localStorage.setItem(sessionStorageKey, sessionId);
 
-      const response = await fetch(`${apiBaseUrl}/anonymous-response`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // The voter may tap Reveal and leave for the app before this finishes.
-        keepalive: true,
-        body: JSON.stringify({
-          shareCode,
-          type,
-          timestamp: now,
-          sessionId,
-          pendingToken: token,
-          source: 'web_local',
-        }),
+      const voteBody = JSON.stringify({
+        shareCode,
+        type,
+        timestamp: now,
+        sessionId,
+        pendingToken: token,
+        source: 'web_local',
       });
+      const sendVote = (headers) =>
+        fetch(`${apiBaseUrl}/anonymous-response`, {
+          method: 'POST',
+          headers,
+          // The voter may tap Reveal and leave for the app before this finishes.
+          keepalive: true,
+          body: voteBody,
+        });
+      // No Content-Type header on purpose: the string body goes out as
+      // text/plain, which keeps this a CORS "simple request", so browsers skip
+      // the OPTIONS preflight on every vote. The API parses text/plain bodies
+      // on this route as JSON.
+      let response = await sendVote(undefined);
+      if (response.status === 422) {
+        // An API from before text/plain parsing can't read that body. Resend
+        // it as JSON once so votes keep working whichever deploys first.
+        response = await sendVote({ 'Content-Type': 'application/json' });
+      }
       if (!response.ok) {
-        throw new Error(`Failed with status ${response.status}`);
+        const body = await response.json().catch(() => null);
+        const error = new Error(`Failed with status ${response.status}`);
+        error.status = response.status;
+        error.code = body?.details?.code;
+        error.serverMessage = typeof body?.message === 'string' ? body.message.trim() : '';
+        throw error;
       }
       const data = await response.json();
       setInteractionResult(data);
@@ -267,11 +313,46 @@ function ShareFlowApp() {
         setSecondsLeft(Math.max(Math.ceil(remainingMs / 1000), 0));
       }
       console.info('[Web] option selected', { shareCode, type });
-    } catch {
+    } catch (error) {
+      // Leaving the "Sent!" screen also cancels any app-store redirect that an
+      // early Reveal tap scheduled, so a rejected vote isn't sent on to install.
       setIsSent(false);
       setExpiresAt(null);
       setPendingToken(null);
-      setSubmitError('Could not submit response. Please try again.');
+      if (error?.status === 403) {
+        // VOTE_BLOCKED: the recipient blocked this voter, or this browser or
+        // account is banned. Retrying can't succeed, so stop here.
+        setVoteBlocked(true);
+        setSubmitError(voteBlockedMessage);
+        console.info('[Web] vote blocked', { shareCode, code: error.code });
+      } else if (error?.status === 404) {
+        // The profile was deleted or banned after this page loaded.
+        setProfile(null);
+        setProfileError('Profile not found.');
+      } else if (error?.status === 409) {
+        // This browser already voted for this profile in the last 24 hours: an
+        // earlier vote was recorded, but this page never saw the response (e.g.
+        // the voter left for the app first). Retrying can't succeed, so remember
+        // it and show the already-voted screen instead of "try again".
+        markAsVoted(shareCode);
+        setAlreadyVoted(true);
+      } else if (error?.status === 429) {
+        // Rate limited: hold the buttons for about a minute instead of
+        // inviting retries that can only be rejected again.
+        setSubmitError(error.serverMessage || rateLimitedMessage);
+        setVotingPaused(true);
+        clearTimeout(votePauseTimer.current);
+        votePauseTimer.current = setTimeout(() => {
+          setVotingPaused(false);
+          setSubmitError('');
+        }, rateLimitPauseMs);
+      } else if (error?.status >= 400 && error?.status < 500) {
+        // Other client errors (e.g. voting on your own profile, an invalid
+        // request): the server's message says what went wrong.
+        setSubmitError(error.serverMessage || submitErrorMessage);
+      } else {
+        setSubmitError(submitErrorMessage);
+      }
     } finally {
       setSubmittingType('');
     }
@@ -290,8 +371,9 @@ function ShareFlowApp() {
   if (profileError || !profile) {
     return (
       <main className="min-h-screen bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
-        <section className="mx-auto flex min-h-screen w-full max-w-[360px] items-center justify-center px-4 text-center">
+        <section className="mx-auto flex min-h-screen w-full max-w-[360px] flex-col items-center justify-center gap-6 px-4 text-center">
           <p className="text-lg font-bold">{profileError || 'Profile unavailable.'}</p>
+          <SiteLinks />
         </section>
       </main>
     );
@@ -323,6 +405,8 @@ function ShareFlowApp() {
             profileName={profileName}
             submittingType={submittingType}
             submitError={submitError}
+            voteBlocked={voteBlocked}
+            votingPaused={votingPaused}
           />
         )}
 
@@ -332,10 +416,13 @@ function ShareFlowApp() {
             <img src="/weblogohome.png" alt="Hamme" width={68} height={33} className="h-[33px] w-[68px] object-contain" />
           </h1>
           <p className="mt-2 text-[12px] font-extrabold">play games &amp; meet people</p>
-          <nav className="mt-4 flex items-center gap-4 text-[12px] font-bold text-white/70">
-            <a href="/terms-of-service" className="transition hover:text-white">Terms</a>
-            <a href="/privacy-policy" className="transition hover:text-white">Privacy</a>
-          </nav>
+          <SiteLinks className="mt-4" />
+          <a
+            href={`mailto:${legal.supportEmail}?subject=${encodeURIComponent(`Report profile: ${shareCode}`)}`}
+            className="mt-3 text-[11px] font-semibold text-white/55 underline underline-offset-2 transition hover:text-white"
+          >
+            Report this profile
+          </a>
         </footer>
       </section>
     </main>
@@ -385,15 +472,110 @@ function FriendsPlaying() {
 }
 
 const legal = {
-  lastUpdated: 'September 15, 2026',
+  lastUpdated: 'September 25, 2026',
   supportEmail: 'support@hamme.app',
+  // Canonical wording, shown verbatim in the app's terms gate and in-app
+  // guidelines too. Keep every copy identical.
+  zeroTolerance:
+    'Hamme has zero tolerance for objectionable content or abusive users. You may not use Hamme to bully, harass, threaten, impersonate, or sexualize anyone, or to share hateful, violent, sexually explicit, or otherwise objectionable content — including in your name, username, profile photo, or linked social handles. You can report or block any user or anonymous vote from within the app. We review every report within 24 hours; content that breaks these rules is removed and the user responsible is banned from Hamme.',
 };
+
+const reportAbuseMailto = `mailto:${legal.supportEmail}?subject=${encodeURIComponent('Report abuse')}`;
+
+// Labels match the in-app report reasons where one exists.
+const communityRules = [
+  [
+    'Bullying or harassment',
+    'insulting, humiliating, intimidating, or stalking anyone, or using votes to target, pile on, or upset someone',
+  ],
+  ['Violence or threats', 'threatening anyone, or promoting or glorifying violence'],
+  [
+    'Hate speech or symbols',
+    'attacking or demeaning people because of their race, ethnicity, nationality, caste, religion, sex, gender identity, sexual orientation, disability, or health, or using hateful symbols',
+  ],
+  [
+    'Nudity or sexual content',
+    'nudity, sexually explicit or suggestive content, or sexualizing anyone. Anything that sexualizes or endangers a minor is removed immediately, the account is banned, and we may report it to law enforcement',
+  ],
+  [
+    'Fake account or impersonation',
+    'pretending to be someone else, using another person’s name, photo, or social handle, or creating fake or duplicate accounts',
+  ],
+  ['Self-harm or suicide', 'promoting, encouraging, or glorifying self-harm, suicide, or eating disorders'],
+  ['Spam or scam', 'spam, scams, advertising, or fake, bought, or automated votes'],
+  [
+    'Private information',
+    'sharing someone else’s private information, such as their phone number, address, or private photos, without their permission',
+  ],
+];
+
+const legalPages = [
+  { key: 'terms', href: '/terms-of-service', label: 'Terms of Service' },
+  { key: 'privacy', href: '/privacy-policy', label: 'Privacy Policy' },
+  { key: 'guidelines', href: '/community-guidelines', label: 'Community Guidelines' },
+  { key: 'support', href: '/support', label: 'Support Center' },
+];
 
 function MailLink({ email }) {
   return (
     <a className="legal-link" href={`mailto:${email}`}>
       {email}
     </a>
+  );
+}
+
+function ZeroToleranceNotice() {
+  return (
+    <div className="legal-callout" role="note">
+      <p>{legal.zeroTolerance}</p>
+    </div>
+  );
+}
+
+function CommunityRulesList() {
+  return (
+    <ul>
+      {communityRules.map(([label, description]) => (
+        <li key={label}>
+          <strong>{label}</strong> — {description}.
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Footer for the legal pages: every other legal page, then Home.
+function LegalFooter({ current }) {
+  const links = [
+    ...legalPages.filter((page) => page.key !== current),
+    { key: 'home', href: '/', label: 'Home' },
+  ];
+  return (
+    <nav className="mt-12 border-t border-white/10 pt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/60 justify-center">
+      {links.map((link, index) => (
+        <span key={link.key} className="flex items-center gap-4">
+          {/* Separators only where the links fit on one row; on phones they wrap. */}
+          {index > 0 ? <span aria-hidden="true" className="hidden sm:inline">•</span> : null}
+          <a href={link.href} className="hover:text-white transition">
+            {link.label}
+          </a>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+// Compact links for the poll page footer and its not-found state.
+function SiteLinks({ className = '' }) {
+  return (
+    <nav
+      className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12px] font-bold text-white/70 ${className}`}
+    >
+      <a href="/terms-of-service" className="transition hover:text-white">Terms</a>
+      <a href="/privacy-policy" className="transition hover:text-white">Privacy</a>
+      <a href="/community-guidelines" className="transition hover:text-white">Guidelines</a>
+      <a href="/support" className="transition hover:text-white">Support</a>
+    </nav>
   );
 }
 
@@ -535,13 +717,15 @@ function PrivacyPolicyPage() {
           <li>The reaction you chose and the link it was given through</li>
           <li>Your IP address, device type, browser type, and the time of your response</li>
           <li>
-            A cookie or browser identifier, so the same person cannot repeatedly submit reactions to one link, and so
+            A cookie or browser identifier, so the same person cannot repeatedly submit reactions to one link, so the
+            person you responded to can block further reactions from you and we can act on reports of abuse, and so
             your response can be connected to your account if you later install the app
           </li>
         </ul>
         <p>
           <strong>What we do with it:</strong> we deliver your reaction to the person whose link you used, and we use
-          the technical data to prevent abuse and duplicate submissions.
+          the technical data to prevent abuse and duplicate submissions and to enforce blocks and bans under our{' '}
+          <a className="legal-link" href="/community-guidelines">Community Guidelines</a>.
         </p>
         <p>
           <strong>What the recipient sees:</strong> the reaction you chose, shown without your name, because we do not
@@ -712,13 +896,7 @@ function PrivacyPolicyPage() {
         </p>
         <p>We aim to respond to privacy requests within 30 days.</p>
 
-        <div className="mt-12 border-t border-white/10 pt-6 flex flex-wrap gap-4 text-sm text-white/60 justify-center">
-          <a href="/support" className="hover:text-white transition">Support Center</a>
-          <span>•</span>
-          <a href="/terms-of-service" className="hover:text-white transition">Terms of Service</a>
-          <span>•</span>
-          <a href="/" className="hover:text-white transition">Home</a>
-        </div>
+        <LegalFooter current="privacy" />
       </section>
     </main>
   );
@@ -734,7 +912,7 @@ function SupportPage() {
     },
     {
       q: "Is it really anonymous?",
-      a: "Yes! All responses sent via your profile link are completely anonymous. We do not share your identity, device details, or IP address with the link owner unless you match."
+      a: "Yes! All responses sent via your profile link are completely anonymous. We do not share your identity, device details, or IP address with the link owner unless you match. Anonymous votes still have to follow our Community Guidelines, and anyone can report or block an anonymous vote from inside the app."
     },
     {
       q: "How does matching work?",
@@ -754,7 +932,7 @@ function SupportPage() {
     },
     {
       q: "How do I report abusive behavior?",
-      a: "We take safety and moderation very seriously. You can block users or report offensive responses directly in the app. You can also contact our support team at support@hamme.app with details."
+      a: "Tap the flag icon on any vote or match in the app to report it, hide it, or block the person. This works for anonymous votes too. You can also email support@hamme.app with the subject \"Report abuse\". We review every report within 24 hours; content that breaks our Community Guidelines is removed and the user responsible is banned from Hamme."
     },
     {
       q: "How can I share my link?",
@@ -787,7 +965,46 @@ function SupportPage() {
           </div>
         </div>
 
-        <h2 className="text-xl font-bold text-pink-300">2. Frequently Asked Questions</h2>
+        <div id="report-abuse" className="my-8 rounded-2xl border border-pink-300/30 bg-pink-300/[0.06] p-6">
+          <h2 className="!mt-0 text-xl font-bold text-pink-300">2. Report Abuse</h2>
+          <p className="mt-2">
+            Seen a vote, match, or profile that breaks our{' '}
+            <a className="legal-link" href="/community-guidelines">Community Guidelines</a>? Report it:
+          </p>
+          <ul className="mt-3">
+            <li>
+              <strong>In the app:</strong> tap the flag icon on any vote or match to <strong>report</strong> it,{' '}
+              <strong>hide</strong> it, or <strong>block</strong> the person. This works for anonymous votes too.
+              Reported and hidden content disappears from your feed straight away, and people you block can no longer
+              vote for you or match with you.
+            </li>
+            <li>
+              <strong>By email:</strong> write to{' '}
+              <a className="legal-link" href={reportAbuseMailto}>{legal.supportEmail}</a> with the subject “Report
+              abuse”. Include the username or Hamme link and tell us what happened.
+            </li>
+          </ul>
+          <div className="mt-4">
+            <a
+              href={reportAbuseMailto}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-extrabold text-black shadow-md hover:bg-white/95 transition active:scale-95"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21V4m0 0h13l-2 4 2 4H3" />
+              </svg>
+              Report abuse by email
+            </a>
+          </div>
+          <p className="mt-4">
+            We review every report within 24 hours. Content that breaks the rules is removed and the user responsible is
+            banned from Hamme.
+          </p>
+          <p>
+            <strong>If someone is in immediate danger, contact your local emergency services.</strong>
+          </p>
+        </div>
+
+        <h2 className="text-xl font-bold text-pink-300">3. Frequently Asked Questions</h2>
         <div className="mt-4 flex flex-col gap-3">
           {faqs.map((faq, index) => {
             const isOpen = openFaq === index;
@@ -820,13 +1037,7 @@ function SupportPage() {
           })}
         </div>
 
-        <div className="mt-12 border-t border-white/10 pt-6 flex flex-wrap gap-4 text-sm text-white/60 justify-center">
-          <a href="/privacy-policy" className="hover:text-white transition">Privacy Policy</a>
-          <span>•</span>
-          <a href="/terms-of-service" className="hover:text-white transition">Terms of Service</a>
-          <span>•</span>
-          <a href="/" className="hover:text-white transition">Home</a>
-        </div>
+        <LegalFooter current="support" />
       </section>
     </main>
   );
@@ -846,9 +1057,10 @@ function TermsOfServicePage() {
         </p>
         <p>
           By downloading the app, creating an account, responding on a Hamme link, or otherwise using the Service, you
-          agree to these Terms and to our Privacy Policy at{' '}
-          <a className="legal-link" href="/privacy-policy">www.hamme.app/privacy-policy</a>. If you do not agree, do not
-          use the Service.
+          agree to these Terms, including our Community Guidelines at{' '}
+          <a className="legal-link" href="/community-guidelines">www.hamme.app/community-guidelines</a>, and to our
+          Privacy Policy at <a className="legal-link" href="/privacy-policy">www.hamme.app/privacy-policy</a>. If you do
+          not agree, do not use the Service.
         </p>
 
         <h2>1. What Hamme Is</h2>
@@ -868,7 +1080,33 @@ function TermsOfServicePage() {
           We describe this more fully in our <a className="legal-link" href="/privacy-policy">Privacy Policy</a>.
         </p>
 
-        <h2>2. Eligibility and Age Requirements</h2>
+        <h2 id="community-guidelines">2. Community Guidelines and Zero Tolerance</h2>
+        <ZeroToleranceNotice />
+        <p>
+          The following are not allowed anywhere on the Service, whether in the app or on the web, and whether or not
+          you have an account:
+        </p>
+        <CommunityRulesList />
+        <p>
+          These rules apply to everything you add to the Service, including your name, username, profile photo, and
+          linked Instagram or Snapchat handles, and to the votes you send. Anonymous votes are no exception.
+        </p>
+        <p>
+          <strong>Hide, report, and block.</strong> You can hide, report, or block any vote, match, or user from within
+          the app, including anonymous votes. Hidden and reported content is removed from your feed immediately, and a
+          user or anonymous voter you block can no longer vote for you, respond to you, or match with you. Section 6
+          explains how.
+        </p>
+        <p>
+          <strong>Every report is reviewed within 24 hours.</strong> Content that breaks these rules is removed, and the
+          user responsible is banned from Hamme.
+        </p>
+        <p>
+          Our <a className="legal-link" href="/community-guidelines">Community Guidelines</a> explain these rules in
+          more detail and form part of these Terms.
+        </p>
+
+        <h2>3. Eligibility and Age Requirements</h2>
         <p>
           You must be at least 13 years old to use the Service. The Service is not directed to children under 13, and we
           do not knowingly permit them to create accounts or submit reactions.
@@ -889,7 +1127,7 @@ function TermsOfServicePage() {
           required consent.
         </p>
 
-        <h2>3. Your Account</h2>
+        <h2>4. Your Account</h2>
         <p>
           You are responsible for the information you provide, for keeping access to your account secure, and for
           everything that happens under your account. Tell us at <MailLink email={legal.supportEmail} /> immediately if
@@ -898,18 +1136,25 @@ function TermsOfServicePage() {
         <p>
           You must provide accurate information. You must not create an account impersonating another person, create an
           account on someone else’s behalf without authority, or operate more than one account to evade a suspension or
-          to manipulate reactions.
+          ban or to manipulate reactions.
         </p>
 
-        <h2>4. Prohibited Conduct</h2>
-        <p>You must not use the Service to:</p>
+        <h2>5. Prohibited Conduct</h2>
+        <p>In addition to the Community Guidelines in Section 2, you must not use the Service to:</p>
         <ul>
           <li>harass, bully, abuse, stalk, threaten, intimidate, defame, or degrade any person;</li>
+          <li>send votes to bully, harass, or target anyone, or encourage others to do so;</li>
+          <li>
+            use a name, username, or linked social handle that is sexual, violent, hateful, harassing, or otherwise
+            objectionable, or that belongs to someone else;
+          </li>
           <li>
             upload a profile photo that is not of you, that shows a person who has not consented, that shows a minor
             inappropriately, or that is sexual, violent, hateful, or otherwise objectionable;
           </li>
           <li>impersonate any person or misrepresent your identity or affiliation;</li>
+          <li>promote, encourage, or glorify self-harm or suicide;</li>
+          <li>share another person’s private information without their permission;</li>
           <li>
             solicit, share, or attempt to obtain sexual content, or use the Service for any sexual purpose involving a
             minor;
@@ -922,30 +1167,46 @@ function TermsOfServicePage() {
           <li>use the Service for any unlawful purpose or in violation of any applicable law.</li>
         </ul>
         <p>
-          We have zero tolerance for objectionable content and abusive behaviour. Accounts that breach this section may
-          be suspended or terminated without notice and without refund.
+          We have zero tolerance for objectionable content and abusive users. Content that breaches Section 2 or this
+          section is removed, and the user responsible is banned from Hamme without notice and without refund.
         </p>
 
-        <h2>5. Reporting, Blocking, and Moderation</h2>
+        <h2>6. Reporting, Blocking, and Moderation</h2>
         <p>
-          You can report any profile, photo, or reaction from within the app, and you can block any account so that it
-          cannot appear to you or interact with you.
+          In the app, tap the flag icon on any vote or match, including an anonymous vote, to hide it, report it, or
+          block the person who sent it:
+        </p>
+        <ul>
+          <li>
+            <strong>Hide</strong> removes it from your feed immediately.
+          </li>
+          <li>
+            <strong>Report</strong> removes it from your feed immediately and sends it to our moderation team with the
+            reason you choose.
+          </li>
+          <li>
+            <strong>Block</strong> stops that user, or that anonymous voter, from voting for you, responding to you, or
+            matching with you.
+          </li>
+        </ul>
+        <p>
+          If you are voting on a Hamme link on the web, you can report that profile with the “Report this profile” link
+          on the page. You can also report abuse at any time by emailing <MailLink email={legal.supportEmail} /> with the
+          subject “Report abuse”.
         </p>
         <p>
-          We review reports and act on them promptly, and we aim to respond to reports of objectionable content within 24
-          hours. Depending on what we find, we may remove content, restrict features, suspend an account, terminate an
-          account, or report the matter to law enforcement.
+          We review every report within 24 hours. If the content breaks these Terms or our Community Guidelines, we
+          remove it and ban the user responsible; where a vote was sent anonymously from the web, we stop the browser
+          that sent it from voting on Hamme again. We may also report the matter to law enforcement.
         </p>
         <p>
-          We may also use automated filtering and manual review to detect prohibited content, including on profile
-          photos, before or after it is visible to others. We are not obliged to monitor all activity, but where we
-          become aware of content or conduct that breaches these Terms, we will take appropriate action.
-        </p>
-        <p>
-          You can also report abuse directly to <MailLink email={legal.supportEmail} />.
+          We use automated filters to block objectionable names, usernames, and social handles, and we may use
+          automated tools and manual review to detect other prohibited content, including profile photos, before or
+          after it is visible to others. We are not obliged to monitor all activity, but where we become aware of
+          content or conduct that breaches these Terms, we will take appropriate action.
         </p>
 
-        <h2>6. Your Content and the Licence You Give Us</h2>
+        <h2>7. Your Content and the Licence You Give Us</h2>
         <p>
           “Your Content” means the information you submit to the Service, including your name, date of birth, profile
           photo, social media handle, and the reactions you select.
@@ -954,14 +1215,14 @@ function TermsOfServicePage() {
           You keep ownership of Your Content. You grant us a worldwide, non-exclusive, royalty-free, sublicensable
           licence to host, store, reproduce, adapt for display, and transmit Your Content solely to operate, provide,
           secure, and improve the Service. This licence ends when you delete the content or your account, except where
-          we must retain it under Section 12 or applicable law, and except for copies already shared with other users.
+          we must retain it under Section 13 or applicable law, and except for copies already shared with other users.
         </p>
         <p>
           You represent that you have the rights necessary to grant this licence, and that Your Content does not infringe
           anyone’s rights or breach any law.
         </p>
 
-        <h2>7. Our Intellectual Property</h2>
+        <h2>8. Our Intellectual Property</h2>
         <p>
           The Service, including the Hamme name, logo, app design, interface, features, reaction mechanics, and all
           software, is owned by us or our licensors and protected by intellectual property laws. These Terms grant you a
@@ -969,7 +1230,7 @@ function TermsOfServicePage() {
           non-commercial use. No other rights are granted.
         </p>
 
-        <h2>8. Intellectual Property Complaints</h2>
+        <h2>9. Intellectual Property Complaints</h2>
         <p>
           If you believe content on the Service infringes your intellectual property rights, contact{' '}
           <MailLink email={legal.supportEmail} /> with a description of the work, the location of the allegedly
@@ -977,7 +1238,7 @@ function TermsOfServicePage() {
           unauthorised. We will investigate and may remove content and terminate repeat infringers.
         </p>
 
-        <h2>9. Third-Party Services</h2>
+        <h2>10. Third-Party Services</h2>
         <p>
           The Service works with third parties, including the Apple App Store, Google Play, social platforms such as
           Instagram and Snapchat, and attribution and analytics providers. Sharing a Hamme link to a social platform is
@@ -986,7 +1247,7 @@ function TermsOfServicePage() {
           the Service.
         </p>
 
-        <h2>10. Purchases and Subscriptions</h2>
+        <h2>11. Purchases and Subscriptions</h2>
         <p>
           We may offer paid features. Prices are shown before purchase. Purchases and subscriptions are processed by the
           Apple App Store or Google Play and are governed by that store’s terms and refund policies. Subscriptions renew
@@ -995,14 +1256,14 @@ function TermsOfServicePage() {
           purchased virtual features are licensed, not sold, and have no cash value.
         </p>
 
-        <h2>11. Changes to the Service</h2>
+        <h2>12. Changes to the Service</h2>
         <p>
           We may add, change, suspend, or discontinue any part of the Service, including removing features or changing
           how reactions and matches work. Where a change materially reduces what you have paid for, we will give
           reasonable notice or a pro-rated refund where required by law.
         </p>
 
-        <h2>12. Deletion, Suspension, and Termination</h2>
+        <h2>13. Deletion, Suspension, and Termination</h2>
         <p>
           You can delete your account at any time from the app’s settings. You can also request deletion, without
           reinstalling the app, by emailing <MailLink email={legal.supportEmail} /> from your registered address.
@@ -1018,8 +1279,13 @@ function TermsOfServicePage() {
           reasonably believe your use poses a risk to other users or to us. Where practical and lawful, we will tell you
           why.
         </p>
+        <p>
+          If you break the Community Guidelines in Section 2, we will remove the content and ban you from Hamme. A banned
+          user may not create a new account or otherwise use the Service, and we may block the devices and browsers
+          used to break the rules.
+        </p>
 
-        <h2>13. Disclaimers</h2>
+        <h2>14. Disclaimers</h2>
         <p>
           The Service is provided “as is” and “as available”. To the fullest extent permitted by law, we disclaim all
           warranties, express or implied, including merchantability, fitness for a particular purpose, and
@@ -1031,7 +1297,7 @@ function TermsOfServicePage() {
           applicable law, including consumer protection law.
         </p>
 
-        <h2>14. Limitation of Liability</h2>
+        <h2>15. Limitation of Liability</h2>
         <p>
           To the fullest extent permitted by law, we will not be liable for any indirect, incidental, special,
           consequential, punitive, or exemplary damages, or for loss of profits, goodwill, data, or reputation, arising
@@ -1047,14 +1313,14 @@ function TermsOfServicePage() {
           personal injury caused by negligence, fraud, or wilful misconduct.
         </p>
 
-        <h2>15. Indemnity</h2>
+        <h2>16. Indemnity</h2>
         <p>
           To the extent permitted by law, you agree to indemnify and hold us harmless from claims, damages, losses, and
           reasonable legal costs arising from Your Content, your breach of these Terms, or your unlawful use of the
           Service.
         </p>
 
-        <h2>16. Governing Law and Disputes</h2>
+        <h2>17. Governing Law and Disputes</h2>
         <p>
           These Terms are governed by the laws of India, without regard to conflict-of-laws rules. Any dispute will be
           subject to the exclusive jurisdiction of the courts of India.
@@ -1065,7 +1331,7 @@ function TermsOfServicePage() {
           applicable law gives you that right.
         </p>
 
-        <h2>17. Changes to These Terms</h2>
+        <h2>18. Changes to These Terms</h2>
         <p>
           We may update these Terms. If a change is material, we will give notice in the app or by email at least 14
           days before it takes effect, unless a shorter period is required by law or necessary for security or legal
@@ -1073,38 +1339,120 @@ function TermsOfServicePage() {
           above always reflects the current version.
         </p>
 
-        <h2>18. General</h2>
+        <h2>19. General</h2>
         <p>
-          These Terms, together with the Privacy Policy, are the entire agreement between us regarding the Service. If
+          These Terms, together with the Community Guidelines and the Privacy Policy, are the entire agreement between us
+          regarding the Service. If
           any provision is found unenforceable, the rest remains in force and the unenforceable part will be limited to
           the minimum extent necessary. Our failure to enforce a provision is not a waiver of it. You may not assign these
           Terms; we may assign them in connection with a merger, acquisition, or sale of assets, on notice to you.
         </p>
 
-        <h2>19. Contact</h2>
+        <h2>20. Contact</h2>
         <p>
           Hamme
           <br />
           Email: <MailLink email={legal.supportEmail} />
         </p>
         <p>
-          We aim to respond to all enquiries within 5 business days, and to reports of objectionable content within 24
-          hours.
+          We aim to respond to all enquiries within 5 business days. We review every report of objectionable content or
+          abusive users within 24 hours.
         </p>
 
-        <div className="mt-12 border-t border-white/10 pt-6 flex flex-wrap gap-4 text-sm text-white/60 justify-center">
-          <a href="/support" className="hover:text-white transition">Support Center</a>
-          <span>•</span>
-          <a href="/privacy-policy" className="hover:text-white transition">Privacy Policy</a>
-          <span>•</span>
-          <a href="/" className="hover:text-white transition">Home</a>
-        </div>
+        <LegalFooter current="terms" />
       </section>
     </main>
   );
 }
 
-function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, submitError }) {
+function CommunityGuidelinesPage() {
+  return (
+    <main className="privacy-shell">
+      <section className="privacy-card">
+        <div className="privacy-eyebrow">Hamme</div>
+        <h1>Community Guidelines</h1>
+        <p className="privacy-meta">Last updated: {legal.lastUpdated}</p>
+        <p>
+          Hamme is a fun way to find out how people see you, and it only works if everyone feels safe. These guidelines
+          apply to everyone who uses Hamme, in the app or on the web, with or without an account. They are part of our{' '}
+          <a className="legal-link" href="/terms-of-service">Terms of Service</a>.
+        </p>
+
+        <ZeroToleranceNotice />
+
+        <h2>1. What’s Not Allowed</h2>
+        <p>The following are not allowed anywhere on Hamme:</p>
+        <CommunityRulesList />
+        <p>
+          These rules cover everything you put on Hamme: your name, username, profile photo, and linked Instagram or
+          Snapchat handles, as well as the votes you send. Anonymous votes are no exception.
+        </p>
+
+        <h2>2. You Must Be 13 or Older</h2>
+        <p>
+          Hamme is only for people aged 13 and over. If you think someone on Hamme is under 13, report them in the app
+          and choose “User may be under 13”, or email us.
+        </p>
+
+        <h2>3. Hide, Report, or Block</h2>
+        <p>You decide what you see. In the app, tap the flag icon on any vote or match to:</p>
+        <ul>
+          <li>
+            <strong>Hide</strong> it: it disappears from your feed straight away.
+          </li>
+          <li>
+            <strong>Report</strong> it: it disappears from your feed straight away and goes to our moderation team with
+            the reason you choose.
+          </li>
+          <li>
+            <strong>Block</strong> the person: they can no longer vote for you, respond to you, or match with you.
+          </li>
+        </ul>
+        <p>
+          This works for anonymous votes too. Blocking an anonymous vote also stops the person who sent it from voting
+          for you again.
+        </p>
+        <p>
+          Voting on someone’s Hamme link in your browser? Use “Report this profile” at the bottom of the page. You can
+          also report anything by emailing <a className="legal-link" href={reportAbuseMailto}>{legal.supportEmail}</a>{' '}
+          with the subject “Report abuse”. Tell us the username or Hamme link and what happened.
+        </p>
+
+        <h2>4. What Happens After You Report</h2>
+        <ul>
+          <li>We review every report within 24 hours.</li>
+          <li>
+            If the content breaks these guidelines, we remove it and ban the user responsible from Hamme. Banned users
+            may not create a new account.
+          </li>
+          <li>If an anonymous web voter breaks the rules, we stop their browser from voting on Hamme again.</li>
+          <li>We never tell the person you reported who reported them.</li>
+          <li>Where the law requires it, or someone may be at risk, we may share information with law enforcement.</li>
+        </ul>
+
+        <h2>5. If Someone Is in Danger</h2>
+        <p>
+          <strong>If someone is in immediate danger, contact your local emergency services.</strong> Then report the
+          account to us so we can act on it.
+        </p>
+        <p>
+          If you are going through a hard time or thinking about hurting yourself, please talk to someone you trust or
+          contact a local crisis helpline.
+        </p>
+
+        <h2>6. Contact Us</h2>
+        <p>
+          Questions about these guidelines, or something to report? Email <MailLink email={legal.supportEmail} />.
+        </p>
+
+        <LegalFooter current="guidelines" />
+      </section>
+    </main>
+  );
+}
+
+function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, submitError, voteBlocked, votingPaused }) {
+  const votingDisabled = !!submittingType || voteBlocked || votingPaused;
   return (
     <>
       <div className="flex w-full flex-col items-center px-6">
@@ -1137,18 +1485,37 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
         <p className="mt-4 text-[14px] font-medium text-white/95">🙈 Send anonymously</p>
 
         <div className="mt-[10px] flex w-full flex-col gap-[10px]">
-          <button onClick={() => onAnswer('friend')} disabled={!!submittingType} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#16c9e9,#0569f9)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
+          <button onClick={() => onAnswer('friend')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#16c9e9,#0569f9)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
             🤝 Friend
           </button>
-          <button onClick={() => onAnswer('crush')} disabled={!!submittingType} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#d14ce6,#ff3c98)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
+          <button onClick={() => onAnswer('crush')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#d14ce6,#ff3c98)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
            😍 Crush
           </button>
-          <button onClick={() => onAnswer('frenemy')} disabled={!!submittingType} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#b7a7ee,#58598f)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
+          <button onClick={() => onAnswer('frenemy')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#b7a7ee,#58598f)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
             😈 Frenemy 
           </button>
-          {submitError ? <p className="text-xs text-red-200">{submitError}</p> : null}
+          {submitError ? (
+            <p
+              role="alert"
+              className={
+                voteBlocked
+                  ? 'mt-1 rounded-xl bg-black/20 px-3 py-2 text-[14px] font-bold text-white'
+                  : 'text-xs text-red-200'
+              }
+            >
+              {submitError}
+            </p>
+          ) : null}
         </div>
 
+        <p className="mt-4 max-w-[290px] text-[11px] font-medium leading-[1.5] text-white/75">
+          By voting, you agree to our{' '}
+          <a href="/terms-of-service" className="font-bold text-white underline underline-offset-2">Terms</a> and{' '}
+          <a href="/community-guidelines" className="font-bold text-white underline underline-offset-2">
+            Community Guidelines
+          </a>
+          . Bullying and harassment aren't allowed.
+        </p>
       </div>
     </>
   );
@@ -1165,6 +1532,13 @@ function RevealScreen({
   selectedType,
 }) {
   const [copyStatus, setCopyStatus] = useState('');
+  const storeRedirectTimer = useRef(null);
+  // The pending token the Reveal "touch" was already sent for (see handleReveal).
+  const touchedToken = useRef(null);
+  // Reveal can be tapped before the server accepts the vote. If the vote is
+  // then rejected (e.g. 403 VOTE_BLOCKED) this screen unmounts; don't carry on
+  // to the app store for a vote that was never recorded.
+  useEffect(() => () => clearTimeout(storeRedirectTimer.current), []);
   // Display-only countdown: show 30s even though the real TTL (VITE_PENDING_TTL_SECONDS)
   // is longer. When the displayed countdown hits 0 the screen behaves as expired.
   const displaySeconds = Math.max(secondsLeft - (pendingTtlSeconds - displayTtlSeconds), 0);
@@ -1200,7 +1574,12 @@ function RevealScreen({
   const handleReveal = async () => {
     if (!pendingToken && !shareCode) return;
 
-    if (pendingToken) {
+    if (pendingToken && touchedToken.current !== pendingToken) {
+      // Once per token: a repeat tap (common when the deep link does nothing
+      // visible, e.g. iOS without the app) would only extend the same pending
+      // vote again. Still sent right away, even while the vote request is in
+      // flight: the server waits briefly for a token that is still being written.
+      touchedToken.current = pendingToken;
       // Fire-and-forget: waiting for this round trip delayed opening the app.
       // keepalive lets the request finish even as the page navigates away.
       fetch(`${apiBaseUrl}/interactions/pending/${pendingToken}/touch`, {
@@ -1227,7 +1606,8 @@ function RevealScreen({
 
     console.info('[Web] deep link triggered', { deepLink });
 
-    setTimeout(() => {
+    clearTimeout(storeRedirectTimer.current);
+    storeRedirectTimer.current = setTimeout(() => {
       if (document.visibilityState === 'visible') {
         if (isAndroid) {
           window.location.href = playStoreUrl;

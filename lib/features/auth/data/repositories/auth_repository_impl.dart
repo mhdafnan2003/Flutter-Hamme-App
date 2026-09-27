@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:io' show IOException;
+
+import 'package:http/http.dart' as http;
+
 import '../../../../core/services/secure_storage_service.dart';
 import '../../../../models/auth_session.dart';
 import '../datasources/auth_remote_data_source.dart';
@@ -31,12 +36,18 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     try {
-      await _remoteDataSource.logout();
+      // Revoke only this device's session.
+      final refreshToken = await _secureStorageService.readRefreshToken();
+      await _remoteDataSource.logout(refreshToken: refreshToken);
     } finally {
       await _secureStorageService.clearTokens();
     }
   }
 
+  /// Returns null when there is no saved session or the backend rejected it.
+  /// Rethrows a transient failure (offline, timeout, rate limit, server
+  /// error) with the tokens kept: the saved session may be perfectly valid,
+  /// and treating the user as signed out would send them to onboarding.
   @override
   Future<AuthSession?> restoreSession() async {
     try {
@@ -55,14 +66,31 @@ class AuthRepositoryImpl implements AuthRepository {
         refreshToken: refreshToken,
       );
     } catch (error) {
+      if (_isTransientFailure(error)) {
+        debugPrint('[AuthRepo] restoreSession: transient error: $error');
+        rethrow;
+      }
       if (error is AppException && (error.statusCode == 401 || error.statusCode == 403)) {
         debugPrint('[AuthRepo] restoreSession: auth invalid, clearing tokens');
         await _secureStorageService.clearTokens();
       } else {
-        debugPrint('[AuthRepo] restoreSession: transient error: $error');
+        debugPrint('[AuthRepo] restoreSession: failed: $error');
       }
       return null;
     }
+  }
+
+  /// Network trouble or a server-side error, as opposed to the backend
+  /// rejecting the session.
+  static bool _isTransientFailure(Object error) {
+    if (error is AppException) {
+      final status = error.statusCode;
+      return status != null &&
+          (status == 408 || status == 429 || status >= 500);
+    }
+    return error is IOException ||
+        error is TimeoutException ||
+        error is http.ClientException;
   }
 
   @override
@@ -121,6 +149,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? snapchatId,
     String? avatarUrl,
     String? deviceId,
+    int? acceptedTermsVersion,
   }) async {
     debugPrint('[AuthRepo] guestRegister remote call start');
     final session = await _remoteDataSource.guestRegister(
@@ -131,6 +160,7 @@ class AuthRepositoryImpl implements AuthRepository {
       snapchatId: snapchatId,
       avatarUrl: avatarUrl,
       deviceId: deviceId,
+      acceptedTermsVersion: acceptedTermsVersion,
     );
     debugPrint('[AuthRepo] guestRegister remote call success user=${session.user.id}');
     debugPrint('[AuthRepo] token persist start');

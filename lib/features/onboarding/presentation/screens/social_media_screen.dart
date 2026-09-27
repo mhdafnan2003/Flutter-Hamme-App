@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hamme_app/core/constants/app_constants.dart';
+import 'package:hamme_app/core/utils/app_exception.dart';
+import 'package:hamme_app/core/utils/content_filter.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/routes/route_paths.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/text_strings.dart';
@@ -24,6 +28,21 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
   final FocusNode _usernameFocusNode = FocusNode();
   bool _isInstagramSelected = true;
   bool _isCreatingAccount = false;
+
+  /// Inline error under the handle field (content filter / server rejection).
+  String? _usernameError;
+
+  ContentFilterField get _handleField =>
+      _isInstagramSelected
+          ? ContentFilterField.instagram
+          : ContentFilterField.snapchat;
+
+  void _selectPlatform({required bool instagram}) {
+    setState(() {
+      _isInstagramSelected = instagram;
+      _usernameError = null;
+    });
+  }
 
   @override
   void initState() {
@@ -125,9 +144,8 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                                     child: GestureDetector(
                                       behavior: HitTestBehavior.opaque,
                                       onTap:
-                                          () => setState(
-                                            () => _isInstagramSelected = false,
-                                          ),
+                                          () =>
+                                              _selectPlatform(instagram: false),
                                       child: Center(
                                         child: Text(
                                           TTexts.socialSnapchat,
@@ -149,9 +167,8 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                                     child: GestureDetector(
                                       behavior: HitTestBehavior.opaque,
                                       onTap:
-                                          () => setState(
-                                            () => _isInstagramSelected = true,
-                                          ),
+                                          () =>
+                                              _selectPlatform(instagram: true),
                                       child: Center(
                                         child: Text(
                                           TTexts.socialInstagram,
@@ -193,6 +210,9 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                             ),
                           ],
                           onChanged: (_) {
+                            if (_usernameError != null) {
+                              setState(() => _usernameError = null);
+                            }
                             final normalized =
                                 _usernameController.text.toLowerCase();
                             if (_usernameController.text != normalized) {
@@ -236,6 +256,22 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                           ),
                         ),
                       ),
+                      if (_usernameError != null) ...[
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            _usernameError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontFamily: TFonts.nunito,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -267,6 +303,14 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                     );
                     return;
                   }
+                  final filterError = ContentFilter.validate(
+                    username,
+                    _handleField,
+                  );
+                  if (filterError != null) {
+                    _showInlineUsernameError(filterError);
+                    return;
+                  }
                   await _createAccountAndOpenPro(username);
                 },
               ),
@@ -291,6 +335,14 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
       final draft = ref.read(onboardingDraftProvider).value;
       if (draft == null) throw Exception('Onboarding data is missing.');
 
+      // Nobody gets an account without agreeing to the community rules
+      // (e.g. an onboarding draft saved by an older app version).
+      final acceptedTerms = draft.termsAcceptedVersion;
+      if (acceptedTerms == null || acceptedTerms < kCurrentTermsVersion) {
+        if (mounted) context.go(RoutePaths.onboardingCommunityRules);
+        return;
+      }
+
       final age =
           draft.birthday == null
               ? 18
@@ -304,20 +356,51 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
             username: username,
             instagramId: platform == TTexts.socialInstagram ? username : null,
             snapchatId: platform == TTexts.socialSnapchat ? username : null,
+            acceptedTermsVersion: acceptedTerms,
           );
 
       final auth = ref.read(authControllerProvider);
-      if (auth.hasError || auth.value == null) {
+      if (auth.hasError || auth.valueOrNull == null) {
         throw auth.error ?? Exception('Could not create account.');
       }
       if (mounted) context.go('/onboarding/pro');
-    } catch (_) {
-      if (mounted) {
-        await _showUsernameError('Could not create your account. Try again.');
+    } catch (error) {
+      if (!mounted) return;
+      // A banned device is sent to the suspension notice by the router.
+      if (error is AppException && error.isAccountBanned) return;
+      if (error is AppException && error.isObjectionableContent) {
+        await _showRejectedContent(error);
+        return;
       }
+      await _showUsernameError('Could not create your account. Try again.');
     } finally {
       if (mounted) setState(() => _isCreatingAccount = false);
     }
+  }
+
+  /// The server's content filter rejected a field: show its message where
+  /// the user can fix it.
+  Future<void> _showRejectedContent(AppException error) async {
+    final field = error.field;
+    if (field == 'name' || field == 'displayName') {
+      // The name was entered on an earlier step.
+      HapticFeedback.mediumImpact();
+      final editName = await showOnboardingValidationDialog(
+        context,
+        title: 'Choose another name',
+        message: error.message,
+        actionLabel: 'Edit name',
+      );
+      if (editName && mounted) context.go('/onboarding/name');
+      return;
+    }
+    _showInlineUsernameError(error.message);
+  }
+
+  void _showInlineUsernameError(String message) {
+    HapticFeedback.mediumImpact();
+    setState(() => _usernameError = message);
+    _usernameFocusNode.requestFocus();
   }
 
   Future<void> _showUsernameError(String message) async {

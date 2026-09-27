@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'routes/app_router.dart';
 import 'utils/theme/theme.dart';
@@ -112,12 +113,42 @@ class _HammeAppState extends ConsumerState<HammeApp> {
     }
   }
 
+  // Play returns the same install referrer on every launch for the life of the
+  // install, but its reveal token is only valid for minutes after the web vote.
+  // Replaying it re-sent POST /interactions/finalize (and with it "It's a
+  // match!" pushes) on every cold start. Apply it only shortly after it is
+  // first seen; the window still covers a relaunch mid-onboarding.
+  static const String _referrerMarkerKey = 'install_referrer_marker';
+  static const String _referrerFirstSeenKey = 'install_referrer_first_seen_ms';
+  static const Duration _referrerReplayWindow = Duration(minutes: 30);
+
+  Future<bool> _isFreshReferrer(InstallReferrerPayload payload) async {
+    final marker = '${payload.token}|${payload.shareCode}|${payload.type}';
+    final now = DateTime.now().millisecondsSinceEpoch;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final firstSeen = prefs.getInt(_referrerFirstSeenKey);
+      if (prefs.getString(_referrerMarkerKey) == marker && firstSeen != null) {
+        return now - firstSeen <= _referrerReplayWindow.inMilliseconds;
+      }
+      await prefs.setString(_referrerMarkerKey, marker);
+      await prefs.setInt(_referrerFirstSeenKey, now);
+    } catch (e) {
+      debugPrint('[InstallReferrer] could not track replays: $e');
+    }
+    return true;
+  }
+
   Future<void> _initInstallReferrer() async {
     if (_referrerChecked) return;
     _referrerChecked = true;
 
     final payload = await _installReferrerService.readPayload();
     if (payload == null || !payload.hasUsefulData) return;
+    if (!await _isFreshReferrer(payload)) {
+      debugPrint('[InstallReferrer] ignoring replayed referrer');
+      return;
+    }
 
     if (payload.token != null && payload.token!.isNotEmpty) {
       // Only apply the install referrer token if no live deep-link token is

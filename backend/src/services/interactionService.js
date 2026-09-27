@@ -3,9 +3,10 @@ const Match = require('../models/Match');
 const User = require('../models/User');
 const PendingInteraction = require('../models/PendingInteraction');
 const ApiError = require('../utils/ApiError');
+const { voteBlockedError } = require('../utils/safety');
 const crypto = require('crypto');
-const { emitMatchFound } = require('../socket');
 const appConfigService = require('./appConfigService');
+const blockService = require('./blockService');
 const pushService = require('./pushService');
 const env = require('../config/env');
 
@@ -18,6 +19,7 @@ const PENDING_TTL_MS = pendingTtlSeconds * 1000;
 const REVEAL_EXTEND_MS = 5 * 60 * 1000; // 5 min grace after user taps Reveal
 const VISIBLE_MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const INTERACTION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const MAX_CLIENT_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
 const PENDING_TOKEN_PATTERN = /^[a-f0-9]{32}$/;
 // The web client hands the voter a reveal token before its create request
 // finishes, so the app can ask about a token that is still being written.
@@ -46,22 +48,38 @@ async function assertInteractionCooldownElapsed(fromUserId, targetUserId) {
   );
 }
 
+// A block works both ways for voting: neither user can vote for, respond to or
+// match with the other. `targetUser` must include blockedUsers.
 async function assertUsersCanInteract(fromUserId, targetUser) {
   const targetBlockedSender = (targetUser.blockedUsers || []).some(
     (blockedId) => blockedId.toString() === fromUserId.toString()
   );
-  const senderBlockedTarget = await User.exists({
-    _id: fromUserId,
-    blockedUsers: targetUser._id,
-  });
+  const senderBlockedTarget =
+    targetBlockedSender ||
+    (await User.exists({
+      _id: fromUserId,
+      blockedUsers: targetUser._id,
+    }));
   if (targetBlockedSender || senderBlockedTarget) {
-    throw new ApiError(403, 'Interaction is unavailable.');
+    throw voteBlockedError();
   }
 }
 
 function buildCanonicalPair(firstUserId, secondUserId) {
   const [userA, userB] = [firstUserId.toString(), secondUserId.toString()].sort();
   return { userA, userB };
+}
+
+// Query conditions for votes their recipient may see: not hidden (or reported)
+// by them and not from a web session they blocked. `$nin` keeps votes that
+// have no sessionId at all.
+function visibleToRecipientFilter(blockedVoterSessions = []) {
+  return {
+    hiddenByRecipientAt: null,
+    ...(blockedVoterSessions.length
+      ? { 'metadata.sessionId': { $nin: blockedVoterSessions } }
+      : {}),
+  };
 }
 
 function normalizeType(type) {
@@ -74,16 +92,45 @@ function normalizeType(type) {
   return canonical;
 }
 
+// Fields of the other person that a match needs (the app card and the push).
+const MATCHED_USER_FIELDS = 'name username instagramId snapchatId profileImageUrl shareCode isPro';
+
+// Only what the app renders. Never expose another user's email, device or
+// billing fields (the full toJSON() used to be sent).
+function serializeMatchedUser(user) {
+  return {
+    id: user._id.toString(),
+    name: user.name,
+    username: user.username || null,
+    email: '',
+    instagramId: user.instagramId || '',
+    snapchatId: user.snapchatId || '',
+    avatarUrl: user.profileImageUrl || null,
+    shareCode: user.shareCode,
+    isPro: Boolean(user.isPro),
+  };
+}
+
 function serializeMatch(match, currentUserId) {
-  const isUserA = match.userA.id.toString() === currentUserId.toString();
+  const isUserA = match.userA._id.toString() === currentUserId.toString();
   const matchedUser = isUserA ? match.userB : match.userA;
 
   return {
-    id: match.id,
+    id: match._id.toString(),
     type: match.type,
     createdAt: match.lastMatchedAt || match.createdAt,
-    matchedUser: matchedUser.toJSON(),
+    matchedUser: serializeMatchedUser(matchedUser),
   };
+}
+
+// A web voter's reveal token and browser session id are theirs alone, even
+// once the vote is attributed to their account. The session id is also what
+// anonymous blocks and bans key on, so leaking it would let someone vote
+// abusively "as" another person's browser.
+function withoutVoterSecrets(metadata) {
+  if (!metadata) return null;
+  const { pendingToken, sessionId, ...rest } = metadata;
+  return rest;
 }
 
 function serializeAnonymousInteraction(interaction) {
@@ -94,7 +141,7 @@ function serializeAnonymousInteraction(interaction) {
   delete metadata.sessionId;
 
   return {
-    id: interaction.id,
+    id: interaction._id.toString(),
     fromUser: '',
     fromUserName: null,
     fromUserUsername: null,
@@ -170,6 +217,9 @@ function scheduleAnonymousVoteNotification({ toUserId, pendingToken, delayMs = P
         'metadata.pendingToken': pendingToken,
       });
       if (!interaction) return;
+      // No push for a vote the recipient hid or whose voter they blocked
+      // during the reveal window.
+      if (!(await blockService.recipientStillWantsVote(interaction))) return;
       if (interaction.fromUser) {
         const fromUser = await User.findById(interaction.fromUser).select(
           'username name profileImageUrl'
@@ -226,7 +276,7 @@ async function notifyMatch(match, { skipUserId = null } = {}) {
 async function createInteraction({ fromUserId, shareCode, type }) {
   const normalizedType = normalizeType(type);
   const targetUser = await User.findOne({ shareCode }).select('+blockedUsers');
-  if (!targetUser) {
+  if (!targetUser || targetUser.isBanned) {
     throw new ApiError(404, 'Target profile not found.');
   }
 
@@ -272,10 +322,8 @@ async function createInteraction({ fromUserId, shareCode, type }) {
         new: true,
         setDefaultsOnInsert: true,
       }
-    ).populate('userA userB');
+    ).populate('userA userB', MATCHED_USER_FIELDS);
 
-    const payload = serializeMatch(match, fromUserId);
-    emitMatchFound([fromUserId, targetUser.id], payload);
     await notifyMatch(match);
   }
 
@@ -289,8 +337,13 @@ async function createInteraction({ fromUserId, shareCode, type }) {
 
 async function getMatchesForUser(userId) {
   const visibleSince = new Date(Date.now() - VISIBLE_MATCH_WINDOW_MS);
-  const currentUser = await User.findById(userId).select('+blockedUsers');
+  const currentUser = await User.findById(userId)
+    .select('blockedUsers blockedVoterSessions')
+    .lean();
   const blockedUserIds = currentUser?.blockedUsers || [];
+  const blockedVoterSessions = currentUser?.blockedVoterSessions || [];
+  // Matches with someone who blocked this user are deleted when the block is
+  // made (blockService), so only this user's own block list is needed here.
   const matches = await Match.find({
     $and: [
       {
@@ -307,9 +360,13 @@ async function getMatchesForUser(userId) {
     ],
   })
     .sort({ createdAt: -1 })
-    .populate('userA userB');
+    .populate('userA userB', MATCHED_USER_FIELDS)
+    .lean();
 
   const serializedMatches = matches
+    // A match whose other user no longer exists would crash serialization and
+    // fail every request for this user.
+    .filter((match) => match.userA && match.userB)
     .map((match) => serializeMatch(match, userId))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -323,6 +380,7 @@ async function getMatchesForUser(userId) {
     'metadata.anonymous': true,
     'metadata.anonymousMatched': true,
     'metadata.creatorRespondedAt': { $gte: visibleSince },
+    ...visibleToRecipientFilter(blockedVoterSessions),
   }).sort({ 'metadata.creatorRespondedAt': -1 });
 
   return [...serializedMatches, ...anonymousMatches.map(serializeAnonymousMatch)]
@@ -350,31 +408,49 @@ async function createAnonymousResponse({
     throw new ApiError(400, 'Timestamp is required.');
   }
 
+  // `timestamp` is the voter's device clock at the moment of the tap, not a
+  // link-share time, so it can't expire a link. Comparing it to a 3-minute TTL
+  // only rejected every vote from devices whose clock runs a few minutes
+  // slow; just discard values that are nowhere near real time.
   const now = Date.now();
   const sentAt = Number(timestamp);
-  if (now - sentAt > PENDING_TTL_MS) {
-    console.info('[AnonymousResponse] expired', { shareCode: normalized, sentAt, now });
-    throw new ApiError(400, 'This link has expired.');
+  if (Math.abs(now - sentAt) > MAX_CLIENT_CLOCK_SKEW_MS) {
+    throw new ApiError(400, 'Invalid timestamp.');
   }
 
   // shareCode is uniquely indexed; username has no index, so looking it up
   // first scanned the whole users collection on every web vote. Try the
   // indexed field first and only fall back to username when it misses.
+  // Banned accounts have no public poll. Block lists are loaded for the checks below.
+  const findTarget = (filter) =>
+    User.findOne({ ...filter, isBanned: { $ne: true } }).select(
+      '+blockedUsers +blockedVoterSessions'
+    );
   const targetUser =
-    (await User.findOne({ shareCode: { $in: [normalized, rawIdentifier] } })) ||
-    (await User.findOne({ username: normalized }));
+    (await findTarget({ shareCode: { $in: [normalized, rawIdentifier] } })) ||
+    (await findTarget({ username: normalized }));
   if (!targetUser) {
     throw new ApiError(404, 'Target profile not found.');
   }
 
+  // A logged-in voter is subject to account blocks in both directions.
+  if (fromUserId) {
+    await assertUsersCanInteract(fromUserId, targetUser);
+  }
+
   if (sessionId) {
     // Check anonymous Interactions in the last 24 h (survives the 60 s PendingInteraction TTL).
-    const existingInteraction = await Interaction.findOne({
-      toUser: targetUser.id,
-      fromUser: null,
-      'metadata.sessionId': sessionId,
-      createdAt: { $gte: new Date(now - INTERACTION_COOLDOWN_MS) },
-    });
+    // The block check wins over the duplicate check: a blocked voter's earlier
+    // vote is usually why they were blocked.
+    const [existingInteraction] = await Promise.all([
+      Interaction.findOne({
+        toUser: targetUser.id,
+        fromUser: null,
+        'metadata.sessionId': sessionId,
+        createdAt: { $gte: new Date(now - INTERACTION_COOLDOWN_MS) },
+      }),
+      blockService.assertVoterSessionAllowed(targetUser, sessionId),
+    ]);
     if (existingInteraction) {
       throw new ApiError(409, 'This interaction has already been sent.');
     }
@@ -477,8 +553,9 @@ async function createInteractionByTargetId({
   type,
   enforceCardLimit = true,
 }) {
+  let limitStatus = null;
   if (enforceCardLimit) {
-    const limitStatus = await appConfigService.getCardLimitStatus(fromUserId);
+    limitStatus = await appConfigService.getCardLimitStatus(fromUserId);
     if (limitStatus.limited) {
       throw new ApiError(
         429,
@@ -490,7 +567,7 @@ async function createInteractionByTargetId({
 
   const normalizedType = normalizeType(type);
   const targetUser = await User.findById(targetUserId).select('+blockedUsers');
-  if (!targetUser) {
+  if (!targetUser || targetUser.isBanned) {
     throw new ApiError(404, 'Target profile not found.');
   }
   if (targetUser.id.toString() === fromUserId.toString()) {
@@ -534,21 +611,20 @@ async function createInteractionByTargetId({
         new: true,
         setDefaultsOnInsert: true,
       }
-    ).populate('userA userB');
+    ).populate('userA userB', MATCHED_USER_FIELDS);
 
-    const payload = serializeMatch(match, fromUserId);
-    emitMatchFound([fromUserId, targetUser.id], payload);
     await notifyMatch(match, { skipUserId: fromUserId });
   }
 
   // Must await so the DB write completes before the response is sent.
   // On Vercel serverless, fire-and-forget work is frozen as soon as the
   // response is returned, so a non-awaited increment would never persist.
-  await appConfigService.incrementCardView(fromUserId).catch((err) => {
-    console.error('[CardSession] Failed to increment card view:', err);
-  });
-
-  const cardLimitStatus = await appConfigService.getCardLimitStatus(fromUserId).catch(() => null);
+  const cardLimitStatus = await appConfigService
+    .recordCardView(fromUserId, limitStatus)
+    .catch((err) => {
+      console.error('[CardSession] Failed to record card view:', err);
+      return null;
+    });
 
   return {
     interaction: interaction.toJSON(),
@@ -574,11 +650,13 @@ async function respondToAnonymousInteraction({ currentUserId, interactionId, typ
   }
 
   const normalizedType = normalizeType(type);
+  // A hidden vote (hidden, reported or from a blocked session) can't be answered.
   const candidate = await Interaction.findOne({
     _id: interactionId,
     toUser: currentUserId,
     fromUser: null,
     'metadata.anonymous': true,
+    hiddenByRecipientAt: null,
   });
   if (!candidate) {
     throw new ApiError(404, 'Anonymous interaction not found.');
@@ -596,6 +674,7 @@ async function respondToAnonymousInteraction({ currentUserId, interactionId, typ
       fromUser: null,
       'metadata.anonymous': true,
       'metadata.creatorResponseType': { $exists: false },
+      hiddenByRecipientAt: null,
     },
     {
       $set: {
@@ -610,12 +689,12 @@ async function respondToAnonymousInteraction({ currentUserId, interactionId, typ
     throw new ApiError(409, 'You already responded to this interaction.');
   }
 
-  await appConfigService.incrementCardView(currentUserId).catch((err) => {
-    console.error('[CardSession] Failed to increment anonymous card view:', err);
-  });
   const cardLimitStatus = await appConfigService
-    .getCardLimitStatus(currentUserId)
-    .catch(() => null);
+    .recordCardView(currentUserId, limitStatus)
+    .catch((err) => {
+      console.error('[CardSession] Failed to record anonymous card view:', err);
+      return null;
+    });
 
   return {
     interaction: serializeAnonymousInteraction(interaction),
@@ -629,7 +708,7 @@ async function respondToAnonymousInteraction({ currentUserId, interactionId, typ
 async function createAnonymousInteraction({ targetUserId, type, source = 'web' }) {
   const normalizedType = normalizeType(type);
   const targetUser = await User.findById(targetUserId);
-  if (!targetUser) {
+  if (!targetUser || targetUser.isBanned) {
     throw new ApiError(404, 'Target profile not found.');
   }
 
@@ -650,22 +729,158 @@ async function createAnonymousInteraction({ targetUserId, type, source = 'web' }
   };
 }
 
-async function getReceivedInteractions(userId) {
-  const currentUser = await User.findById(userId).select('+blockedUsers');
+// Votes the Play queue shows: those still waiting for an answer (the app's
+// isActionablePlayInteraction). Play and its tab badge refresh this often, so
+// it is kept small instead of returning the whole history each time.
+const PLAY_QUEUE_LIMIT = 100;
+// Registered-voter candidates read before answered ones are dropped.
+const PLAY_QUEUE_SCAN_LIMIT = 300;
+// The full list (`scope=all`: Inbox counts and its hide/report/block list).
+const RECEIVED_HISTORY_LIMIT = 500;
+const RECEIVED_VOTER_FIELDS = 'name username instagramId snapchatId profileImageUrl shareCode';
+
+function serializeRegisteredVote(vote, { respondedByCurrentUser, matched }) {
+  const fromUser = vote.fromUser;
+  return {
+    id: vote._id.toString(),
+    fromUser: fromUser._id.toString(),
+    fromUserName: fromUser.name || null,
+    fromUserUsername: fromUser.username || null,
+    fromUserProfileImageUrl: fromUser.profileImageUrl || null,
+    fromUserShareCode: fromUser.shareCode || null,
+    fromUserInstagramId: fromUser.instagramId || null,
+    fromUserSnapchatId: fromUser.snapchatId || null,
+    toUser: vote.toUser.toString(),
+    type: vote.type,
+    metadata: withoutVoterSecrets(vote.metadata),
+    respondedByCurrentUser,
+    matched,
+    createdAt: vote.createdAt,
+  };
+}
+
+/** Times of the user's own votes per target, to tell answered cards apart. */
+async function outgoingVoteTimes(userId, voterIds, since = null) {
+  if (!voterIds.length) return new Map();
+  const outgoing = await Interaction.find({
+    fromUser: userId,
+    toUser: { $in: voterIds },
+    ...(since ? { createdAt: { $gte: since } } : {}),
+  })
+    .select('toUser createdAt')
+    .lean();
+  const byUserId = new Map();
+  for (const interaction of outgoing) {
+    const targetId = interaction.toUser.toString();
+    const existing = byUserId.get(targetId) || [];
+    existing.push(interaction.createdAt.getTime());
+    byUserId.set(targetId, existing);
+  }
+  return byUserId;
+}
+
+function answeredWithinWindow(outgoingByUserId, voterId, voteTime) {
+  return (outgoingByUserId.get(voterId) || []).some(
+    (outgoingAt) => Math.abs(outgoingAt - voteTime) < INTERACTION_COOLDOWN_MS
+  );
+}
+
+/**
+ * Votes received by `userId`. By default only the Play queue (unanswered
+ * cards, see PLAY_QUEUE_LIMIT); `scope: 'all'` returns the full newest-first
+ * list for the Inbox.
+ */
+async function getReceivedInteractions(userId, { scope = null } = {}) {
+  const now = new Date();
+  const currentUser = await User.findById(userId)
+    .select('blockedUsers blockedVoterSessions')
+    .lean();
   const blockedUserIds = currentUser?.blockedUsers || [];
-  const interactions = await Interaction.find({
+  const visibleVotes = {
     toUser: userId,
-    fromUser: { $nin: blockedUserIds },
+    // Votes this user hid, reported or blocked (by account or web session).
+    ...visibleToRecipientFilter(currentUser?.blockedVoterSessions),
     // Hide an anonymous web vote until its reveal window fully elapses, whether
     // it ends up staying anonymous or gets attributed to a new account in the
     // meantime — see createAnonymousResponse / finalizePendingInteraction.
     $or: [
       { 'metadata.pendingRevealUntil': { $exists: false } },
-      { 'metadata.pendingRevealUntil': { $lte: new Date() } },
+      { 'metadata.pendingRevealUntil': { $lte: now } },
     ],
+  };
+
+  return scope === 'all'
+    ? getReceivedHistory(userId, visibleVotes, blockedUserIds)
+    : getPlayQueue(userId, visibleVotes, blockedUserIds, now);
+}
+
+async function getPlayQueue(userId, visibleVotes, blockedUserIds, now) {
+  // Answering a card only counts within 24h of the vote (see
+  // answeredWithinWindow), and an older vote can no longer produce a match, so
+  // older registered-voter cards could never leave the queue.
+  const answerWindowStart = new Date(now.getTime() - INTERACTION_COOLDOWN_MS);
+
+  const [registeredVotes, anonymousVotes] = await Promise.all([
+    Interaction.find({
+      ...visibleVotes,
+      fromUser: { $ne: null, $nin: blockedUserIds },
+      createdAt: { $gte: answerWindowStart },
+    })
+      .sort({ createdAt: -1 })
+      .limit(PLAY_QUEUE_SCAN_LIMIT)
+      .populate('fromUser', RECEIVED_VOTER_FIELDS)
+      .lean(),
+    // Anonymous votes can only be answered when vote-back is enabled; they
+    // track their own answer, so keep them until the creator responds.
+    env.anonymousVoteBackEnabled
+      ? Interaction.find({
+          ...visibleVotes,
+          fromUser: null,
+          'metadata.creatorResponseType': { $exists: false },
+        })
+          .sort({ createdAt: -1 })
+          .limit(PLAY_QUEUE_LIMIT)
+          .lean()
+      : [],
+  ]);
+
+  // Votes whose voter no longer exists can't be answered.
+  const liveVotes = registeredVotes.filter((vote) => vote.fromUser);
+  const voterIds = [...new Set(liveVotes.map((vote) => vote.fromUser._id.toString()))];
+  const outgoingByUserId = await outgoingVoteTimes(
+    userId,
+    voterIds,
+    new Date(answerWindowStart.getTime() - INTERACTION_COOLDOWN_MS)
+  );
+
+  const unanswered = liveVotes
+    .filter(
+      (vote) =>
+        !answeredWithinWindow(
+          outgoingByUserId,
+          vote.fromUser._id.toString(),
+          vote.createdAt.getTime()
+        )
+    )
+    // A match needs an answer, so an unanswered vote is never matched.
+    .map((vote) =>
+      serializeRegisteredVote(vote, { respondedByCurrentUser: false, matched: false })
+    );
+
+  return [...unanswered, ...anonymousVotes.map(serializeAnonymousInteraction)]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, PLAY_QUEUE_LIMIT);
+}
+
+async function getReceivedHistory(userId, visibleVotes, blockedUserIds) {
+  const interactions = await Interaction.find({
+    ...visibleVotes,
+    fromUser: { $nin: blockedUserIds },
   })
     .sort({ createdAt: -1 })
-    .populate('fromUser', 'name username instagramId snapchatId profileImageUrl shareCode');
+    .limit(RECEIVED_HISTORY_LIMIT)
+    .populate('fromUser', RECEIVED_VOTER_FIELDS)
+    .lean();
 
   const voterIds = [
     ...new Set(
@@ -675,27 +890,17 @@ async function getReceivedInteractions(userId) {
     ),
   ];
 
-  const outgoing = voterIds.length
-    ? await Interaction.find({
-        fromUser: userId,
-        toUser: { $in: voterIds },
-      }).select('toUser type createdAt')
-    : [];
-
-  const outgoingByUserId = new Map();
-  for (const interaction of outgoing) {
-    const targetId = interaction.toUser.toString();
-    const existing = outgoingByUserId.get(targetId) || [];
-    existing.push(interaction.createdAt);
-    outgoingByUserId.set(targetId, existing);
-  }
-
   const pairIds = voterIds.map((voterId) => buildCanonicalPair(userId, voterId));
-  const matches = pairIds.length
-    ? await Match.find({
-        $or: pairIds.map((pair) => ({ userA: pair.userA, userB: pair.userB })),
-      }).select('userA userB type createdAt lastMatchedAt')
-    : [];
+  const [outgoingByUserId, matches] = await Promise.all([
+    outgoingVoteTimes(userId, voterIds),
+    pairIds.length
+      ? Match.find({
+          $or: pairIds.map((pair) => ({ userA: pair.userA, userB: pair.userB })),
+        })
+          .select('userA userB type createdAt lastMatchedAt')
+          .lean()
+      : [],
+  ]);
 
   const matchesByKey = new Map(
     matches.map((match) => {
@@ -708,40 +913,23 @@ async function getReceivedInteractions(userId) {
   );
 
   return interactions.map((interaction) => {
-    const fromUser = interaction.fromUser;
-    const fromUserId = fromUser?._id?.toString() || null;
-    const interactionTime = interaction.createdAt.getTime();
-    const respondedByCurrentUser = Boolean(fromUserId) &&
-      (outgoingByUserId.get(fromUserId) || []).some(
-        (outgoingAt) =>
-          Math.abs(outgoingAt.getTime() - interactionTime) < INTERACTION_COOLDOWN_MS
-      );
-    const matchedAt = fromUserId
-      ? matchesByKey.get(`${fromUserId}:${interaction.type}`)
-      : null;
-    const matched = Boolean(matchedAt) &&
-      Math.abs(matchedAt.getTime() - interactionTime) < INTERACTION_COOLDOWN_MS;
-
+    const fromUserId = interaction.fromUser?._id?.toString() || null;
     if (!fromUserId) {
       return serializeAnonymousInteraction(interaction);
     }
 
-    return {
-      id: interaction.id,
-      fromUser: fromUserId || '',
-      fromUserName: fromUser?.name || null,
-      fromUserUsername: fromUser?.username || null,
-      fromUserProfileImageUrl: fromUser?.profileImageUrl || null,
-      fromUserShareCode: fromUser?.shareCode || null,
-      fromUserInstagramId: fromUser?.instagramId || null,
-      fromUserSnapchatId: fromUser?.snapchatId || null,
-      toUser: interaction.toUser.toString(),
-      type: interaction.type,
-      metadata: interaction.metadata || null,
-      respondedByCurrentUser,
-      matched,
-      createdAt: interaction.createdAt,
-    };
+    const interactionTime = interaction.createdAt.getTime();
+    const matchedAt = matchesByKey.get(`${fromUserId}:${interaction.type}`);
+    return serializeRegisteredVote(interaction, {
+      respondedByCurrentUser: answeredWithinWindow(
+        outgoingByUserId,
+        fromUserId,
+        interactionTime
+      ),
+      matched:
+        Boolean(matchedAt) &&
+        Math.abs(matchedAt.getTime() - interactionTime) < INTERACTION_COOLDOWN_MS,
+    });
   });
 }
 
@@ -758,7 +946,7 @@ async function createPendingInteraction({
   const normalizedType = normalizeType(type);
   // Callers that already loaded the user pass it in to skip a round trip.
   const targetUser = resolvedTargetUser || (await User.findById(targetUserId));
-  if (!targetUser) {
+  if (!targetUser || targetUser.isBanned) {
     throw new ApiError(404, 'Target profile not found.');
   }
 
@@ -799,7 +987,7 @@ async function findPendingByToken(token, populate = null) {
   }
 }
 
-async function detectMatchAndBuildResult({ fromUserId, targetUserId, type }) {
+async function detectMatchAndBuildResult({ fromUserId, targetUserId, type, replay = false }) {
   const interaction = await Interaction.findOne({
     fromUser: fromUserId,
     toUser: targetUserId,
@@ -820,21 +1008,28 @@ async function detectMatchAndBuildResult({ fromUserId, targetUserId, type }) {
   let match = null;
   if (reciprocal) {
     const pair = buildCanonicalPair(fromUserId, targetUserId);
-    match = await Match.findOneAndUpdate(
-      { userA: pair.userA, userB: pair.userB, type },
-      {
-        userA: pair.userA,
-        userB: pair.userB,
-        type,
-        triggeredBy: fromUserId,
-        lastMatchedAt: new Date(),
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    ).populate('userA userB');
+    if (replay) {
+      // A replayed reveal link (e.g. the Android install referrer on a later
+      // launch) only reads the result: bumping lastMatchedAt put the match back
+      // into both users' 24h lists and re-sent "It's a match!" every time.
+      match = await Match.findOne({ userA: pair.userA, userB: pair.userB, type })
+        .populate('userA userB', MATCHED_USER_FIELDS);
+      if (match && (!match.userA || !match.userB)) match = null;
+    } else {
+      match = await Match.findOneAndUpdate(
+        { userA: pair.userA, userB: pair.userB, type },
+        {
+          userA: pair.userA,
+          userB: pair.userB,
+          type,
+          triggeredBy: fromUserId,
+          lastMatchedAt: new Date(),
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      ).populate('userA userB', MATCHED_USER_FIELDS);
 
-    const payload = serializeMatch(match, fromUserId);
-    emitMatchFound([fromUserId, targetUserId], payload);
-    await notifyMatch(match);
+      await notifyMatch(match);
+    }
   }
 
   return {
@@ -855,6 +1050,20 @@ async function finalizePendingInteraction({ token, currentUserId }) {
     throw new ApiError(404, 'Invalid or expired reveal link.');
   }
 
+  // Checked first, including for a replay of an already-used link: the target
+  // may since have been banned or have blocked this voter, by account or by the
+  // web session the vote came from.
+  const targetUser = await User.findById(pending.targetUserId).select(
+    '+blockedUsers +blockedVoterSessions'
+  );
+  if (!targetUser || targetUser.isBanned) {
+    throw new ApiError(404, 'Target profile not found.');
+  }
+  if (targetUser.id.toString() !== currentUserId.toString()) {
+    await assertUsersCanInteract(currentUserId, targetUser);
+    await blockService.assertVoterSessionAllowed(targetUser, pending.sessionId);
+  }
+
   if (pending.status === 'finalized') {
     // If the same user re-finalizes (e.g. Android install referrer replays the
     // old token after the user clears app data), return the existing result
@@ -870,6 +1079,7 @@ async function finalizePendingInteraction({ token, currentUserId }) {
         fromUserId: currentUserId,
         targetUserId: pending.targetUserId,
         type: pending.type,
+        replay: true,
       });
     }
     throw new ApiError(400, 'This reveal link has already been used.');
@@ -887,14 +1097,6 @@ async function finalizePendingInteraction({ token, currentUserId }) {
   if (pending.targetUserId.toString() === currentUserId.toString()) {
     throw new ApiError(400, 'You cannot reveal an interaction sent to yourself.');
   }
-
-  const targetUser = await User.findById(pending.targetUserId).select(
-    '+blockedUsers'
-  );
-  if (!targetUser) {
-    throw new ApiError(404, 'Target profile not found.');
-  }
-  await assertUsersCanInteract(currentUserId, targetUser);
 
   // Attribute the interaction FIRST and only mark the pending finalized once that
   // succeeds. This prevents a failure (e.g. duplicate key) from permanently

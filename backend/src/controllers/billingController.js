@@ -1,4 +1,5 @@
 const billingService = require('../services/billingService');
+const { accountBannedError } = require('../utils/safety');
 
 async function verify(req, res) {
   const user = await billingService.verifyPurchase(req.auth.userId, req.body);
@@ -12,6 +13,11 @@ async function status(req, res) {
 
 async function restoreSession(req, res) {
   const result = await billingService.restoreSessionFromPurchase(req.body);
+  // A banned account can't sign back in through its subscription either (the
+  // refresh token just issued is refused by /auth/refresh as well).
+  if (result.user.isBanned) {
+    throw accountBannedError();
+  }
   return res.status(200).json({
     accessToken: result.accessToken,
     refreshToken: result.refreshToken,

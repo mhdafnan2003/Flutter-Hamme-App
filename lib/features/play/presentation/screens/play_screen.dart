@@ -28,6 +28,10 @@ import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../safety/domain/models/safety_filter.dart';
+import '../../../safety/domain/models/safety_target.dart';
+import '../../../safety/presentation/widgets/safety_actions.dart';
+import '../../../safety/presentation/widgets/safety_menu_button.dart';
 import '../../../shared/presentation/widgets/hamme_top_bar.dart';
 import '../widgets/play_empty_state.dart';
 import '../widgets/match_share_export_widget.dart';
@@ -44,7 +48,27 @@ class PlayScreen extends ConsumerStatefulWidget {
 
 class _PlayScreenState extends ConsumerState<PlayScreen>
     with WidgetsBindingObserver {
-  Timer? _refreshTimer;
+  // New votes and matches arrive by push (pushDataRefreshProvider), so Play
+  // only refreshes when it comes on screen, when the app returns from a real
+  // trip away, and after the user's own votes. The poll is a slow fallback
+  // for pushes that never arrive.
+  static const Duration _fallbackPollInterval = Duration(seconds: 60);
+  static const Duration _minRefreshGap = Duration(seconds: 20);
+  // Shorter trips away (share and billing sheets, permission prompts,
+  // pickers, the notification shade) don't refresh anything on return.
+  static const Duration _shortTripThreshold = Duration(seconds: 30);
+  static const Duration _refreshUserInterval = Duration(minutes: 15);
+
+  Timer? _fallbackPollTimer;
+  Timer? _postVoteRefreshTimer;
+  // Play is the tab on screen and no opaque route covers it. Null until the
+  // first didChangeDependencies.
+  bool? _isVisible;
+  bool _appResumed = true;
+  DateTime? _leftResumedAt;
+  DateTime? _lastUserRefreshAt;
+  final Map<ProviderOrFamily, DateTime> _lastRefreshAt = {};
+
   InteractionResult? _lastResult;
   InteractionRecord? _rewoundItem;
   InteractionRecord? _lastVotedItem;
@@ -65,8 +89,6 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   int _votesSinceLimitStatus = 0;
 
   static const String _shownMatchIdsPreferenceKey = 'play_shown_match_ids_v1';
-  static const String _shownPollerResultIdsPreferenceKey =
-      'play_shown_poller_result_ids_v1';
 
   // Tracks match IDs already surfaced as overlays. The IDs are also saved on
   // this device so reopening the app does not replay the same match.
@@ -74,13 +96,6 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   bool _shownMatchIdsLoaded = false;
   Future<void>? _shownMatchIdsLoadFuture;
   Future<void> _shownMatchIdsWriteQueue = Future<void>.value();
-  // Tracks interaction IDs already shown as poller-side "not a match"
-  // overlays. Also saved on this device so reopening the app does not
-  // replay the same result.
-  final Set<String> _shownPollerResultIds = {};
-  bool _shownPollerResultIdsLoaded = false;
-  Future<void>? _shownPollerResultIdsLoadFuture;
-  Future<void> _shownPollerResultIdsWriteQueue = Future<void>.value();
 
   int _visiblePendingCount(AsyncValue<List<InteractionRecord>> pending) {
     final items = pending.value;
@@ -90,12 +105,21 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
         .length;
   }
 
-  void _refreshPlayData() {
-    ref.invalidate(receivedInteractionsProvider);
-    ref.invalidate(pendingPlayInteractionsProvider);
-    ref.invalidate(matchesProvider);
-    ref.invalidate(playLimitStatusProvider);
+  /// Invalidates [provider] unless this screen refreshed it less than [minGap]
+  /// ago. Only the server providers are refreshed: the pending and visible*
+  /// providers are derived from them and follow on their own.
+  void _refresh(ProviderOrFamily provider, {Duration minGap = _minRefreshGap}) {
+    if (!mounted) return;
+    final now = DateTime.now();
+    final last = _lastRefreshAt[provider];
+    if (last != null && now.difference(last) < minGap) return;
+    _lastRefreshAt[provider] = now;
+    ref.invalidate(provider);
   }
+
+  /// Refetches the votes behind the Play queue.
+  void _refreshQueue({Duration minGap = _minRefreshGap}) =>
+      _refresh(receivedInteractionsProvider, minGap: minGap);
 
   static const Duration _reciprocalVoteWindow = Duration(hours: 24);
 
@@ -184,25 +208,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
 
     // The initial matches request may have completed while preferences loaded.
     // Re-evaluate its cached result once local seen state is ready.
-    ref.read(matchesProvider).whenData(_checkForNewMatchesFromPollerSide);
-  }
-
-  Future<void> _loadShownPollerResultIds() async {
-    final preferences = await SharedPreferences.getInstance();
-    final savedIds =
-        preferences.getStringList(_shownPollerResultIdsPreferenceKey) ??
-        const <String>[];
-
-    if (!mounted) return;
-    _shownPollerResultIds.addAll(savedIds);
-    _shownPollerResultIdsLoaded = true;
-
-    // The initial received-interactions request may have completed while
-    // preferences loaded. Re-evaluate its cached result once local seen
-    // state is ready.
     ref
-        .read(receivedInteractionsProvider)
-        .whenData(_checkForNotMatchFromPollerSide);
+        .read(visibleMatchesProvider)
+        .whenData(_checkForNewMatchesFromPollerSide);
   }
 
   Future<void> _markMatchAsShown(String matchId) {
@@ -232,36 +240,6 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
       }
     });
     return _shownMatchIdsWriteQueue;
-  }
-
-  Future<void> _markPollerResultAsShown(String interactionId) {
-    if (!_shownPollerResultIds.add(interactionId)) {
-      return _shownPollerResultIdsWriteQueue;
-    }
-
-    _shownPollerResultIdsWriteQueue = _shownPollerResultIdsWriteQueue.then((
-      _,
-    ) async {
-      try {
-        final loadFuture = _shownPollerResultIdsLoadFuture;
-        if (loadFuture != null) await loadFuture;
-
-        final preferences = await SharedPreferences.getInstance();
-        // Keep the preference bounded. Results disappear after 24 hours,
-        // so this is substantially more history than the UI can ever need.
-        while (_shownPollerResultIds.length > 500) {
-          _shownPollerResultIds.remove(_shownPollerResultIds.first);
-        }
-        await preferences.setStringList(
-          _shownPollerResultIdsPreferenceKey,
-          _shownPollerResultIds.toList(growable: false),
-        );
-      } catch (error, stackTrace) {
-        debugPrint('[Play] could not persist poller result ID: $error');
-        debugPrintStack(stackTrace: stackTrace);
-      }
-    });
-    return _shownPollerResultIdsWriteQueue;
   }
 
   /// Called whenever matchesProvider refreshes — shows overlays for any
@@ -309,20 +287,6 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     );
   }
 
-  /// Called when receivedInteractionsProvider refreshes. The poller (the
-  /// person who voted via share link) should never see a "not a match"
-  /// overlay — only the creator sees that outcome, on their own swipe
-  /// screen. We still record every interaction ID here so nothing lingers
-  /// in the "unseen" set if this behavior ever changes.
-  void _checkForNotMatchFromPollerSide(List<InteractionRecord> interactions) {
-    if (!_shownPollerResultIdsLoaded) return;
-
-    for (final interaction in interactions) {
-      if (_shownPollerResultIds.contains(interaction.id)) continue;
-      unawaited(_markPollerResultAsShown(interaction.id));
-    }
-  }
-
   /// Shows the full-screen match celebration on the root navigator so it
   /// covers the persistent bottom navigation bar.
   Future<void> _showMatchOverlay(InteractionResult result) async {
@@ -353,97 +317,112 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     );
   }
 
-  Future<void> _reportInteraction(InteractionRecord interaction) async {
-    final reportedUserId = interaction.fromUser;
-    if (reportedUserId == null || reportedUserId.isEmpty) return;
-
-    final name =
-        interaction.fromUserName?.trim().isNotEmpty == true
-            ? interaction.fromUserName!.trim()
-            : interaction.fromUserUsername?.trim().isNotEmpty == true
-            ? interaction.fromUserUsername!.trim()
-            : 'This user';
-
-    final confirmed = await showCupertinoDialog<bool>(
-      context: context,
-      builder:
-          (dialogContext) => CupertinoAlertDialog(
-            content: const Text(
-              'Are you sure you want to block and report this user?',
-            ),
-            actions: [
-              CupertinoDialogAction(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
-              ),
-              CupertinoDialogAction(
-                isDestructiveAction: true,
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('Yes'),
-              ),
-            ],
-          ),
+  /// Hide / report / block for the card on screen, anonymous or not. The card
+  /// leaves the queue as soon as the user confirms (the queue is filtered by
+  /// safetyFilterProvider), so the next vote shows right away.
+  Future<void> _openSafetyActions(InteractionRecord item) {
+    return showSafetyActions(
+      context,
+      SafetyTarget.vote(item),
+      onRemoved: () {
+        if (!mounted) return;
+        setState(() {
+          if (_rewoundItem?.id == item.id) _rewoundItem = null;
+          if (_lastVotedItem?.id == item.id) _lastVotedItem = null;
+        });
+      },
     );
-    if (confirmed != true || !mounted) return;
-
-    try {
-      await ref
-          .read(interactionControllerProvider.notifier)
-          .reportInteraction(interaction.id);
-      if (!mounted) return;
-
-      await showCupertinoDialog<void>(
-        context: context,
-        builder:
-            (dialogContext) => CupertinoAlertDialog(
-              content: Text("'$name' has been blocked and reported."),
-              actions: [
-                CupertinoDialogAction(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Back'),
-                ),
-              ],
-            ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not submit report: $error'),
-          backgroundColor: TColors.error,
-        ),
-      );
-    }
   }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    _appResumed =
+        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
     _shownMatchIdsLoadFuture = _loadShownMatchIds();
-    _shownPollerResultIdsLoadFuture = _loadShownPollerResultIds();
     unawaited(_shownMatchIdsLoadFuture!);
-    unawaited(_shownPollerResultIdsLoadFuture!);
+    // build() creates, and so fetches, the matches and limit status. Only the
+    // received votes can be stale here: MainShell keeps them from launch.
+    final now = DateTime.now();
+    _lastRefreshAt[matchesProvider] = now;
+    _lastRefreshAt[playLimitStatusProvider] = now;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshQueue());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Tickers are off while another tab is shown (the shell's IndexedStack
+    // disables them for inactive branches) or an opaque route covers the
+    // shell (pushed screens, match overlays).
+    final visible = TickerMode.valuesOf(context).enabled;
+    if (visible == _isVisible) return;
+    final isFirstCall = _isVisible == null;
+    _isVisible = visible;
+    _syncFallbackPoll();
+    if (!visible || isFirstCall) return;
+    // Providers can't be invalidated while the tree is building.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshPlayData();
+      _refreshQueue();
+      _refresh(matchesProvider, minGap: const Duration(seconds: 60));
+      _refresh(playLimitStatusProvider, minGap: const Duration(minutes: 2));
     });
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (!mounted) return;
-      _refreshPlayData();
+  }
+
+  /// Polls the queue only while Play is on screen and the app is in front,
+  /// as a fallback for vote pushes that never arrive.
+  void _syncFallbackPoll() {
+    if (_isVisible != true || !_appResumed) {
+      _fallbackPollTimer?.cancel();
+      _fallbackPollTimer = null;
+      return;
+    }
+    _fallbackPollTimer ??= Timer.periodic(_fallbackPollInterval, (_) {
+      // Nothing to vote on during the result countdown or the cooldown wall;
+      // the cooldown view refreshes when it ends.
+      if (!mounted || _lastResult != null) return;
+      final status = ref.read(playLimitStatusProvider).valueOrNull;
+      if (status != null && _isLimitReached(status)) return;
+      _refreshQueue(minGap: _fallbackPollInterval - const Duration(seconds: 5));
     });
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _fallbackPollTimer?.cancel();
+    _postVoteRefreshTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _refreshPlayData();
+    if (state != AppLifecycleState.resumed) {
+      _appResumed = false;
+      _leftResumedAt ??= DateTime.now();
+      _syncFallbackPoll();
+      return;
+    }
+    final leftAt = _leftResumedAt;
+    _leftResumedAt = null;
+    _appResumed = true;
+    _syncFallbackPoll();
+    if (leftAt == null ||
+        DateTime.now().difference(leftAt) < _shortTripThreshold) {
+      return;
+    }
+    // Keeps the Play tab badge current even when another tab is on screen.
+    _refreshQueue();
+    if (_isVisible == true) {
+      _refresh(matchesProvider);
+      _refresh(playLimitStatusProvider, minGap: const Duration(minutes: 2));
+    }
+    final lastUserRefresh = _lastUserRefreshAt;
+    if (lastUserRefresh == null ||
+        DateTime.now().difference(lastUserRefresh) >= _refreshUserInterval) {
+      _lastUserRefreshAt = DateTime.now();
       unawaited(ref.read(authControllerProvider.notifier).refreshUser());
     }
   }
@@ -468,11 +447,28 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     _votesSinceLimitStatus++;
   }
 
-  void _onVoteFinished({required bool counted}) {
+  void _onVoteFinished({required bool counted, bool limitReached = false}) {
     _votesInFlight--;
     if (!counted) _votesSinceLimitStatus--;
-    // Fetch after the vote is saved so the new status includes it.
-    ref.invalidate(playLimitStatusProvider);
+    // Refresh once per burst of votes, after the last one is saved, so the new
+    // status and queue include all of them. A card-limit rejection refreshes
+    // the status right away so the cooldown view shows. Pro users resolve the
+    // status locally, so this costs them no request.
+    if (limitReached || _votesInFlight == 0) {
+      _refresh(playLimitStatusProvider, minGap: Duration.zero);
+    }
+    if (_votesInFlight > 0) return;
+    _postVoteRefreshTimer?.cancel();
+    _postVoteRefreshTimer = Timer(const Duration(seconds: 2), () {
+      if (_votesInFlight == 0) _refreshQueue(minGap: Duration.zero);
+    });
+  }
+
+  void _onCooldownEnd() {
+    _refresh(playLimitStatusProvider, minGap: Duration.zero);
+    // The cooldown view retries every 10 s while the server still reports the
+    // limit; the queue only needs one refresh for that.
+    _refreshQueue(minGap: const Duration(seconds: 60));
   }
 
   // Persists the response server-side without blocking the UI, which has
@@ -501,9 +497,6 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     unawaited(
       request
           .then((serverResult) {
-            ref.invalidate(matchesProvider);
-            ref.invalidate(receivedInteractionsProvider);
-            ref.invalidate(pendingPlayInteractionsProvider);
             if (!mounted) return;
             _onVoteFinished(counted: true);
             _reconcileServerResult(
@@ -514,11 +507,45 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
           })
           .catchError((Object error) {
             if (!mounted) return;
-            _onVoteFinished(counted: false);
+            // 409: the server already has an answer for this card (e.g. a
+            // Rewind re-vote). Keep it answered; there is nothing to retry.
+            final alreadyAnswered =
+                error is AppException && error.statusCode == 409;
+            // 403 VOTE_BLOCKED: one of the two blocked the other after this
+            // card loaded, so the vote can never be saved. Keep the card out
+            // of Play for good instead of putting it back.
+            final voteBlocked =
+                error is AppException &&
+                error.code == AppErrorCodes.voteBlocked;
+            final limitReached =
+                !alreadyAnswered && !voteBlocked && _isLimitError(error);
+            _onVoteFinished(counted: false, limitReached: limitReached);
+            if (alreadyAnswered) return;
+            if (voteBlocked) {
+              ref
+                  .read(safetyFilterProvider.notifier)
+                  .hideInteraction(effectiveItem.id);
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text("This vote isn't available anymore."),
+                ),
+              );
+              return;
+            }
             // Put the card back so the vote isn't lost; it can be cast again
             // once the cooldown ends.
             setState(() => _locallyRespondedIds.remove(effectiveItem.id));
-            if (_isLimitError(error)) return;
+            if (limitReached) {
+              // The server applied the free limit, so a local Pro flag is
+              // stale and would hide the cooldown. Reloading the user lets
+              // billing drop it.
+              if (ref.read(isProProvider)) {
+                unawaited(
+                  ref.read(authControllerProvider.notifier).refreshUser(),
+                );
+              }
+              return;
+            }
             messenger.showSnackBar(
               SnackBar(
                 content: Text('Could not save response: $error'),
@@ -618,29 +645,36 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     );
     if (localResult.matched) {
       await _showMatchOverlay(localResult);
-      if (!mounted) return;
-      _refreshPlayData();
     } else {
       setState(() => _lastResult = localResult);
     }
   }
 
-  Widget _buildQueue(AsyncValue<List<InteractionRecord>> pending) {
+  Widget _buildQueue(
+    AsyncValue<List<InteractionRecord>> pending,
+    SafetyFilter safetyFilter,
+  ) {
     return pending.when(
+      // Keep the card on screen while a refetch is in flight.
+      skipLoadingOnReload: true,
       data: (items) {
         final visibleItems =
             items
                 .where((item) => !_locallyRespondedIds.contains(item.id))
                 .toList();
+        // A rewound card isn't in the pending list, so filter it here too.
+        final rewoundItem = _rewoundItem;
         final effectiveItem =
-            _rewoundItem ?? (visibleItems.isEmpty ? null : visibleItems.first);
+            rewoundItem != null && safetyFilter.allowsInteraction(rewoundItem)
+                ? rewoundItem
+                : (visibleItems.isEmpty ? null : visibleItems.first);
         if (effectiveItem == null) {
           return const _CompletedQueueView();
         }
         return _PlayQueue(
           item: effectiveItem,
           remainingCount: visibleItems.length,
-          onReport: () => _reportInteraction(effectiveItem),
+          onReport: () => _openSafetyActions(effectiveItem),
           onSelect: (type) => _onSelect(effectiveItem, type),
         );
       },
@@ -672,20 +706,16 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   Widget build(BuildContext context) {
     final pending = ref.watch(pendingPlayInteractionsProvider);
     final limitStatus = ref.watch(playLimitStatusProvider);
+    final safetyFilter = ref.watch(safetyFilterProvider);
 
-    // Listen for new matches that the poller should see (arrived from the other side).
-    ref.listen<AsyncValue<List<MatchRecord>>>(matchesProvider, (_, next) {
+    // Listen for new matches that the poller should see (arrived from the
+    // other side). Never celebrate a match the user just hid or blocked.
+    ref.listen<AsyncValue<List<MatchRecord>>>(visibleMatchesProvider, (
+      _,
+      next,
+    ) {
       next.whenData(_checkForNewMatchesFromPollerSide);
     });
-
-    // Listen for "not a match" results the poller should see when the creator
-    // voted back but it wasn't a match.
-    ref.listen<AsyncValue<List<InteractionRecord>>>(
-      receivedInteractionsProvider,
-      (_, next) {
-        next.whenData(_checkForNotMatchFromPollerSide);
-      },
-    );
 
     // A status fetched while no vote is being saved already includes every
     // vote cast so far, so the local count starts over from it.
@@ -703,6 +733,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
             const HammeTopBar(),
             Expanded(
               child: limitStatus.when(
+                // Keep the current view while the status is refetched.
+                skipLoadingOnReload: true,
                 data: (status) {
                   final notAMatch = _buildNotAMatch(pending);
                   if (notAMatch != null) return notAMatch;
@@ -721,11 +753,11 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                     return PlayCooldownView(
                       key: ValueKey(status.resetAt),
                       status: status,
-                      onCooldownEnd: _refreshPlayData,
+                      onCooldownEnd: _onCooldownEnd,
                     );
                   }
 
-                  return _buildQueue(pending);
+                  return _buildQueue(pending, safetyFilter);
                 },
                 loading:
                     () =>
@@ -737,7 +769,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
                         ),
                 error:
                     (_, __) =>
-                        _buildNotAMatch(pending) ?? _buildQueue(pending),
+                        _buildNotAMatch(pending) ??
+                        _buildQueue(pending, safetyFilter),
               ),
             ),
           ],
@@ -1894,26 +1927,25 @@ class _PlayQueue extends StatelessWidget {
                                 ),
                                 child: Stack(
                                   children: [
-                                    if (!isAnonymous)
-                                      Positioned(
-                                        top: 4,
-                                        right: 6,
-                                        child: Semantics(
-                                          button: true,
-                                          label: 'Report $name',
-                                          child: IconButton(
-                                            tooltip: 'Report user',
-                                            onPressed: onReport,
-                                            icon: Icon(
-                                              CupertinoIcons.flag_fill,
-                                              size: 18,
-                                              color: Colors.white.withValues(
-                                                alpha: 0.65,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                    // Every card, anonymous ones included,
+                                    // can be hidden, reported or blocked.
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: SafetyMenuButton(
+                                        onPressed: onReport,
+                                        icon: CupertinoIcons.flag_fill,
+                                        iconSize: 17,
+                                        iconColor: TColors.hammePrimaryDark,
+                                        backgroundColor: Colors.white
+                                            .withValues(alpha: 0.92),
+                                        label:
+                                            isAnonymous
+                                                ? 'Report or block this '
+                                                    'anonymous voter'
+                                                : 'Report or block $name',
                                       ),
+                                    ),
                                     Align(
                                       alignment: Alignment.bottomCenter,
                                       child: Padding(

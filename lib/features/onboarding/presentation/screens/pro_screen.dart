@@ -93,10 +93,13 @@ class _ProScreenState extends ConsumerState<ProScreen> {
         bytes: selectedImage.bytes,
         filename: selectedImage.filename,
       );
-      await ProfileRemoteDataSource(apiService).updateMe(avatarUrl: imageUrl);
+      // PATCH /profiles/me returns the updated user, so no refetch is needed.
+      final updatedUser = await ProfileRemoteDataSource(
+        apiService,
+      ).updateMe(avatarUrl: imageUrl);
       await draftNotifier.setProfileImageUrl(imageUrl);
       imageNotifier.state = null;
-      await authController.refreshUser();
+      authController.setUser(updatedUser);
       debugPrint('[Onboarding] profile image upload success');
     } catch (error) {
       // Home keeps the local preview. A later profile-page edit can retry.
@@ -114,14 +117,19 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     try {
       final purchaseRestored =
           await ref.read(billingControllerProvider.notifier).restorePurchases();
-      if (!purchaseRestored) return;
+      if (!purchaseRestored || !mounted) return;
 
-      final restored =
-          await ref.read(authControllerProvider.notifier).restoreProProfile();
-      if (!restored) {
-        throw const AppException(
-          'No saved Pro profile was found on this device.',
-        );
+      // A verified restore has already signed in the purchase's profile
+      // (billing restore-session). Fall back to the saved session only when
+      // it did not, instead of fetching and re-registering the same session.
+      if (ref.read(authControllerProvider).valueOrNull == null) {
+        final restored =
+            await ref.read(authControllerProvider.notifier).restoreProProfile();
+        if (!restored) {
+          throw const AppException(
+            'No saved Pro profile was found on this device.',
+          );
+        }
       }
       if (!mounted) return;
       context.go('/home');

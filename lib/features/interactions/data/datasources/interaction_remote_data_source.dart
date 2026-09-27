@@ -60,9 +60,18 @@ class InteractionRemoteDataSource {
         .toList();
   }
 
-  Future<List<InteractionRecord>> getReceivedInteractions() async {
+  /// The Play queue (votes still waiting for an answer), or with [history]
+  /// every recent vote, answered and anonymous ones included (Inbox).
+  Future<List<InteractionRecord>> getReceivedInteractions({
+    bool history = false,
+  }) async {
     final response =
-        await _apiService.get('/interactions/received', authenticated: true)
+        await _apiService.get(
+              history
+                  ? '/interactions/received?scope=all'
+                  : '/interactions/received',
+              authenticated: true,
+            )
             as Map<String, dynamic>;
 
     final interactions =
@@ -71,13 +80,6 @@ class InteractionRemoteDataSource {
         .cast<Map<String, dynamic>>()
         .map(InteractionRecord.fromJson)
         .toList();
-  }
-
-  Future<void> reportInteraction(String interactionId) async {
-    await _apiService.post(
-      '/interactions/$interactionId/report',
-      authenticated: true,
-    );
   }
 
   Future<InteractionResult> finalizeInteraction(String token) async {

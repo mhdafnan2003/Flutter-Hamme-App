@@ -62,9 +62,28 @@ router.get('/matches', interactionController.getMatches);
 router.get('/received', interactionController.getReceivedInteractions);
 router.post(
   '/:id/report',
-  [param('id').isMongoId()],
+  [
+    param('id').isMongoId(),
+    // All optional: older app builds send no body. An unknown reason is stored
+    // as `other` rather than rejected.
+    body('reason').optional({ values: 'null' }).isString(),
+    body('details').optional({ values: 'null' }).isString(),
+    body('block').optional({ values: 'null' }).isBoolean().toBoolean(),
+  ],
   validateRequest,
   interactionController.reportInteraction
+);
+router.post(
+  '/:id/hide',
+  [param('id').isMongoId()],
+  validateRequest,
+  interactionController.hideInteraction
+);
+router.post(
+  '/:id/block',
+  [param('id').isMongoId()],
+  validateRequest,
+  interactionController.blockInteractionSender
 );
 router.post(
   '/finalize',

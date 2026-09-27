@@ -147,6 +147,40 @@ const userSchema = new mongoose.Schema(
       default: [],
       select: false,
     },
+    // Terms of Use / community guidelines acceptance. The app treats terms as
+    // accepted when termsVersion >= its current version.
+    termsAcceptedAt: {
+      type: Date,
+      default: null,
+    },
+    termsVersion: {
+      type: Number,
+      default: null,
+    },
+    // Moderation ban. A banned account cannot sign in or call the API and its
+    // public profile is hidden (see moderationService.banUser).
+    isBanned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    bannedAt: {
+      type: Date,
+      default: null,
+    },
+    banReason: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 500,
+    },
+    // Web voter session ids (from the vote page's localStorage) whose anonymous
+    // votes this user blocked. Votes from these sessions are refused.
+    blockedVoterSessions: {
+      type: [String],
+      default: [],
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -165,6 +199,7 @@ const userSchema = new mongoose.Schema(
         delete ret.passwordHash;
         delete ret.refreshTokens;
         delete ret.blockedUsers;
+        delete ret.blockedVoterSessions;
         delete ret.profileImageUrl;
         delete ret.proPurchaseToken;
         return ret;
@@ -182,5 +217,9 @@ userSchema.index(
     partialFilterExpression: { proPurchaseToken: { $type: 'string' } },
   }
 );
+
+// registerDeviceToken moves a push token off any other account by querying
+// this field; without an index that scanned the whole users collection.
+userSchema.index({ 'deviceTokens.token': 1 });
 
 module.exports = mongoose.model('User', userSchema);

@@ -6,8 +6,12 @@ import 'auth_providers.dart';
 import 'billing_providers.dart';
 
 final playLimitStatusProvider = FutureProvider<PlayLimitStatus>((ref) async {
-  final session = await ref.watch(authControllerProvider.future);
-  if (session == null) return PlayLimitStatus.unrestricted;
+  // Only a change of account changes the limit. Watching the whole session
+  // re-fetched this on every session write (app resume, profile edits).
+  final userId = await ref.watch(
+    authControllerProvider.selectAsync((session) => session?.user.id),
+  );
+  if (userId == null) return PlayLimitStatus.unrestricted;
 
   // Pro users bypass the limit locally — no need to hit the network
   final isPro = ref.watch(isProProvider);
@@ -25,7 +29,9 @@ final playLimitStatusProvider = FutureProvider<PlayLimitStatus>((ref) async {
 
     return PlayLimitStatus.fromJson(statusJson);
   } catch (_) {
-    // If we can't fetch limit status, don't block the user
-    return PlayLimitStatus.unrestricted;
+    // If we can't fetch limit status, don't block the user. Keep them a free
+    // user though (not `unrestricted`, which claims Pro), so a vote the server
+    // rejects with 429 is still handled as a card-limit error.
+    return const PlayLimitStatus(limited: false, isPro: false);
   }
 });

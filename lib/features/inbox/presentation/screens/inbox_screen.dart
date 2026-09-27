@@ -13,12 +13,15 @@ import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/features/inbox/domain/models/inbox_variation.dart';
+import 'package:hamme_app/features/safety/domain/models/safety_target.dart';
+import 'package:hamme_app/features/safety/presentation/widgets/safety_actions.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 import 'package:hamme_app/features/shared/presentation/widgets/hamme_top_bar.dart';
 import '../widgets/inbox_share_export_widget.dart';
 import '../widgets/inbox_reaction_card.dart';
+import '../widgets/inbox_votes_section.dart';
 
 class InboxScreen extends ConsumerStatefulWidget {
   const InboxScreen({super.key});
@@ -44,7 +47,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
     try {
       final variation = _variations[_currentPage];
-      final interactions = ref.read(receivedInteractionsProvider).value ?? [];
+      final interactions =
+          ref.read(visibleInboxInteractionsProvider).valueOrNull ?? [];
       final count = _countByType({
         for (var i in interactions)
           i.type.name: interactions.where((it) => it.type == i.type).length,
@@ -263,14 +267,6 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(receivedInteractionsProvider);
-    });
-  }
-
-  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
@@ -296,8 +292,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                       height: 283,
                       child: Builder(
                         builder: (context) {
+                          // Hidden, reported and blocked votes don't count.
                           final interactions = ref.watch(
-                            receivedInteractionsProvider,
+                            visibleInboxInteractionsProvider,
                           );
                           final draftAsync = ref.watch(onboardingDraftProvider);
                           final profileImageUrl = draftAsync.maybeWhen(
@@ -375,7 +372,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     Builder(
                       builder: (context) {
                         final interactions = ref.watch(
-                          receivedInteractionsProvider,
+                          visibleInboxInteractionsProvider,
                         );
                         final currentCount = interactions.maybeWhen(
                           data: (items) {
@@ -522,6 +519,34 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                               ),
                             ),
                           ],
+                        );
+                      },
+                    ),
+
+                    // ── Received votes: hide / report / block ─────────────
+                    Builder(
+                      builder: (_) {
+                        final votes =
+                            ref
+                                .watch(visibleInboxInteractionsProvider)
+                                .valueOrNull ??
+                            const [];
+                        final manageable =
+                            votes.where(isInboxManageableVote).toList();
+                        if (manageable.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 40, bottom: 32),
+                          child: InboxVotesSection(
+                            votes: manageable,
+                            waitingInPlayCount:
+                                votes.length - manageable.length,
+                            // The screen's context, which outlives the row.
+                            onSafetyActions:
+                                (vote) => showSafetyActions(
+                                  context,
+                                  SafetyTarget.vote(vote),
+                                ),
+                          ),
                         );
                       },
                     ),

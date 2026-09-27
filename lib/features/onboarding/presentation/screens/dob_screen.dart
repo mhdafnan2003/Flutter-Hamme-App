@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/routes/route_paths.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
@@ -191,7 +192,7 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                   ref
                       .read(onboardingDraftProvider.notifier)
                       .setBirthday(_selectedBirthday);
-                  context.go('/onboarding/name');
+                  context.go(RoutePaths.onboardingCommunityRules);
                 },
               ),
             ),

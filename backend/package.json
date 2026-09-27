@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Hamme backend API",
   "main": "src/server.js",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
@@ -13,6 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "@apple/app-store-server-library": "^3.1.0",
+    "@googleapis/androidpublisher": "^42.1.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.5.1",
     "cors": "^2.8.6",
@@ -21,14 +25,13 @@
     "express-rate-limit": "^8.3.2",
     "express-validator": "^7.3.2",
     "firebase-admin": "^14.3.0",
-    "googleapis": "^144.0.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.23.0",
     "morgan": "^1.10.1",
     "multer": "^1.4.5-lts.1",
-    "sharp": "^0.33.3",
-    "socket.io": "^4.8.3"
+    "obscenity": "^0.4.6",
+    "sharp": "^0.33.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

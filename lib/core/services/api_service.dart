@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
@@ -19,6 +20,33 @@ class ApiService {
   static const Duration _requestTimeout = Duration(seconds: 15);
   static bool _baseUrlLogged = false;
   Future<bool>? _refreshInFlight;
+  final StreamController<AppException> _accountBannedController =
+      StreamController<AppException>.broadcast();
+
+  /// Fires when any response reports that the account (or this device) is
+  /// banned (403 `ACCOUNT_BANNED`). The saved tokens are already cleared by
+  /// then, so nothing keeps retrying with them; the auth layer listens to
+  /// drop the local session and show the suspension notice.
+  Stream<AppException> get accountBannedEvents =>
+      _accountBannedController.stream;
+
+  /// The id of the account the saved session belongs to (the access token's
+  /// `sub` claim), or null when signed out or the token can't be read. The
+  /// backend attributes authenticated requests to this account. Local only:
+  /// no request is made and the token is not verified.
+  Future<String?> sessionUserId() async {
+    final parts = (await _storage.readAccessToken())?.split('.');
+    if (parts == null || parts.length != 3) return null;
+    try {
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      );
+      final subject = payload is Map ? payload['sub'] : null;
+      return subject is String && subject.isNotEmpty ? subject : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<dynamic> get(
     String path, {
@@ -136,24 +164,40 @@ class ApiService {
               ),
     );
 
-    if (authenticated && response.statusCode == 401) {
-      debugPrint('[Api] 401 detected; attempting token refresh');
-      final refreshed = await _tryRefreshTokens();
-      if (refreshed) {
-        final retryHeaders = await _buildHeaders(authenticated: true);
-        return send(retryHeaders).timeout(
-          _requestTimeout,
-          onTimeout:
-              () =>
-                  throw const AppException(
-                    'Request timed out. Please check backend connectivity.',
-                    statusCode: 408,
-                  ),
-        );
-      }
+    if (authenticated &&
+        response.statusCode == 401 &&
+        await _renewAccessToken(sentWith: headers['Authorization'])) {
+      final retryHeaders = await _buildHeaders(authenticated: true);
+      return send(retryHeaders).timeout(
+        _requestTimeout,
+        onTimeout:
+            () =>
+                throw const AppException(
+                  'Request timed out. Please check backend connectivity.',
+                  statusCode: 408,
+                ),
+      );
     }
 
     return response;
+  }
+
+  /// After a 401 for a request sent with the [sentWith] Authorization header,
+  /// makes a usable access token available. Returns whether to retry once.
+  ///
+  /// When another request already refreshed the tokens while this one was in
+  /// flight, the saved token no longer matches the one sent: retry with it
+  /// instead of rotating the refresh token again.
+  Future<bool> _renewAccessToken({required String? sentWith}) async {
+    final savedToken = await _storage.readAccessToken();
+    if (savedToken != null &&
+        savedToken.isNotEmpty &&
+        'Bearer $savedToken' != sentWith) {
+      debugPrint('[Api] 401 for an outdated token; retrying with the new one');
+      return true;
+    }
+    debugPrint('[Api] 401 detected; attempting token refresh');
+    return _tryRefreshTokens();
   }
 
   Future<http.Response> _sendMultipartWithAuthRetry(
@@ -162,13 +206,29 @@ class ApiService {
     Map<String, String>? fields,
     required bool authenticated,
   }) async {
+    // A MultipartFile's stream can only be read once, so keep the bytes and
+    // send fresh files on every attempt; the retry after a token refresh
+    // would otherwise fail with "Can't finalize a finalized MultipartFile".
+    final parts = [
+      for (final file in files)
+        (file: file, bytes: await file.finalize().toBytes()),
+    ];
+
     Future<http.Response> sendWithHeaders(Map<String, String> headers) async {
       final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(headers);
       if (fields != null) {
         request.fields.addAll(fields);
       }
-      request.files.addAll(files);
+      request.files.addAll([
+        for (final part in parts)
+          http.MultipartFile.fromBytes(
+            part.file.field,
+            part.bytes,
+            filename: part.file.filename,
+            contentType: part.file.contentType,
+          ),
+      ]);
 
       final streamed = await _client
           .send(request)
@@ -187,13 +247,11 @@ class ApiService {
     final headers = await _buildMultipartHeaders(authenticated: authenticated);
     final response = await sendWithHeaders(headers);
 
-    if (authenticated && response.statusCode == 401) {
-      debugPrint('[Api] 401 detected; attempting token refresh (multipart)');
-      final refreshed = await _tryRefreshTokens();
-      if (refreshed) {
-        final retryHeaders = await _buildMultipartHeaders(authenticated: true);
-        return sendWithHeaders(retryHeaders);
-      }
+    if (authenticated &&
+        response.statusCode == 401 &&
+        await _renewAccessToken(sentWith: headers['Authorization'])) {
+      final retryHeaders = await _buildMultipartHeaders(authenticated: true);
+      return sendWithHeaders(retryHeaders);
     }
 
     return response;
@@ -232,24 +290,42 @@ class ApiService {
                   ),
         );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      debugPrint('[Api] refresh failed: status=${response.statusCode}');
-      await _storage.clearTokens();
-      return false;
+    final status = response.statusCode;
+    if (status < 200 || status >= 300) {
+      debugPrint('[Api] refresh failed: status=$status');
+      final error = _errorFromBody(status, _decodeBody(response));
+      if (error.isAccountBanned) {
+        // Surface the ban itself rather than a generic expired session. The
+        // tokens are cleared, so the original request is not retried.
+        await _handleAccountBanned(error);
+        throw error;
+      }
+      if (status == 400 || status == 401 || status == 403) {
+        // The refresh token itself was rejected: the session is over.
+        await _storage.clearTokens();
+        return false;
+      }
+      // 5xx, 429 or a proxy error says nothing about the session. Keep the
+      // tokens (a guest account can't sign back in) and fail this request; a
+      // later request refreshes again.
+      throw error;
     }
 
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final accessToken = decoded['accessToken'] as String?;
-    final newRefreshToken = decoded['refreshToken'] as String?;
-    if (accessToken == null || accessToken.isEmpty) {
+    final decoded = _decodeBody(response);
+    final accessToken = decoded is Map ? decoded['accessToken'] : null;
+    final newRefreshToken = decoded is Map ? decoded['refreshToken'] : null;
+    if (accessToken is! String || accessToken.isEmpty) {
       debugPrint('[Api] refresh failed: missing access token in response');
-      await _storage.clearTokens();
-      return false;
+      // A malformed answer (e.g. a proxy page) is not a rejected session.
+      throw const AppException(
+        'Could not refresh the session. Please try again.',
+        statusCode: 502,
+      );
     }
 
     await _storage.storeTokens(
       accessToken: accessToken,
-      refreshToken: newRefreshToken,
+      refreshToken: newRefreshToken is String ? newRefreshToken : null,
     );
     debugPrint('[Api] refresh success');
     return true;
@@ -298,34 +374,50 @@ class ApiService {
     return <String, String>{'Authorization': 'Bearer $token'};
   }
 
-  dynamic _decodeResponse(http.Response response) {
+  Future<dynamic> _decodeResponse(http.Response response) async {
     if (kDebugMode) {
       debugPrint(
         '[Api] response status=${response.statusCode} bodyBytes=${response.body.length}',
       );
     }
-    final hasBody = response.body.trim().isNotEmpty;
-    dynamic decodedBody;
-    if (hasBody) {
-      try {
-        decodedBody = jsonDecode(response.body);
-      } on FormatException {
-        // Proxies and infrastructure rate limiters may return plain text or
-        // HTML. Preserve it as an actionable API error instead of leaking a
-        // JSON parsing exception into the UI.
-        decodedBody = response.body.trim();
-      }
-    }
+    final decodedBody = _decodeBody(response);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodedBody;
     }
 
+    final error = _errorFromBody(response.statusCode, decodedBody);
+    if (error.isAccountBanned) {
+      await _handleAccountBanned(error);
+    }
+    throw error;
+  }
+
+  dynamic _decodeBody(http.Response response) {
+    if (response.body.trim().isEmpty) return null;
+    try {
+      return jsonDecode(response.body);
+    } on FormatException {
+      // Proxies and infrastructure rate limiters may return plain text or
+      // HTML. Preserve it as an actionable API error instead of leaking a
+      // JSON parsing exception into the UI.
+      return response.body.trim();
+    }
+  }
+
+  /// Builds the [AppException] for a failed response. Backend errors are
+  /// `{ message, details }`; `details` is either a list of validation errors
+  /// or an object carrying a machine-readable `code` (and sometimes `field`).
+  AppException _errorFromBody(int statusCode, dynamic decodedBody) {
     String message = 'Unexpected request failure.';
+    String? code;
+    Object? details;
     if (decodedBody is Map<String, dynamic>) {
       message = decodedBody['message'] as String? ?? message;
-      final details = decodedBody['details'];
-      if (details is List && details.isNotEmpty) {
+      details = decodedBody['details'];
+      if (details is Map) {
+        code = details['code']?.toString();
+      } else if (details is List && details.isNotEmpty) {
         final first = details.first;
         if (first is Map<String, dynamic>) {
           final detailMsg = first['msg']?.toString();
@@ -342,6 +434,21 @@ class ApiService {
       message = decodedBody;
     }
 
-    throw AppException(message, statusCode: response.statusCode);
+    return AppException(
+      message,
+      statusCode: statusCode,
+      code: code,
+      details: details,
+    );
+  }
+
+  Future<void> _handleAccountBanned(AppException error) async {
+    debugPrint('[Api] account banned: clearing saved session tokens');
+    try {
+      await _storage.clearTokens();
+    } catch (clearError) {
+      debugPrint('[Api] clearing tokens after ban failed: $clearError');
+    }
+    _accountBannedController.add(error);
   }
 }

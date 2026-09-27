@@ -161,6 +161,20 @@ body {
   color: #fff;
 }
 
+.legal-callout {
+  margin: 16px 0 20px;
+  padding: 16px 18px;
+  border: 1px solid rgba(249, 168, 212, 0.35);
+  border-left: 4px solid #f9a8d4;
+  border-radius: 16px;
+  background: rgba(249, 168, 212, 0.08);
+}
+
+.privacy-card .legal-callout p {
+  color: #fff;
+  font-weight: 600;
+}
+
 .legal-link {
   text-decoration: underline;
   text-underline-offset: 3px;

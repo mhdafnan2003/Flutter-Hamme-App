@@ -43,5 +43,8 @@ const matchSchema = new mongoose.Schema(
 );
 
 matchSchema.index({ userA: 1, userB: 1, type: 1 }, { unique: true });
+// getMatchesForUser queries { $or: [{ userA }, { userB }] }; the unique index
+// above only serves the userA branch, so userB needs its own.
+matchSchema.index({ userB: 1 });
 
 module.exports = mongoose.model('Match', matchSchema);

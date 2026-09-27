@@ -2,15 +2,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/community_rules.dart';
+import '../../../../core/utils/link_launcher.dart';
 import '../../../../providers/auth_providers.dart';
+import '../../../../routes/route_paths.dart';
+import '../../../../utils/constants/colors.dart';
+import '../../../../utils/constants/fonts.dart';
+import '../widgets/delete_account_dialog.dart';
 import '../widgets/settings_page_scaffold.dart';
-
-// Replace these URLs with the final public pages when they are ready.
-const privacyPolicyUrl = 'https://www.hamme.app/privacy-policy';
-const termsOfUseUrl = 'https://www.hamme.app/terms-of-service';
-const safetyResourcesUrl = 'https://www.hamme.app/support';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -22,81 +23,10 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isDeletingAccount = false;
 
-  Future<void> _openExternalLink(BuildContext context, String url) async {
-    var opened = false;
-    try {
-      opened = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {
-      opened = false;
-    }
-    if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open this link.')),
-      );
-    }
-  }
-
   Future<void> _deleteAccount() async {
     if (_isDeletingAccount) return;
-    const deleteMessage =
-        'This permanently deletes your profile, photo, matches, and interactions. This cannot be undone. Active App Store subscriptions are not cancelled automatically.';
-    final isCupertino =
-        Theme.of(context).platform == TargetPlatform.iOS ||
-        Theme.of(context).platform == TargetPlatform.macOS;
-    final confirmed =
-        isCupertino
-            ? await showCupertinoDialog<bool>(
-              context: context,
-              builder:
-                  (dialogContext) => CupertinoAlertDialog(
-                    title: const Text('Delete account?'),
-                    content: const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(deleteMessage),
-                    ),
-                    actions: [
-                      CupertinoDialogAction(
-                        onPressed: () => Navigator.of(dialogContext).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      CupertinoDialogAction(
-                        isDestructiveAction: true,
-                        onPressed: () => Navigator.of(dialogContext).pop(true),
-                        child: const Text('Delete account'),
-                      ),
-                    ],
-                  ),
-            )
-            : await showDialog<bool>(
-              context: context,
-              builder:
-                  (dialogContext) => AlertDialog(
-                    icon: const Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.redAccent,
-                    ),
-                    title: const Text('Delete account?'),
-                    content: const Text(deleteMessage),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () => Navigator.of(dialogContext).pop(true),
-                        child: const Text('Delete account'),
-                      ),
-                    ],
-                  ),
-            );
-    if (confirmed != true || !mounted) return;
+    final confirmed = await confirmAccountDeletion(context);
+    if (!confirmed || !mounted) return;
 
     setState(() => _isDeletingAccount = true);
     try {
@@ -112,6 +42,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _isDeletingAccount = false);
     }
+  }
+
+  /// Account details appended to support emails so we can find the profile.
+  String _accountDetails() {
+    final user = ref.read(authControllerProvider).valueOrNull?.user;
+    final platform = switch (Theme.of(context).platform) {
+      TargetPlatform.iOS => 'iOS',
+      TargetPlatform.android => 'Android',
+      final other => other.name,
+    };
+    return [
+      '---',
+      'Please keep these details so we can find your account:',
+      if (user != null && user.shareCode.isNotEmpty)
+        'Share code: ${user.shareCode}',
+      if (user != null) 'User ID: ${user.id}',
+      'Platform: $platform',
+    ].join('\n');
+  }
+
+  void _contactSupport() {
+    emailSupport(
+      context,
+      subject: 'Hamme support',
+      body: '\n\n${_accountDetails()}',
+    );
+  }
+
+  void _reportSafetyConcern() {
+    emailSupport(
+      context,
+      subject: 'Safety report',
+      body:
+          'What happened? Tell us who was involved, when it happened, and '
+          'where in the app you saw it.\n\n\n${_accountDetails()}',
+    );
   }
 
   @override
@@ -139,23 +105,65 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 32),
           SettingsSection(
+            title: 'Safety & support',
+            icon: CupertinoIcons.shield_lefthalf_fill,
+            children: [
+              SettingsTile(
+                icon: CupertinoIcons.person_3_fill,
+                title: 'Community Guidelines',
+                onTap: () => context.push(RoutePaths.communityGuidelines),
+              ),
+              SettingsTile(
+                icon: CupertinoIcons.hand_raised_fill,
+                title: 'Blocked users',
+                onTap: () => context.push(RoutePaths.blockedUsers),
+              ),
+              SettingsTile(
+                icon: CupertinoIcons.envelope_fill,
+                title: 'Contact us',
+                subtitle: kSupportEmail,
+                onTap: _contactSupport,
+              ),
+              SettingsTile(
+                icon: CupertinoIcons.exclamationmark_bubble_fill,
+                title: 'Report a safety concern',
+                subtitle: CommunityRules.reviewPromise,
+                onTap: _reportSafetyConcern,
+              ),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(8, 12, 8, 0),
+            child: Text(
+              'You can also email $kSupportEmail any time. '
+              '${CommunityRules.emergencyNotice}',
+              style: TextStyle(
+                fontFamily: TFonts.nunito,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: TColors.darkGrey,
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          SettingsSection(
             title: 'More',
             icon: CupertinoIcons.house_fill,
             children: [
               SettingsTile(
                 icon: CupertinoIcons.checkmark_shield_fill,
                 title: 'Safety resources',
-                onTap: () => _openExternalLink(context, safetyResourcesUrl),
+                onTap: () => openExternalLink(context, kSafetyResourcesUrl),
               ),
               SettingsTile(
                 icon: CupertinoIcons.doc_text_fill,
                 title: 'Terms of use',
-                onTap: () => _openExternalLink(context, termsOfUseUrl),
+                onTap: () => openExternalLink(context, kTermsOfUseUrl),
               ),
               SettingsTile(
                 icon: CupertinoIcons.lock_shield_fill,
                 title: 'Privacy policy',
-                onTap: () => _openExternalLink(context, privacyPolicyUrl),
+                onTap: () => openExternalLink(context, kPrivacyPolicyUrl),
               ),
               SettingsTile(
                 icon: CupertinoIcons.trash_fill,

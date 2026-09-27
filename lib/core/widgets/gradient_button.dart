@@ -3,7 +3,9 @@ import 'package:hamme_app/utils/constants/colors.dart';
 
 class GradientButton extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+
+  /// Null disables the button, which is then shown faded.
+  final VoidCallback? onTap;
   final double fontSize;
   final double borderRadius;
   final FontWeight fontWeight;
@@ -19,27 +21,36 @@ class GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 56,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [TColors.hammePrimary, TColors.hammePrimaryDark],
-          ),
-          borderRadius: BorderRadius.circular(borderRadius),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontWeight: fontWeight,
-            fontSize: fontSize,
-            color: Colors.white,
+    final enabled = onTap != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedOpacity(
+          opacity: enabled ? 1 : 0.4,
+          duration: const Duration(milliseconds: 150),
+          child: Container(
+            height: 56,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [TColors.hammePrimary, TColors.hammePrimaryDark],
+              ),
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontWeight: fontWeight,
+                fontSize: fontSize,
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
       ),

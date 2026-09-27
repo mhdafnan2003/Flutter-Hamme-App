@@ -27,6 +27,7 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
   static const double _topSpacing = 91;
 
   late final Timer _tickTimer;
+  Timer? _retryTimer;
   late Duration _remaining;
   late final Duration _initialRemaining;
 
@@ -43,6 +44,16 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
         setState(() => _remaining = Duration.zero);
         _tickTimer.cancel();
         widget.onCooldownEnd();
+        // Still on screen after that means the server still reports the limit
+        // (the device clock runs ahead of the server's reset time), so ask
+        // again a few times.
+        _retryTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+          if (!mounted || timer.tick > 6) {
+            timer.cancel();
+            return;
+          }
+          widget.onCooldownEnd();
+        });
         return;
       }
 
@@ -61,6 +72,7 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
   @override
   void dispose() {
     _tickTimer.cancel();
+    _retryTimer?.cancel();
     super.dispose();
   }
 

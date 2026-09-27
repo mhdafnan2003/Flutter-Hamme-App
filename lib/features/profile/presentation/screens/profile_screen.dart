@@ -23,6 +23,9 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  static const int _maxImageBytes = 10 * 1024 * 1024;
+  static const Set<String> _allowedExtensions = {'jpeg', 'jpg', 'png', 'webp'};
+
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploadingImage = false;
   bool _isLoggingOut = false;
@@ -46,43 +49,62 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _changeProfileImage() async {
     if (_isUploadingImage) return;
-    final image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1600,
-      maxHeight: 1600,
-    );
-    if (image == null) return;
-
+    // Set before the picker opens: a second tap while it is open would start
+    // another picker, which throws.
     setState(() => _isUploadingImage = true);
     try {
-      final imageUrl = await UploadRemoteDataSource(
-        ref.read(apiServiceProvider),
-      ).uploadProfileImageBytes(
-        bytes: await image.readAsBytes(),
-        filename: image.name,
+      // The server stores at most 1024 px (JPEG, quality 80), so sending a
+      // larger image only costs upload time.
+      final image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 1024,
+        maxHeight: 1024,
       );
-      await ProfileRemoteDataSource(
-        ref.read(apiServiceProvider),
+      if (image == null || !mounted) return;
+
+      final fileName = image.name;
+      final extension =
+          fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
+      if (!_allowedExtensions.contains(extension)) {
+        _showMessage('Please upload a JPG, JPEG, PNG, or WEBP image.');
+        return;
+      }
+
+      final bytes = await image.readAsBytes();
+      if (bytes.length > _maxImageBytes) {
+        _showMessage('Image size must be less than 10 MB.');
+        return;
+      }
+      if (!mounted) return;
+
+      // Read before the requests so the result is applied even if the user
+      // leaves this screen while they run.
+      final apiService = ref.read(apiServiceProvider);
+      final draftNotifier = ref.read(onboardingDraftProvider.notifier);
+      final authController = ref.read(authControllerProvider.notifier);
+      final imageUrl = await UploadRemoteDataSource(
+        apiService,
+      ).uploadProfileImageBytes(bytes: bytes, filename: fileName);
+      // PATCH /profiles/me returns the updated user, so no refetch is needed.
+      final updatedUser = await ProfileRemoteDataSource(
+        apiService,
       ).updateMe(avatarUrl: imageUrl);
-      await ref
-          .read(onboardingDraftProvider.notifier)
-          .setProfileImageUrl(imageUrl);
-      await ref.read(authControllerProvider.notifier).refreshUser();
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Profile photo updated!')));
-      }
+      await draftNotifier.setProfileImageUrl(imageUrl);
+      authController.setUser(updatedUser);
+      _showMessage('Profile photo updated!');
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not update your profile photo.')),
-        );
-      }
+      _showMessage('Could not update your profile photo.');
     } finally {
       if (mounted) setState(() => _isUploadingImage = false);
     }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

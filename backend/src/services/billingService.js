@@ -1,4 +1,9 @@
-const { google } = require('googleapis');
+// Only the Play Developer API client. The full `googleapis` package loads all
+// ~300 Google APIs and added ~100 MB of resident memory to the process.
+const {
+  androidpublisher,
+  auth: googleAuth,
+} = require('@googleapis/androidpublisher');
 const mongoose = require('mongoose');
 const {
   AppStoreServerAPIClient,
@@ -21,6 +26,12 @@ const PRO_PRODUCT_IDS = (process.env.PRO_PRODUCT_IDS || 'hamme_pro_weekly')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
+
+// Never let a slow Google response hold a request (and its memory) open.
+const GOOGLE_API_TIMEOUT_MS = 10 * 1000;
+// RTDN keeps store subscriptions current; the app's status check only repairs
+// a missed notification, so don't re-ask the store more often than this.
+const STORE_RECHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 const ACTIVE_SUBSCRIPTION_STATES = new Set([
   'SUBSCRIPTION_STATE_ACTIVE',
@@ -73,9 +84,9 @@ async function getAndroidPublisher() {
       authOptions.keyFile = credentialsFile;
     }
 
-    const auth = new google.auth.GoogleAuth(authOptions);
+    const auth = new googleAuth.GoogleAuth(authOptions);
     const authClient = await auth.getClient();
-    return google.androidpublisher({ version: 'v3', auth: authClient });
+    return androidpublisher({ version: 'v3', auth: authClient });
   })();
 
   try {
@@ -190,10 +201,13 @@ async function fetchSubscription(purchaseToken, packageName) {
 
   const resolvedPackageName = ensurePackageName(packageName);
   try {
-    const response = await publisher.purchases.subscriptionsv2.get({
-      packageName: resolvedPackageName,
-      token: purchaseToken,
-    });
+    const response = await publisher.purchases.subscriptionsv2.get(
+      {
+        packageName: resolvedPackageName,
+        token: purchaseToken,
+      },
+      { timeout: GOOGLE_API_TIMEOUT_MS }
+    );
     return subscriptionSnapshot(response.data);
   } catch (error) {
     if (error instanceof ApiError) throw error;
@@ -491,12 +505,15 @@ async function acknowledgeSubscription(purchaseToken, productId, packageName) {
   if (!publisher) return;
 
   try {
-    await publisher.purchases.subscriptions.acknowledge({
-      packageName: ensurePackageName(packageName),
-      subscriptionId: productId,
-      token: purchaseToken,
-      requestBody: {},
-    });
+    await publisher.purchases.subscriptions.acknowledge(
+      {
+        packageName: ensurePackageName(packageName),
+        subscriptionId: productId,
+        token: purchaseToken,
+        requestBody: {},
+      },
+      { timeout: GOOGLE_API_TIMEOUT_MS }
+    );
   } catch (error) {
     // A concurrent client/server acknowledgement is harmless.
     if (Number(error?.code) === 409) return;
@@ -671,7 +688,17 @@ async function syncUserSubscription(userId) {
     user.adminPro = hasLegacyAdminGrant(user);
     user.storeProActive = false;
     user.isPro = user.adminPro;
-    await user.save();
+    // save() on an unchanged document still costs a query.
+    if (user.isModified()) await user.save();
+    return user;
+  }
+
+  const verifiedRecently =
+    user.proLastVerifiedAt &&
+    Date.now() - user.proLastVerifiedAt.getTime() < STORE_RECHECK_INTERVAL_MS;
+  const paidPeriodRemaining =
+    user.proExpiryAt && user.proExpiryAt.getTime() > Date.now();
+  if (verifiedRecently && paidPeriodRemaining) {
     return user;
   }
 
@@ -706,7 +733,7 @@ async function verifyRtdnAuthorization(authorizationHeader) {
   const match = /^Bearer\s+(.+)$/i.exec(authorizationHeader || '');
   if (!match) throw new ApiError(401, 'Missing RTDN authorization token.');
 
-  oidcVerifier ||= new google.auth.OAuth2();
+  oidcVerifier ||= new googleAuth.OAuth2();
   let ticket;
   try {
     ticket = await oidcVerifier.verifyIdToken({

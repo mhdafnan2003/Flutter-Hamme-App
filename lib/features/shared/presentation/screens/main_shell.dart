@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:hamme_app/providers/interaction_providers.dart';
+import 'package:hamme_app/providers/push_data_refresh_provider.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import '../widgets/hamme_bottom_nav_bar.dart';
 
@@ -26,8 +27,14 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // New votes and matches arrive by push while the app is open; this keeps
+    // the Play data fresh without polling.
+    ref.watch(pushDataRefreshProvider);
+
     final pendingPlay = ref.watch(pendingPlayInteractionsProvider);
     final playCount = pendingPlay.maybeWhen(
+      // Keep the badge while a refresh is in flight instead of blinking it off.
+      skipLoadingOnReload: true,
       data: (items) => items.length,
       orElse: () => null,
     );

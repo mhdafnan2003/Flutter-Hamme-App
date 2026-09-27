@@ -14,12 +14,9 @@ class InteractionRepositoryImpl implements InteractionRepository {
   Future<List<MatchRecord>> getMatches() => _remoteDataSource.getMatches();
 
   @override
-  Future<List<InteractionRecord>> getReceivedInteractions() =>
-      _remoteDataSource.getReceivedInteractions();
-
-  @override
-  Future<void> reportInteraction(String interactionId) =>
-      _remoteDataSource.reportInteraction(interactionId);
+  Future<List<InteractionRecord>> getReceivedInteractions({
+    bool history = false,
+  }) => _remoteDataSource.getReceivedInteractions(history: history);
 
   @override
   Future<InteractionResult> sendInteraction({

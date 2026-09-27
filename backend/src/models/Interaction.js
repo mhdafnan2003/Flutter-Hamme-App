@@ -24,6 +24,12 @@ const interactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
+    // Set when the recipient hides, reports or blocks this vote. Hidden votes
+    // never reach the recipient's feed or matches. Absent (not null) otherwise,
+    // so `{ hiddenByRecipientAt: null }` matches every visible vote.
+    hiddenByRecipientAt: {
+      type: Date,
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
@@ -34,6 +40,8 @@ const interactionSchema = new mongoose.Schema(
         ret.fromUser = ret.fromUser ? ret.fromUser.toString() : null;
         ret.toUser = ret.toUser.toString();
         delete ret._id;
+        // The voter must not learn that the recipient hid their vote.
+        delete ret.hiddenByRecipientAt;
         return ret;
       },
     },

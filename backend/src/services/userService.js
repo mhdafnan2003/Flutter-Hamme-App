@@ -3,11 +3,23 @@ const Interaction = require('../models/Interaction');
 const Match = require('../models/Match');
 const PendingInteraction = require('../models/PendingInteraction');
 const CardSession = require('../models/CardSession');
+const UserReport = require('../models/UserReport');
 const ApiError = require('../utils/ApiError');
 const buildDefaultAvatarUrl = require('../utils/defaultAvatar');
+const { assertCleanFields } = require('../utils/contentFilter');
 const logger = require('../utils/logger');
+const { forgetAccountStatus } = require('./accountStatusService');
 const { v2: cloudinary } = require('cloudinary');
 const env = require('../config/env');
+
+// Replaces a deleted account's details in the moderation reports it appears in.
+const DELETED_ACCOUNT_SNAPSHOT = {
+  name: 'Deleted account',
+  username: '',
+  email: '',
+  shareCode: '',
+  avatarUrl: null,
+};
 
 const cloudinaryEnabled =
   Boolean(env.cloudinaryCloudName) &&
@@ -34,9 +46,9 @@ async function deleteProfileImage(imageUrl, userId) {
   try {
     await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
   } catch (error) {
-    // Deletion of the user record must never fail because an already-public
+    // Account deletion or moderation must never fail because an already-public
     // image has disappeared. Keep a server-side audit trail for retry.
-    logger.error('Could not delete profile image during account deletion', {
+    logger.error('Could not delete profile image from Cloudinary', {
       userId: userId.toString(),
       message: error.message,
     });
@@ -67,6 +79,12 @@ async function updateMe(userId, updates) {
       'Username can only contain lowercase letters, numbers, dot and underscore.'
     );
   }
+  assertCleanFields({
+    name: updates.name,
+    username: normalizedUsername,
+    instagramId: updates.instagramId,
+    snapchatId: updates.snapchatId,
+  });
 
   const allowedUpdates = {
     name: updates.name,
@@ -93,6 +111,20 @@ async function updateMe(userId, updates) {
   return user;
 }
 
+/** Records that the user agreed to the given Terms of Use version. */
+async function acceptTerms(userId, version) {
+  const user = await User.findByIdAndUpdate(
+    userId,
+    // $max: an older app build can't lower an already accepted version.
+    { $set: { termsAcceptedAt: new Date() }, $max: { termsVersion: version } },
+    { new: true }
+  );
+  if (!user) {
+    throw new ApiError(404, 'User not found.');
+  }
+  return user;
+}
+
 /** Permanently removes a user and all app data that references that user. */
 async function deleteMe(userId) {
   const user = await User.findById(userId).select('+profileImageUrl');
@@ -109,8 +141,24 @@ async function deleteMe(userId) {
       { blockedUsers: user._id },
       { $pull: { blockedUsers: user._id } }
     ),
+    // Reports stay as moderation records (one filed by this user can still get
+    // an abuser banned) but lose this account's personal details. Open reports
+    // against this account have nothing left to act on.
+    UserReport.updateMany(
+      { reporter: user._id },
+      { $set: { reporterSnapshot: DELETED_ACCOUNT_SNAPSHOT } }
+    ),
+    UserReport.updateMany(
+      { reportedUser: user._id },
+      { $set: { reportedUserSnapshot: DELETED_ACCOUNT_SNAPSHOT } }
+    ),
+    UserReport.updateMany(
+      { reportedUser: user._id, status: 'open' },
+      { $set: { status: 'actioned', resolution: 'account_deleted', resolvedAt: new Date() } }
+    ),
   ]);
   await User.deleteOne({ _id: user._id });
+  forgetAccountStatus(user._id);
   await deleteProfileImage(user.profileImageUrl, user._id);
 }
 
@@ -121,7 +169,11 @@ async function getPublicProfile(identifier) {  const rawValue = (identifier || '
   }
 
   // Only load the fields the public page shows, not the whole user document.
-  const user = await User.findOne({ shareCode: { $in: [rawValue, normalizedValue] } })
+  // A banned user's profile and web poll page are gone.
+  const user = await User.findOne({
+    shareCode: { $in: [rawValue, normalizedValue] },
+    isBanned: { $ne: true },
+  })
     .select('name username instagramId profileImageUrl shareCode');
   if (user) {
     if (!user.profileImageUrl) {
@@ -168,8 +220,21 @@ async function listUsers({ search = '', page = 1, limit = 25 } = {}) {
 
 /** Registers (or refreshes) a push token for this user, moving it off any other account first. */
 async function registerDeviceToken(userId, { token, platform }) {
+  // The app re-registers on launch; when this user already has the token
+  // there is nothing to move, so just mark it as current.
+  const refreshed = await User.updateOne(
+    { _id: userId, 'deviceTokens.token': token },
+    {
+      $set: {
+        'deviceTokens.$.platform': platform,
+        'deviceTokens.$.updatedAt': new Date(),
+      },
+    }
+  );
+  if (refreshed.matchedCount > 0) return;
+
   await User.updateMany(
-    { 'deviceTokens.token': token },
+    { _id: { $ne: userId }, 'deviceTokens.token': token },
     { $pull: { deviceTokens: { token } } }
   );
 
@@ -205,7 +270,9 @@ async function setProStatus(userId, isPro) {
 module.exports = {
   getMe,
   updateMe,
+  acceptTerms,
   deleteMe,
+  deleteProfileImage,
   getPublicProfile,
   listUsers,
   setProStatus,

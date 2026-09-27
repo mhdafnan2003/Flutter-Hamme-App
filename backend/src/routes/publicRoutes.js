@@ -32,6 +32,9 @@ router.get(
 
 router.post(
   '/anonymous-response',
+  // The web vote page sends its JSON as text/plain: that keeps the request a
+  // CORS "simple request", so browsers skip the OPTIONS preflight per vote.
+  express.json({ type: 'text/plain', limit: '4kb' }),
   optionalAuthMiddleware,
   anonymousResponseLimiter,
   [

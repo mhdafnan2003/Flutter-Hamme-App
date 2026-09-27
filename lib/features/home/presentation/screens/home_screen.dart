@@ -117,13 +117,22 @@ class HomeScreen extends ConsumerWidget {
                             label: TTexts.homeShareAction,
                             fontSize: 20,
                             onTap: () async {
-                              final hasSeenTutorial =
-                                  ref
-                                      .read(shareTutorialCompletionProvider)
-                                      .value ??
-                                  false;
+                              // Wait for the saved flag: `.value` is still
+                              // null on the first read after launch, which
+                              // showed the tutorial again every time.
+                              final hasSeenTutorial = await ref.read(
+                                shareTutorialCompletionProvider.future,
+                              );
+                              if (!context.mounted) return;
                               if (hasSeenTutorial) {
-                                // Silent sharing from home screen
+                                // Silent sharing from home screen. The dialog
+                                // is shown on the root navigator; the nearest
+                                // navigator here is the Home tab's, and popping
+                                // that removes the Home page itself.
+                                final rootNavigator = Navigator.of(
+                                  context,
+                                  rootNavigator: true,
+                                );
                                 showCupertinoDialog(
                                   context: context,
                                   barrierDismissible: false,
@@ -139,8 +148,8 @@ class HomeScreen extends ConsumerWidget {
                                   context,
                                   ref,
                                 );
-                                if (context.mounted) {
-                                  Navigator.of(context).pop();
+                                if (rootNavigator.mounted) {
+                                  rootNavigator.pop();
                                 }
                               } else {
                                 context.push('/share');

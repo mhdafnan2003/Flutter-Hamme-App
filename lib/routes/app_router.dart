@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/presentation/screens/account_suspended_screen.dart';
+import '../features/auth/presentation/screens/terms_acceptance_screen.dart';
+import '../features/onboarding/presentation/screens/community_rules_screen.dart';
 import '../features/onboarding/presentation/screens/dob_screen.dart';
 import '../features/onboarding/presentation/screens/name_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
@@ -15,12 +18,15 @@ import '../features/onboarding/presentation/screens/pro_screen.dart';
 import '../features/onboarding/presentation/screens/social_media_screen.dart';
 import '../features/onboarding/presentation/screens/splash_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
+import '../features/safety/presentation/screens/blocked_users_screen.dart';
 import '../features/settings/presentation/screens/appearance_settings_screen.dart';
+import '../features/settings/presentation/screens/community_guidelines_screen.dart';
 import '../features/settings/presentation/screens/notifications_settings_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/shared/presentation/screens/main_shell.dart';
 import '../providers/auth_providers.dart';
 import '../providers/onboarding_providers.dart';
+import 'route_paths.dart';
 
 class RouterTransitionNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -32,35 +38,69 @@ class RouterTransitionNotifier extends ChangeNotifier {
     _ref.listen<AsyncValue<bool>>(onboardingCompletionProvider, (_, __) {
       notifyListeners();
     });
+    _ref.listen<bool>(currentUserTermsAcceptedProvider, (_, __) {
+      notifyListeners();
+    });
+    _ref.listen<AsyncValue<bool>>(accountSuspendedProvider, (_, __) {
+      notifyListeners();
+    });
   }
 }
 
+/// Decides where a navigation to [path] must go instead (null = allowed).
+///
+/// [termsAccepted] is false while the signed-in user still has to agree to
+/// the current terms; they are held on the terms gate, except during the
+/// sign-up hand-off (the account was created after agreeing on the
+/// community rules step). [accountSuspended] shows the suspension notice
+/// and nothing else.
 String? resolveAuthRedirect({
   required AuthStatus authStatus,
   required bool onboardingComplete,
   required String path,
+  required bool termsAccepted,
+  required bool accountSuspended,
 }) {
+  if (accountSuspended) {
+    return path == RoutePaths.accountSuspended
+        ? null
+        : RoutePaths.accountSuspended;
+  }
+
+  // The guidelines can be read at any time: during sign-up, from the terms
+  // gate and from Settings.
+  if (path == RoutePaths.communityGuidelines) return null;
+
   final isLoading = authStatus == AuthStatus.loading;
   final isOnboardingRoute = path.startsWith('/onboarding');
   final isAuthenticated = authStatus == AuthStatus.authenticated;
+  final signedInHome = termsAccepted ? '/home' : RoutePaths.termsGate;
 
   if (isLoading) {
     return path == '/splash' || isOnboardingRoute ? null : '/splash';
   }
 
   if (path == '/splash') {
-    return isAuthenticated ? '/home' : '/onboarding/dob';
+    return isAuthenticated ? signedInHome : '/onboarding/dob';
   }
 
   if (isAuthenticated && isOnboardingRoute) {
     final isAccountCreationHandoff =
         !onboardingComplete &&
         (path == '/onboarding/social_media' || path == '/onboarding/pro');
-    return isAccountCreationHandoff ? null : '/home';
+    return isAccountCreationHandoff ? null : signedInHome;
   }
 
   if (!isAuthenticated && !isOnboardingRoute) {
     return '/onboarding/dob';
+  }
+
+  if (!termsAccepted) {
+    return path == RoutePaths.termsGate ? null : RoutePaths.termsGate;
+  }
+
+  if (path == RoutePaths.termsGate || path == RoutePaths.accountSuspended) {
+    return '/home';
   }
 
   return null;
@@ -82,6 +122,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', redirect: (_, _) => '/home'),
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding/dob', builder: (_, _) => const DobScreen()),
+      GoRoute(
+        path: RoutePaths.onboardingCommunityRules,
+        builder: (_, _) => const CommunityRulesScreen(),
+      ),
       GoRoute(path: '/onboarding/name', builder: (_, _) => const NameScreen()),
       GoRoute(
         path: '/onboarding/profile_upload',
@@ -105,6 +149,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/appearance',
         builder: (_, _) => const AppearanceSettingsScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.communityGuidelines,
+        builder: (_, _) => const CommunityGuidelinesScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.blockedUsers,
+        builder: (_, _) => const BlockedUsersScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.termsGate,
+        builder: (_, _) => const TermsAcceptanceScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.accountSuspended,
+        builder: (_, _) => const AccountSuspendedScreen(),
       ),
       GoRoute(path: '/matches', builder: (_, _) => const MatchesScreen()),
       StatefulShellRoute.indexedStack(
@@ -173,19 +233,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authControllerProvider);
       final onboardingComplete =
           ref.read(onboardingCompletionProvider).value ?? false;
+      final termsAccepted = ref.read(currentUserTermsAcceptedProvider);
+      final accountSuspended =
+          ref.read(accountSuspendedProvider).valueOrNull ?? false;
       final isLoading = authStatus == AuthStatus.loading;
       final path = state.matchedLocation;
 
       debugPrint(
         '[Router] redirect check: path=$path, isLoading=$isLoading, '
-        'hasSession=${authState.value != null}, '
-        'authStatus=$authStatus, onboardingComplete=$onboardingComplete',
+        'hasSession=${authState.valueOrNull != null}, '
+        'authStatus=$authStatus, onboardingComplete=$onboardingComplete, '
+        'termsAccepted=$termsAccepted, accountSuspended=$accountSuspended',
       );
 
       return resolveAuthRedirect(
         authStatus: authStatus,
         onboardingComplete: onboardingComplete,
         path: path,
+        termsAccepted: termsAccepted,
+        accountSuspended: accountSuspended,
       );
     },
   );

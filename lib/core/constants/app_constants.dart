@@ -2,6 +2,20 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
+/// Version of the Terms of Use / Community Guidelines users must agree to.
+/// Bump together with the backend's `CURRENT_TERMS_VERSION`: every signed-in
+/// user with an older (or no) accepted version is asked to agree again.
+const int kCurrentTermsVersion = 1;
+
+/// In-app contact for support and safety reports.
+const String kSupportEmail = 'support@hamme.app';
+
+const String kTermsOfUseUrl = 'https://www.hamme.app/terms-of-service';
+const String kPrivacyPolicyUrl = 'https://www.hamme.app/privacy-policy';
+const String kSafetyResourcesUrl = 'https://www.hamme.app/support';
+const String kCommunityGuidelinesUrl =
+    'https://www.hamme.app/community-guidelines';
+
 final class AppConstants {
   static String get apiBaseUrl {
     final prod = dotenv.env['API_BASE_URL_PROD'];

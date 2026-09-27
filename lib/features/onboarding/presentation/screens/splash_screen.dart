@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
+import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
@@ -36,6 +39,12 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // The saved session couldn't be checked (offline, timeout, server error)
+    // even after retries. The router keeps the user here instead of sending
+    // them to onboarding, which would create a second account.
+    final auth = ref.watch(authControllerProvider);
+    final restoreFailed = auth.hasError && !auth.hasValue;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -47,18 +56,64 @@ class _SplashScreenState extends State<SplashScreen>
             colors: [TColors.hammePrimary, TColors.hammePrimaryDark],
           ),
         ),
-        child: Center(
-          child: ScaleTransition(
-            scale: _animation,
-            child: FadeTransition(
-              opacity: _animation,
-              child: Image.asset(
-                TImages.splashLogo,
-                width: 220,
-                fit: BoxFit.fill,
+        child: Stack(
+          children: [
+            Center(
+              child: ScaleTransition(
+                scale: _animation,
+                child: FadeTransition(
+                  opacity: _animation,
+                  child: Image.asset(
+                    TImages.splashLogo,
+                    width: 220,
+                    fit: BoxFit.fill,
+                  ),
+                ),
               ),
             ),
-          ),
+            if (restoreFailed)
+              Positioned(
+                left: 24,
+                right: 24,
+                bottom: 0,
+                child: SafeArea(
+                  top: false,
+                  minimum: const EdgeInsets.only(bottom: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Couldn't connect to Hamme. Check your connection "
+                        'and try again.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: TColors.white,
+                          fontFamily: TFonts.nunito,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // While a retry runs the state is an error that is
+                      // loading again.
+                      auth.isLoading
+                          ? const CircularProgressIndicator(
+                            color: TColors.white,
+                          )
+                          : FilledButton(
+                            onPressed:
+                                () => ref.invalidate(authControllerProvider),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: TColors.white,
+                              foregroundColor: TColors.hammePrimaryDark,
+                            ),
+                            child: const Text('Retry'),
+                          ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

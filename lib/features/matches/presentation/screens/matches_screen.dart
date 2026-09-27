@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/core/widgets/animated_spoiler.dart';
+import 'package:hamme_app/features/safety/domain/models/safety_target.dart';
+import 'package:hamme_app/features/safety/presentation/widgets/safety_actions.dart';
+import 'package:hamme_app/features/safety/presentation/widgets/safety_menu_button.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
@@ -28,9 +31,15 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(matchesProvider);
-    });
+    // build() creates matchesProvider (via visibleMatchesProvider), and that
+    // first build already fetches. Refetch only when the list was loaded
+    // earlier; invalidating a first fetch that is still in flight would send
+    // a second request.
+    if (ref.exists(matchesProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.invalidate(matchesProvider);
+      });
+    }
   }
 
   void _dismissMatch(String matchId) {
@@ -41,7 +50,8 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final matches = ref.watch(matchesProvider);
+    // Hidden, reported and blocked matches drop out of this list at once.
+    final matches = ref.watch(visibleMatchesProvider);
     final currentUserImageUrl =
         ref.watch(onboardingDraftProvider).value?.profileImageUrl;
 
@@ -121,12 +131,18 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                     ),
                     itemCount: visibleItems.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
+                    itemBuilder: (_, index) {
                       final match = visibleItems[index];
                       return _MatchTile(
                         match: match,
                         currentUserImageUrl: currentUserImageUrl,
                         onDismiss: () => _dismissMatch(match.id),
+                        // The screen's context, which outlives the tile.
+                        onSafetyActions:
+                            () => showSafetyActions(
+                              context,
+                              SafetyTarget.match(match),
+                            ),
                       );
                     },
                   );
@@ -180,10 +196,12 @@ class _MatchTile extends StatelessWidget {
     required this.match,
     required this.currentUserImageUrl,
     required this.onDismiss,
+    required this.onSafetyActions,
   });
   final MatchRecord match;
   final String? currentUserImageUrl;
   final VoidCallback onDismiss;
+  final VoidCallback onSafetyActions;
 
   void _openMatchDetails(BuildContext context) {
     Navigator.of(context).push(
@@ -292,6 +310,16 @@ class _MatchTile extends StatelessWidget {
                 ],
               ],
             ),
+          ),
+
+          SafetyMenuButton(
+            onPressed: onSafetyActions,
+            label:
+                isAnonymous
+                    ? 'Hide, report or block this anonymous voter'
+                    : 'Report or block $name',
+            iconColor: Colors.black54,
+            backgroundColor: const Color(0xFFF2F2F7),
           ),
 
           // Close button

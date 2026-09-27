@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, param } = require('express-validator');
+const { body, param, query } = require('express-validator');
 
 const adminController = require('../controllers/adminController');
 const adminMiddleware = require('../middleware/adminMiddleware');
@@ -21,7 +21,31 @@ router.get('/', (req, res) => {
 });
 
 router.get('/users', adminMiddleware, adminController.listUsers);
-router.get('/reports', adminMiddleware, adminController.listReports);
+
+// Moderation queue. Reports must be acted on within 24 hours (Guideline 1.2).
+router.get(
+  '/reports',
+  adminMiddleware,
+  [
+    query('status').optional().isIn(['open', 'actioned', 'dismissed', 'all']),
+    query('page').optional().isInt({ min: 1 }),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+  ],
+  validateRequest,
+  adminController.listReports
+);
+
+router.post(
+  '/reports/:id/action',
+  adminMiddleware,
+  [
+    param('id').isMongoId(),
+    body('action').isIn(['remove_and_ban', 'remove_content', 'dismiss']),
+    body('note').optional({ values: 'null' }).isString().isLength({ max: 1000 }),
+  ],
+  validateRequest,
+  adminController.actOnReport
+);
 
 router.patch(
   '/users/:id/plan',
@@ -29,6 +53,25 @@ router.patch(
   [param('id').isMongoId(), body('isPro').isBoolean()],
   validateRequest,
   adminController.setPlan
+);
+
+router.post(
+  '/users/:id/ban',
+  adminMiddleware,
+  [
+    param('id').isMongoId(),
+    body('reason').optional({ values: 'null' }).isString().isLength({ max: 500 }),
+  ],
+  validateRequest,
+  adminController.banUser
+);
+
+router.post(
+  '/users/:id/unban',
+  adminMiddleware,
+  [param('id').isMongoId()],
+  validateRequest,
+  adminController.unbanUser
 );
 
 router.get('/config', adminMiddleware, adminController.getConfig);

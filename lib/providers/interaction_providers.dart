@@ -5,6 +5,7 @@ import '../core/utils/app_exception.dart';
 import '../features/interactions/data/datasources/interaction_remote_data_source.dart';
 import '../features/interactions/data/repositories/interaction_repository_impl.dart';
 import '../features/interactions/domain/repositories/interaction_repository.dart';
+import '../features/safety/domain/models/safety_filter.dart';
 import '../models/interaction_result.dart';
 import '../models/interaction_record.dart';
 import '../models/interaction_type.dart';
@@ -25,9 +26,15 @@ final interactionRepositoryProvider = Provider<InteractionRepository>((ref) {
   );
 });
 
+/// Server matches from the last 24 hours. Invalidate this to refetch; show
+/// [visibleMatchesProvider] so hidden, reported and blocked matches stay out.
 final matchesProvider = FutureProvider<List<MatchRecord>>((ref) async {
-  final session = await ref.watch(authControllerProvider.future);
-  if (session == null) {
+  // Only a change of account changes the feed. Watching the whole session
+  // refetched this on every session write (app resume, profile edits).
+  final userId = await ref.watch(
+    authControllerProvider.selectAsync((session) => session?.user.id),
+  );
+  if (userId == null) {
     throw const AppException('You need to sign in to view matches.');
   }
   final allMatches =
@@ -36,12 +43,18 @@ final matchesProvider = FutureProvider<List<MatchRecord>>((ref) async {
   return allMatches.where((m) => m.createdAt.isAfter(cutoff)).toList();
 });
 
+/// Every vote the server returns for the user. Invalidate this to refetch;
+/// show [visibleReceivedInteractionsProvider] so hidden, reported and blocked
+/// votes stay out.
 final receivedInteractionsProvider = FutureProvider<List<InteractionRecord>>((
   ref,
 ) async {
   debugPrint('[Inbox] fetch start');
-  final session = await ref.watch(authControllerProvider.future);
-  if (session == null) {
+  // Only a change of account changes the feed (see matchesProvider).
+  final userId = await ref.watch(
+    authControllerProvider.selectAsync((session) => session?.user.id),
+  );
+  if (userId == null) {
     debugPrint('[Inbox] skipped fetch: no auth token');
     throw const AppException('You need to sign in to view interactions.');
   }
@@ -73,12 +86,144 @@ bool isActionablePlayInteraction(InteractionRecord item) {
       !item.respondedByCurrentUser;
 }
 
-final pendingPlayInteractionsProvider = FutureProvider<List<InteractionRecord>>(
-  (ref) async {
-    final items = await ref.watch(receivedInteractionsProvider.future);
-    return items.where(isActionablePlayInteraction).toList();
-  },
-);
+/// Votes, matches and people the user hid, reported or blocked on this device
+/// (see [SafetyFilter]). Laid over the server feeds below so an item leaves
+/// Play, Inbox and Matches at once, before the server confirms. Resets when
+/// the signed-in account changes; the server keeps the lasting record.
+final safetyFilterProvider =
+    NotifierProvider<SafetyFilterNotifier, SafetyFilter>(
+      SafetyFilterNotifier.new,
+    );
+
+class SafetyFilterNotifier extends Notifier<SafetyFilter> {
+  @override
+  SafetyFilter build() {
+    ref.watch(
+      authControllerProvider.select((auth) => auth.valueOrNull?.user.id),
+    );
+    return const SafetyFilter();
+  }
+
+  // Each change returns a callback that reverts exactly that change, so a
+  // failed request can put the item back without undoing an earlier action.
+
+  VoidCallback hideInteraction(String interactionId) {
+    if (state.hiddenInteractionIds.contains(interactionId)) return _noop;
+    state = state.copyWith(
+      hiddenInteractionIds: {...state.hiddenInteractionIds, interactionId},
+    );
+    return () => state = state.copyWith(
+      hiddenInteractionIds: {...state.hiddenInteractionIds}
+        ..remove(interactionId),
+    );
+  }
+
+  VoidCallback hideMatch(String matchId) {
+    if (state.hiddenMatchIds.contains(matchId)) return _noop;
+    state = state.copyWith(hiddenMatchIds: {...state.hiddenMatchIds, matchId});
+    return () => state = state.copyWith(
+      hiddenMatchIds: {...state.hiddenMatchIds}..remove(matchId),
+    );
+  }
+
+  VoidCallback blockUser(String userId) {
+    if (state.blockedUserIds.contains(userId)) return _noop;
+    state = state.copyWith(blockedUserIds: {...state.blockedUserIds, userId});
+    return () => unblockUser(userId);
+  }
+
+  void unblockUser(String userId) {
+    if (!state.blockedUserIds.contains(userId)) return;
+    state = state.copyWith(
+      blockedUserIds: {...state.blockedUserIds}..remove(userId),
+    );
+  }
+
+  static void _noop() {}
+}
+
+/// [receivedInteractionsProvider] without anything hidden, reported or
+/// blocked on this device.
+final visibleReceivedInteractionsProvider =
+    Provider<AsyncValue<List<InteractionRecord>>>((ref) {
+      final filter = ref.watch(safetyFilterProvider);
+      return _whereAsync(
+        ref.watch(receivedInteractionsProvider),
+        filter.allowsInteraction,
+      );
+    });
+
+/// Every recent vote, answered and anonymous ones included, for the Inbox's
+/// counts and its hide/report/block list. [receivedInteractionsProvider] only
+/// returns the Play queue (votes still waiting for an answer), which Play and
+/// the tab badge refresh often. Loaded only while the Inbox is open.
+final inboxInteractionsProvider =
+    FutureProvider.autoDispose<List<InteractionRecord>>((ref) async {
+      final userId = await ref.watch(
+        authControllerProvider.selectAsync((session) => session?.user.id),
+      );
+      if (userId == null) {
+        throw const AppException('You need to sign in to view interactions.');
+      }
+      return ref
+          .watch(interactionRepositoryProvider)
+          .getReceivedInteractions(history: true);
+    });
+
+/// [inboxInteractionsProvider] without what the user hid, reported or blocked.
+final visibleInboxInteractionsProvider =
+    Provider.autoDispose<AsyncValue<List<InteractionRecord>>>((ref) {
+      final filter = ref.watch(safetyFilterProvider);
+      return _whereAsync(
+        ref.watch(inboxInteractionsProvider),
+        filter.allowsInteraction,
+      );
+    });
+
+/// [matchesProvider] without anything hidden, reported or blocked on this
+/// device.
+final visibleMatchesProvider = Provider<AsyncValue<List<MatchRecord>>>((ref) {
+  final filter = ref.watch(safetyFilterProvider);
+  return _whereAsync(ref.watch(matchesProvider), filter.allowsMatch);
+});
+
+/// The Play queue: visible votes the user can still answer.
+final pendingPlayInteractionsProvider =
+    Provider<AsyncValue<List<InteractionRecord>>>((ref) {
+      return _whereAsync(
+        ref.watch(visibleReceivedInteractionsProvider),
+        isActionablePlayInteraction,
+      );
+    });
+
+/// Filters the list inside [source] while keeping its loading and error
+/// flags, so a refetch keeps showing the previous (filtered) items instead of
+/// a spinner. `whenData` would drop the previous items while reloading.
+AsyncValue<List<T>> _whereAsync<T>(
+  AsyncValue<List<T>> source,
+  bool Function(T item) keep,
+) {
+  final items = source.valueOrNull;
+  if (items == null) return source;
+  final filtered = AsyncData<List<T>>(items.where(keep).toList());
+  return source.map(
+    data:
+        (data) =>
+            data.isLoading
+                ? AsyncLoading<List<T>>().copyWithPrevious(filtered)
+                : filtered,
+    loading:
+        (_) => AsyncLoading<List<T>>().copyWithPrevious(
+          filtered,
+          isRefresh: false,
+        ),
+    error:
+        (error) => AsyncError<List<T>>(
+          error.error,
+          error.stackTrace,
+        ).copyWithPrevious(filtered),
+  );
+}
 
 final interactionControllerProvider =
     AsyncNotifierProvider<InteractionController, void>(
@@ -218,20 +363,6 @@ class InteractionController extends AsyncNotifier<void> {
       ref.invalidate(pendingPlayInteractionsProvider);
       state = const AsyncData(null);
       return result;
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
-
-  Future<void> reportInteraction(String interactionId) async {
-    state = const AsyncLoading();
-    try {
-      await _repository.reportInteraction(interactionId);
-      ref.invalidate(matchesProvider);
-      ref.invalidate(receivedInteractionsProvider);
-      ref.invalidate(pendingPlayInteractionsProvider);
-      state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;

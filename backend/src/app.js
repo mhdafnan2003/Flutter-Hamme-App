@@ -2,16 +2,16 @@ const cors = require('cors');
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const mongoose = require('mongoose');
 const morgan = require('morgan');
 
 const env = require('./config/env');
 const apiRoutes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const notFound = require('./middleware/notFound');
+const ApiError = require('./utils/ApiError');
 
 const app = express();
-const isVercel = Boolean(process.env.VERCEL);
-const trustProxyEnv = process.env.TRUST_PROXY;
 const normalizeOrigin = (origin) =>
   origin?.trim().replace(/\/+$/, '').toLowerCase();
 const isPrivateNetworkDevOrigin = (origin) =>
@@ -19,13 +19,11 @@ const isPrivateNetworkDevOrigin = (origin) =>
     normalizeOrigin(origin) || ''
   );
 
-if (trustProxyEnv === 'true') {
-  app.set('trust proxy', 1);
-} else if (trustProxyEnv === 'false') {
-  app.set('trust proxy', false);
-} else if (isVercel || env.nodeEnv !== 'production') {
-  app.set('trust proxy', 1);
-}
+// The API always runs behind one proxy (Railway/Vercel), which puts the real
+// client IP in X-Forwarded-For. Without this every user shares the proxy's IP
+// and therefore a single rate-limit bucket. Set TRUST_PROXY=false only when
+// the API is exposed directly.
+app.set('trust proxy', process.env.TRUST_PROXY === 'false' ? false : 1);
 
 app.use(
   helmet({
@@ -58,12 +56,19 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(new Error(`CORS blocked origin: ${origin}`));
+      return callback(new ApiError(403, `CORS blocked origin: ${origin}`));
     },
     credentials: true,
+    // Let browsers cache the preflight instead of sending an OPTIONS request
+    // before every JSON POST from the web vote page.
+    maxAge: 24 * 60 * 60,
   })
 );
-app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
+app.use(
+  morgan(env.nodeEnv === 'production' ? 'combined' : 'dev', {
+    skip: (req) => req.path === '/health',
+  })
+);
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -86,8 +91,11 @@ app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// Readiness probe (set as the Railway healthcheck path): a new deploy only
+// receives traffic once it can reach MongoDB.
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+  const ready = mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({ status: ready ? 'ok' : 'starting' });
 });
 
 app.use('/api/v1', apiRoutes);

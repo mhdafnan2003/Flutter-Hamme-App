@@ -20,6 +20,11 @@ function isAllowedAvatarUrl(value) {
   return isURL(value, avatarUrlOptions);
 }
 
+// Sent by app builds that show the Terms of Use agreement at signup. Optional
+// so older builds keep working.
+const acceptedTermsVersion = () =>
+  body('acceptedTermsVersion').optional({ values: 'null' }).isInt({ min: 1, max: 1000 }).toInt();
+
 router.post(
   '/signup',
   [
@@ -31,6 +36,7 @@ router.post(
     body('avatarUrl')
       .optional({ values: 'falsy' })
       .custom(isAllowedAvatarUrl),
+    acceptedTermsVersion(),
   ],
   validateRequest,
   authController.signup
@@ -58,6 +64,7 @@ router.post(
       .optional({ values: 'falsy' })
       .custom(isAllowedAvatarUrl),
     body('deviceId').optional({ values: 'falsy' }).trim(),
+    acceptedTermsVersion(),
   ],
   validateRequest,
   authController.guestRegister

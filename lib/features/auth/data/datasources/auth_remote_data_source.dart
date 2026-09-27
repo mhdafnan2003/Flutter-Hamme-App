@@ -53,6 +53,7 @@ class AuthRemoteDataSource {
     String? snapchatId,
     String? avatarUrl,
     String? deviceId,
+    int? acceptedTermsVersion,
   }) async {
     debugPrint('[AuthDS] guestRegister request begin');
     final response =
@@ -66,6 +67,9 @@ class AuthRemoteDataSource {
                 'snapchatId': snapchatId,
                 'avatarUrl': avatarUrl,
                 'deviceId': deviceId,
+                // Terms the user agreed to on the sign-up rules screen.
+                if (acceptedTermsVersion != null)
+                  'acceptedTermsVersion': acceptedTermsVersion,
               },
             )
             as Map<String, dynamic>;
@@ -94,7 +98,16 @@ class AuthRemoteDataSource {
     return AppUser.fromJson(response['user'] as Map<String, dynamic>);
   }
 
-  Future<void> logout() async {
-    await _apiService.post('/auth/logout', authenticated: true);
+  /// Revokes the session behind [refreshToken]. Without one the backend signs
+  /// the account out on every device.
+  Future<void> logout({String? refreshToken}) async {
+    await _apiService.post(
+      '/auth/logout',
+      authenticated: true,
+      body:
+          refreshToken == null || refreshToken.isEmpty
+              ? null
+              : {'refreshToken': refreshToken},
+    );
   }
 }

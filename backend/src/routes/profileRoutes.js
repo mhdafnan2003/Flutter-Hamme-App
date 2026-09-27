@@ -53,4 +53,49 @@ router.delete(
   profileController.unregisterDeviceToken
 );
 
+// Terms of Use acceptance, and the safety actions behind report / block /
+// "Blocked users". The /me/... routes come before /:userId/... so "me" is
+// never taken for a user id.
+router.post(
+  '/me/terms',
+  authMiddleware,
+  [body('version').optional({ values: 'null' }).isInt({ min: 1, max: 1000 }).toInt()],
+  validateRequest,
+  profileController.acceptTerms
+);
+
+router.get('/me/blocked', authMiddleware, profileController.listBlocked);
+
+router.delete('/me/blocked-anonymous', authMiddleware, profileController.clearAnonymousBlocks);
+
+router.delete(
+  '/me/blocked/:userId',
+  authMiddleware,
+  [param('userId').isMongoId()],
+  validateRequest,
+  profileController.unblockUser
+);
+
+router.post(
+  '/:userId/report',
+  authMiddleware,
+  [
+    param('userId').isMongoId(),
+    // An unknown reason is stored as `other` rather than rejected.
+    body('reason').optional({ values: 'null' }).isString(),
+    body('details').optional({ values: 'null' }).isString(),
+    body('block').optional({ values: 'null' }).isBoolean().toBoolean(),
+  ],
+  validateRequest,
+  profileController.reportProfile
+);
+
+router.post(
+  '/:userId/block',
+  authMiddleware,
+  [param('userId').isMongoId()],
+  validateRequest,
+  profileController.blockUser
+);
+
 module.exports = router;

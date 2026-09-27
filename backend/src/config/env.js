@@ -1,6 +1,6 @@
 const dotenv = require('dotenv');
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const rawClientOrigin = process.env.CLIENT_ORIGIN || '*';
 const clientOrigin =
@@ -21,14 +21,18 @@ module.exports = {
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
   cloudinaryFolder: process.env.CLOUDINARY_FOLDER || 'hamme/profile',
+  // Optional Cloudinary moderation add-on applied to profile photo uploads
+  // (e.g. "aws_rek"). The add-on must be enabled on the Cloudinary account.
+  cloudinaryModeration: (process.env.CLOUDINARY_MODERATION || '').trim(),
+  // Optional Slack or Discord incoming-webhook URL that receives every new
+  // user report, so moderators can act within 24 hours.
+  moderationWebhookUrl: (process.env.MODERATION_WEBHOOK_URL || '').trim(),
   // Never provide development defaults for signing keys. A predictable fallback
   // would let anyone mint valid access and refresh tokens.
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET,
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
   jwtAccessTtl: process.env.JWT_ACCESS_TTL || '15m',
   jwtRefreshTtl: process.env.JWT_REFRESH_TTL || '30d',
-  enableSockets:
-    process.env.ENABLE_SOCKETS === 'true' && !process.env.VERCEL,
   // Disabled by default. When enabled, creators can answer anonymous votes
   // and matching answers are exposed as anonymous (blurred) matches.
   anonymousVoteBackEnabled:

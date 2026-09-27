@@ -46,6 +46,19 @@ class ProfileRemoteDataSource {
     return AppUser.fromJson(response['user'] as Map<String, dynamic>);
   }
 
+  /// Records that the signed-in user agreed to Terms of Use / Community
+  /// Guidelines [version]. Returns the updated user.
+  Future<AppUser> acceptTerms({required int version}) async {
+    final response =
+        await _apiService.post(
+              '/profiles/me/terms',
+              body: {'version': version},
+              authenticated: true,
+            )
+            as Map<String, dynamic>;
+    return AppUser.fromJson(response['user'] as Map<String, dynamic>);
+  }
+
   /// Permanently deletes the signed-in user's Hamme profile and its data.
   Future<void> deleteMe() async {
     await _apiService.delete('/profiles/me', authenticated: true);

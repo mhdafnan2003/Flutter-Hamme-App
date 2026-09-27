@@ -19,8 +19,11 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
 });
 
 final currentProfileProvider = FutureProvider<AppUser>((ref) async {
-  final session = await ref.watch(authControllerProvider.future);
-  if (session == null) {
+  // Refetch on a change of account only, not on every session write.
+  final userId = await ref.watch(
+    authControllerProvider.selectAsync((session) => session?.user.id),
+  );
+  if (userId == null) {
     throw const AppException('You need to sign in first.');
   }
   return ref.watch(profileRepositoryProvider).getMe();

@@ -1,5 +1,6 @@
 const interactionService = require('../services/interactionService');
 const appConfigService = require('../services/appConfigService');
+const blockService = require('../services/blockService');
 const reportService = require('../services/reportService');
 
 async function createInteraction(req, res) {
@@ -55,7 +56,10 @@ async function respondInteraction(req, res) {
 }
 
 async function getReceivedInteractions(req, res) {
-  const interactions = await interactionService.getReceivedInteractions(req.auth.userId);
+  const interactions = await interactionService.getReceivedInteractions(req.auth.userId, {
+    // 'all' = full list (Inbox); default = the Play queue.
+    scope: req.query.scope,
+  });
   return res.status(200).json({ interactions });
 }
 
@@ -97,11 +101,26 @@ async function getLimitStatus(req, res) {
 }
 
 async function reportInteraction(req, res) {
-  const report = await reportService.createReport({
+  // Older app builds send no body: report as `other` and block (their old behaviour).
+  const { reason, details, block } = req.body || {};
+  const result = await reportService.reportInteraction({
     reporterId: req.auth.userId,
     interactionId: req.params.id,
+    reason,
+    details,
+    block: block !== false,
   });
-  return res.status(201).json({ reportId: report.id });
+  return res.status(201).json({ reportId: result.reportId, hidden: true, blocked: result.blocked });
+}
+
+async function hideInteraction(req, res) {
+  await blockService.hideInteraction(req.auth.userId, req.params.id);
+  return res.status(200).json({ hidden: true });
+}
+
+async function blockInteractionSender(req, res) {
+  const blocked = await blockService.blockInteractionSender(req.auth.userId, req.params.id);
+  return res.status(200).json({ blocked, hidden: true });
 }
 
 module.exports = {
@@ -115,4 +134,6 @@ module.exports = {
   getPendingInteraction,
   getLimitStatus,
   reportInteraction,
+  hideInteraction,
+  blockInteractionSender,
 };

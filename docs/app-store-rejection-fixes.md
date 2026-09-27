@@ -107,3 +107,49 @@ Path: Unlock Unlimited Access → subscribe (weekly Pro).
 
 3. Account deletion: Settings → Delete account (permanent). Screen recording of sign-in through confirmed deletion is attached in Notes.
 ```
+
+---
+
+# Guideline 1.2 — Safety: user-generated content (rejection of 24 September 2026)
+
+**What Apple said:** The app lets users post content anonymously but does not have the proper precautions. Apple asked for all of the following: an 18+ age rating, a required EULA with zero tolerance for objectionable content, content filtering, flagging, blocking, immediate removal from the feed, acting on reports within 24 hours, and in-app contact information.
+
+**Why:** Anonymous web votes showed up in the Play queue with **no report button**. The flag icon was hidden on anonymous cards, and the backend refused to report anonymous votes. There was also no required terms agreement, no filter on names or handles, and no contact information in the app.
+
+## What changed
+
+| Apple requirement | Where it is now |
+|---|---|
+| Agree to terms (EULA) with zero tolerance | Required **Community rules** agreement (checkbox + "I agree") before the account is created. Existing users see a blocking agreement screen on next launch. Acceptance is stored server-side (`termsAcceptedAt`, `termsVersion`). |
+| Filter objectionable content | Votes are fixed choices (friend / crush / frenemy), so there is no free text. Names, usernames and Instagram/Snapchat handles are checked by a profanity filter in the app and enforced on the server (`OBJECTIONABLE_CONTENT`). |
+| Flag objectionable content | Flag button on **every** vote card in Play, anonymous ones included, plus a **•••** menu on every match (Matches list and match screen) → Report → reason → optional details. |
+| Block abusive users | Report has "Also block" on by default, and there is a separate **Block** action. Blocking works both ways and covers anonymous voters (by browser session). Settings → **Blocked users** to unblock. |
+| Remove content from the feed immediately | **Hide this vote**, Report and Block all remove the card at once, before the network call finishes. |
+| Act on reports within 24 hours | Admin panel (`/api/v1/admin`) shows the report queue with **Overdue** (>24h) flags. **Remove & ban** deletes the content and bans the account (or the anonymous voter's session). An optional `MODERATION_WEBHOOK_URL` sends every new report to Slack/Discord. |
+| Contact info in the app | Settings → **Safety & support**: Community Guidelines, Contact us, Report a safety concern (`support@hamme.app`). |
+| Age rating | Set in App Store Connect (see below). |
+
+## Before resubmitting
+
+1. **Deploy the backend first.** The new app build calls the new endpoints. Optional env vars: `MODERATION_WEBHOOK_URL`, `CLOUDINARY_MODERATION`.
+2. **Deploy the web client** (updated Terms of Service, the new `/community-guidelines` page, the report link on the poll page). `client/hamme-terms-of-service.pdf` is out of date. Regenerate it if you publish it anywhere.
+3. **Age rating:** App Store Connect → App Information → Age Rating. Answer "Yes" to user-generated content / messaging. Apple's message asks for **18+**. You can ask to keep 13+ in the reply (below), but if they insist, switch to 18+.
+4. **Staff the queue:** someone checks the admin panel (or the webhook channel) at least daily and acts on every report within 24 hours. Apple can test this.
+5. Bump the build number, archive, upload.
+6. Record a short screen video on a physical iPhone: agreement screen at signup → flag on an anonymous vote → report with block → card disappears → Settings → Blocked users → Safety & support.
+
+## Review reply template (Guideline 1.2)
+
+```text
+Thank you for the review. We added the following precautions for user-generated content in this build:
+
+1. Terms (EULA): New users must agree to the Terms of Use and Community Guidelines (checkbox + "I agree") before an account is created. The terms state that Hamme has zero tolerance for objectionable content or abusive users. Existing users must accept them on their next launch.
+2. Filtering: Votes are fixed choices (friend / crush / frenemy); there is no free-text posting. Names, usernames and social handles are checked by a profanity filter in the app and on our server, and objectionable ones are rejected.
+3. Flagging: Every vote card, anonymous ones included, has a flag button (Report → choose a reason). Every match has the same options in its "•••" menu.
+4. Blocking: Reporting blocks the sender by default, and there is a separate Block action. Blocking also works for anonymous voters. Blocked users can be managed in Settings → Blocked users.
+5. Immediate removal: "Hide this vote", Report and Block remove the content from the feed immediately.
+6. 24-hour moderation: Every report goes to our moderation queue and alerts our team. We review reports within 24 hours, remove offending content, and ban the user who posted it.
+7. Contact: Settings → Safety & support has "Contact us" and "Report a safety concern" (support@hamme.app), plus in-app Community Guidelines.
+
+A screen recording of these flows is attached. The app contains no free-text user content and all voting options are pre-written by us, so we would like to keep the 13+ rating. If Apple still requires 18+, we will update the rating.
+```

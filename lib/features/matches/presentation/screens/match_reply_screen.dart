@@ -4,6 +4,9 @@ import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/features/play/presentation/widgets/match_success_overlay.dart'
     show MatchAvatarPair, MatchThemeConfig;
+import 'package:hamme_app/features/safety/domain/models/safety_target.dart';
+import 'package:hamme_app/features/safety/presentation/widgets/safety_actions.dart';
+import 'package:hamme_app/features/safety/presentation/widgets/safety_menu_button.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -60,6 +63,24 @@ class MatchReplyScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _openSafetyActions(BuildContext context) {
+    return showSafetyActions(
+      context,
+      SafetyTarget.match(match),
+      onRemoved: () {
+        // The match is gone, so leave its detail screen.
+        if (!context.mounted) return;
+        final route = ModalRoute.of(context);
+        if (route == null) return;
+        if (route.isCurrent) {
+          Navigator.of(context).pop();
+        } else if (route.isActive) {
+          Navigator.of(context).removeRoute(route);
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = match.matchedUser;
@@ -85,6 +106,21 @@ class MatchReplyScreen extends StatelessWidget {
                 top: 20,
                 child: AppCloseCircleButton(
                   onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              // Lines its 36pt circle up with the close button; the extra
+              // 6pt on each side is tap target.
+              Positioned(
+                left: 18,
+                top: 14,
+                child: SafetyMenuButton(
+                  onPressed: () => _openSafetyActions(context),
+                  label:
+                      _isAnonymous
+                          ? 'Hide, report or block this anonymous voter'
+                          : 'Report or block $name',
+                  iconColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.25),
                 ),
               ),
               Align(

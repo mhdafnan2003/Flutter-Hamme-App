@@ -120,7 +120,10 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                                                 .notifier,
                                           )
                                           .markComplete();
-                                      context.go(
+                                      // Replace this page rather than `go`, so
+                                      // the tab shell below stays alive (a
+                                      // `go` would dispose and rebuild it).
+                                      context.pushReplacement(
                                         '/share/playing?autoShare=true&platform=${_isInstagram ? 'instagram' : 'snapchat'}',
                                       );
                                     }

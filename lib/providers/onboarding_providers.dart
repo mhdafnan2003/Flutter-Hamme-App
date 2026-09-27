@@ -9,6 +9,7 @@ class OnboardingDraft {
     this.socialPlatform,
     this.username,
     this.profileImageUrl,
+    this.termsAcceptedVersion,
   });
 
   final String? name;
@@ -17,12 +18,17 @@ class OnboardingDraft {
   final String? username;
   final String? profileImageUrl;
 
+  /// Terms version agreed to on the community rules step; sent with
+  /// guest-register so the account is created with the acceptance recorded.
+  final int? termsAcceptedVersion;
+
   OnboardingDraft copyWith({
     String? name,
     DateTime? birthday,
     String? socialPlatform,
     String? username,
     String? profileImageUrl,
+    int? termsAcceptedVersion,
   }) {
     return OnboardingDraft(
       name: name ?? this.name,
@@ -30,6 +36,7 @@ class OnboardingDraft {
       socialPlatform: socialPlatform ?? this.socialPlatform,
       username: username ?? this.username,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      termsAcceptedVersion: termsAcceptedVersion ?? this.termsAcceptedVersion,
     );
   }
 }
@@ -40,6 +47,7 @@ class OnboardingDraftNotifier extends AsyncNotifier<OnboardingDraft> {
   static const _socialPlatformKey = 'onboarding_social_platform';
   static const _usernameKey = 'onboarding_username';
   static const _profileImageKey = 'onboarding_profile_image';
+  static const _termsAcceptedVersionKey = 'onboarding_terms_accepted_version';
 
   @override
   Future<OnboardingDraft> build() async {
@@ -54,7 +62,15 @@ class OnboardingDraftNotifier extends AsyncNotifier<OnboardingDraft> {
       socialPlatform: prefs.getString(_socialPlatformKey),
       username: prefs.getString(_usernameKey),
       profileImageUrl: prefs.getString(_profileImageKey),
+      termsAcceptedVersion: prefs.getInt(_termsAcceptedVersionKey),
     );
+  }
+
+  Future<void> setTermsAccepted(int version) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_termsAcceptedVersionKey, version);
+    final current = state.valueOrNull ?? await future;
+    state = AsyncData(current.copyWith(termsAcceptedVersion: version));
   }
 
   Future<void> setName(String name) async {
@@ -94,6 +110,7 @@ class OnboardingDraftNotifier extends AsyncNotifier<OnboardingDraft> {
     await prefs.remove(_socialPlatformKey);
     await prefs.remove(_usernameKey);
     await prefs.remove(_profileImageKey);
+    await prefs.remove(_termsAcceptedVersionKey);
     state = const AsyncData(OnboardingDraft());
   }
 }
@@ -134,6 +151,7 @@ class OnboardingCompletionNotifier extends AsyncNotifier<bool> {
   }
 
   Future<void> markComplete() async {
+    await _initialBuild();
     final preferences = await SharedPreferences.getInstance();
     debugPrint('[OnboardingCompletion] markComplete save start');
     await preferences.setBool(_onboardingCompleteKey, true);
@@ -144,9 +162,18 @@ class OnboardingCompletionNotifier extends AsyncNotifier<bool> {
   }
 
   Future<void> reset() async {
+    await _initialBuild();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_onboardingCompleteKey, false);
     state = const AsyncData(false);
+  }
+
+  // A still-running build() reloads preferences and would overwrite a value
+  // saved in the meantime (e.g. a reset on sign-out right at startup).
+  Future<void> _initialBuild() async {
+    try {
+      await future;
+    } catch (_) {}
   }
 }
 

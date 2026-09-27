@@ -121,9 +121,19 @@ class BillingController extends Notifier<BillingState> {
       ref.onDispose(() => _subscription?.cancel());
     }
 
+    final initialUser = ref.read(authControllerProvider).valueOrNull?.user;
+    // The reinstall restore is only for installs that start signed out; never
+    // sign a user back in after they log out or delete their account.
+    if (initialUser != null) _automaticRestoreAttempted = true;
+
     // Reflect the server-side entitlement once the auth session resolves.
     ref.listen(authControllerProvider, (previous, next) {
-      final serverPro = next.value?.user.isPro ?? false;
+      // A loading state still carries the previous session (e.g. while logging
+      // out or deleting the account); acting on it would re-check the
+      // entitlement of a user who is leaving.
+      if (next.isLoading) return;
+      final user = next.valueOrNull?.user;
+      final serverPro = user?.isPro ?? false;
       if (serverPro && !state.isPro) {
         state = state.copyWith(isPro: true);
         unawaited(_grantEntitlement());
@@ -133,9 +143,15 @@ class BillingController extends Notifier<BillingState> {
         state = state.copyWith(isPro: false);
         unawaited(_revokeEntitlement());
       }
-      if (next.value?.user != null) {
-        unawaited(_refreshServerEntitlement());
-      } else if (!next.isLoading && !next.hasError) {
+      if (user != null) {
+        _automaticRestoreAttempted = true;
+        // The session already carries the server's isPro, so only reconcile a
+        // subscriber with the store, and only when a different user signs in —
+        // not on every session write (app resume, profile edits).
+        if (serverPro && user.id != previous?.valueOrNull?.user.id) {
+          unawaited(_refreshServerEntitlement());
+        }
+      } else if (!next.hasError) {
         unawaited(_maybeRestoreAfterReinstall());
       }
     });
@@ -143,7 +159,9 @@ class BillingController extends Notifier<BillingState> {
     // Kick off async initialization without blocking provider creation.
     unawaited(_bootstrap());
 
-    return const BillingState();
+    // Start from the session's entitlement so Pro users don't fetch the play
+    // limit before _bootstrap has run.
+    return BillingState(isPro: initialUser?.isPro ?? false);
   }
 
   /// Loads the persisted entitlement and queries the store for products.
@@ -171,7 +189,9 @@ class BillingController extends Notifier<BillingState> {
     }
 
     state = state.copyWith(isPro: entitlement, storeAvailable: available);
-    if (sessionPro != null) {
+    // Free users' isPro already comes from the session; only a subscriber's
+    // entitlement needs reconciling with the store.
+    if (sessionPro == true) {
       unawaited(_refreshServerEntitlement());
     }
 

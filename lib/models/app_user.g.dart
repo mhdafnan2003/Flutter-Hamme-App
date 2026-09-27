@@ -15,6 +15,9 @@ _AppUser _$AppUserFromJson(Map<String, dynamic> json) => _AppUser(
   avatarUrl: json['avatarUrl'] as String?,
   shareCode: json['shareCode'] as String,
   isPro: json['isPro'] as bool? ?? false,
+  termsAcceptedAt: _dateTimeOrNull(json['termsAcceptedAt']),
+  termsVersion: _intOrNull(json['termsVersion']),
+  isBanned: json['isBanned'] == null ? false : _boolOrFalse(json['isBanned']),
 );
 
 Map<String, dynamic> _$AppUserToJson(_AppUser instance) => <String, dynamic>{
@@ -26,4 +29,7 @@ Map<String, dynamic> _$AppUserToJson(_AppUser instance) => <String, dynamic>{
   'avatarUrl': instance.avatarUrl,
   'shareCode': instance.shareCode,
   'isPro': instance.isPro,
+  'termsAcceptedAt': instance.termsAcceptedAt?.toIso8601String(),
+  'termsVersion': instance.termsVersion,
+  'isBanned': instance.isBanned,
 };

@@ -19,6 +19,7 @@ abstract interface class AuthRepository {
     String? snapchatId,
     String? avatarUrl,
     String? deviceId,
+    int? acceptedTermsVersion,
   });
 
   Future<AuthSession?> restoreSession();
