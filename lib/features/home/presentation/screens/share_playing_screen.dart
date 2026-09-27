@@ -13,10 +13,8 @@ import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
-import 'package:appinio_social_share/appinio_social_share.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 
 class SharePlayingScreen extends ConsumerStatefulWidget {
   final bool autoShare;
@@ -28,9 +26,6 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
 
   static const double _storyPixelRatio = 1.0;
   static const Size _storyCanvasSize = Size(1080, 1920);
-  // The Meta App ID is required by Instagram's Story-sharing handoff.
-  // Supply it at build time with --dart-define=META_APP_ID=<your-app-id>.
-  static const String _instagramAppId = String.fromEnvironment('META_APP_ID');
   static const MethodChannel _storyChannel = MethodChannel('hamme/share_story');
 
   static Future<void> shareStory(
@@ -55,8 +50,6 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
       // Auto-copy share link to clipboard so user can paste into link sticker
       await Clipboard.setData(ClipboardData(text: shareLink));
 
-      final socialShare = AppinioSocialShare();
-
       if (platform == 'snapchat') {
         try {
           if (Platform.isAndroid) {
@@ -71,11 +64,15 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
               if (launchResult == 'SUCCESS') return;
             }
           }
-          // iOS or fallback
+          // iOS has no Snapchat story API without Snap Kit, so use the share
+          // sheet. Share the image alone: bundling text makes Snapchat's share
+          // extension treat it as a link. The link is already on the clipboard.
+          if (!context.mounted) return;
           await SharePlus.instance.share(
             ShareParams(
-              files: [XFile(tempPath)],
-              text: 'What do you think of me? $shareLink',
+              files: [XFile(tempPath, mimeType: 'image/png')],
+              text: Platform.isIOS ? null : 'What do you think of me? $shareLink',
+              sharePositionOrigin: _shareOrigin(context),
             ),
           );
           return;
@@ -84,56 +81,19 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
         }
       } else {
         // Instagram Logic
-        if (Platform.isIOS &&
-            (_instagramAppId.isEmpty ||
-                int.tryParse(_instagramAppId) == null)) {
-          debugPrint(
-            'Instagram Stories is disabled: META_APP_ID is missing or invalid.',
-          );
-          if (context.mounted) {
-            AppSnackBar.show(
-              context,
-              'Instagram Stories is temporarily unavailable.',
-              type: AppSnackBarType.error,
-            );
-          }
-          return;
-        }
         try {
-          bool instagramInstalled = false;
-          if (Platform.isAndroid) {
-            instagramInstalled =
-                await _storyChannel.invokeMethod<bool>(
-                  'isInstagramInstalled',
-                ) ??
-                false;
-          } else {
-            final installedApps = await socialShare.getInstalledApps();
-            instagramInstalled = installedApps.entries.any(
-              (entry) =>
-                  entry.value &&
-                  (entry.key.toLowerCase().contains('instagram') ||
-                      entry.key == 'com.instagram.android'),
-            );
-          }
-
+          final instagramInstalled =
+              await _storyChannel.invokeMethod<bool>('isInstagramInstalled') ??
+              false;
           if (instagramInstalled) {
-            if (Platform.isAndroid) {
-              final launchResult = await _storyChannel.invokeMethod<String>(
-                'shareToInstagramStory',
-                {'imagePath': tempPath, 'attributionUrl': shareLink},
-              );
-              if (launchResult == 'SUCCESS') return;
-            } else if (Platform.isIOS) {
-              await socialShare.iOS.shareToInstagramStory(
-                _instagramAppId,
-                backgroundImage: tempPath,
-                backgroundTopColor: '#9F6FFF',
-                backgroundBottomColor: '#9F6FFF',
-                attributionURL: shareLink,
-              );
-              return;
-            }
+            final launchResult = await _storyChannel.invokeMethod<String>(
+              'shareToInstagramStory',
+              {
+                'imagePath': tempPath,
+                'attributionUrl': shareLink,
+              },
+            );
+            if (launchResult == 'SUCCESS') return;
           }
         } catch (e) {
           debugPrint('Instagram story share failed: $e');
@@ -141,15 +101,24 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
       }
 
       // Fallback
+      if (!context.mounted) return;
       await SharePlus.instance.share(
         ShareParams(
-          files: [XFile(tempPath)],
+          files: [XFile(tempPath, mimeType: 'image/png')],
           text: 'What do you think of me? $shareLink',
+          sharePositionOrigin: _shareOrigin(context),
         ),
       );
     } catch (e) {
       debugPrint('Error sharing story: $e');
     }
+  }
+
+  // Required on iPad, where the share sheet is a popover.
+  static Rect? _shareOrigin(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
   }
 }
 
