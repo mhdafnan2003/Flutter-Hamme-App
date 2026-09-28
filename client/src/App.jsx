@@ -1602,7 +1602,16 @@ function RevealScreen({
     const playStoreUrl = `https://play.google.com/store/apps/details?id=com.hamme.app&referrer=${encodeURIComponent(referrerParams.toString())}`;
     const appStoreUrl = import.meta.env.VITE_APP_STORE_URL ?? '';
 
-    window.location.href = deepLink;
+    // On Android, one intent:// URL opens the app if installed, otherwise the
+    // Play Store *app* with market_referrer passed on as the install referrer.
+    // Navigating to play.google.com from the timer below is no longer a user
+    // gesture, so Chrome just loads the store web page instead.
+    const androidIntentUrl =
+      `intent://${deepLink.slice('hamme://'.length)}` +
+      `#Intent;scheme=hamme;package=com.hamme.app;` +
+      `S.market_referrer=${encodeURIComponent(referrerParams.toString())};end`;
+
+    window.location.href = isAndroid ? androidIntentUrl : deepLink;
 
     console.info('[Web] deep link triggered', { deepLink });
 
