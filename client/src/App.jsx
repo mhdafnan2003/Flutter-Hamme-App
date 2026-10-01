@@ -419,8 +419,8 @@ function ShareFlowApp() {
   const profileImage = optimizeProfileImage(profile.profileImageUrl) || fallbackProfileImage;
 
   return (
-    <main className="min-h-[100dvh] overflow-hidden bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
-      <section className={`mx-auto flex min-h-[100dvh] w-full max-w-[360px] flex-col items-center px-4 text-center ${isSent || alreadyVoted ? 'pb-6 pt-[clamp(24px,8vh,82px)]' : 'share-question-screen'}`}>
+    <main className="min-h-[100dvh] overflow-x-hidden bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
+      <section className={`mx-auto flex min-h-[100dvh] w-full max-w-[360px] flex-col items-center px-4 text-center ${isSent ? 'share-reveal-screen' : alreadyVoted ? 'pb-6 pt-[clamp(24px,8vh,82px)]' : 'share-question-screen'}`}>
         {isSent ? (
           <RevealScreen
             secondsLeft={secondsLeft}
@@ -447,7 +447,7 @@ function ShareFlowApp() {
         )}
 
         <footer className="mt-auto flex flex-col items-center">
-          {!isSent && !alreadyVoted && <FriendsPlaying />}
+          {!alreadyVoted && <FriendsPlaying />}
           <h1 className="m-0 leading-none">
             <img src="/weblogohome.png" alt="Hamme" width={88} height={33} className="h-[33px] w-[88px] object-contain" />
           </h1>
@@ -482,7 +482,7 @@ const avatarCutout = {
 
 function FriendsPlaying() {
   return (
-    <div className="friends-playing mb-[clamp(24px,12.75vh,102px)] flex flex-col items-center gap-2" role="status" aria-label="6 friends playing now">
+    <div className="friends-playing mb-[clamp(24px,11.25vh,90px)] flex flex-col items-center gap-2" role="status" aria-label="6 friends playing now">
       <div className="flex h-6 w-[118px] items-center gap-1.5" aria-hidden="true">
         <span className="relative flex h-2 w-2 shrink-0">
           <span className="absolute inline-flex h-full w-full rounded-full bg-[#22ff44] opacity-70 motion-safe:animate-ping" />
@@ -1665,7 +1665,7 @@ function RevealScreen({
 
   return (
     <div className="w-full">
-      <div className="mx-auto flex h-[25px] w-[96px] items-center justify-center rounded-full border border-white/80 bg-white/10 text-[18px] font-extrabold">
+      <div className="mx-auto flex h-[24px] w-[94px] items-center justify-center rounded-full border border-white/80 bg-white/10 text-[18px] font-extrabold">
         <span className="relative mr-[7px] h-[19px] w-[19px] shrink-0 overflow-hidden">
           <img
             src="/tic.png"
@@ -1676,13 +1676,13 @@ function RevealScreen({
         Sent!
       </div>
 
-      <div className="mt-[40px] text-[15px] font-medium text-white/70">
+      <div className="mt-[18px] text-[11px] font-medium leading-[15px] text-white/70">
         {isMatch ? "It's a match!" : 'Your response was sent anonymously'}
       </div>
-      <div className="mt-2 text-[15px] font-medium text-white/70">Now the question is -</div>
-      <h1 className="mx-auto mt-2 max-w-[285px] text-[31px] font-black leading-[1.38] tracking-[-0.02em]">
+      <div className="mt-[38px] flex h-[40px] items-center justify-center text-[14px] font-medium leading-[40px] text-white/70">Now the question is -</div>
+      <h1 className="mx-auto mt-[-6px] max-w-[196px] text-[32px] font-black leading-[1.375] tracking-[-0.02em]">
         What does
-        <span className="mx-[8px] inline-flex h-[38px] w-[38px] translate-y-[7px] overflow-hidden rounded-full border-2 border-white bg-[#d8b09f] align-baseline">
+        <span className="mx-[8px] inline-flex h-[40px] w-[40px] translate-y-[7px] overflow-hidden rounded-full border-2 border-white bg-[#d8b09f] align-baseline">
           <img src={profileImage} alt={profileName} className="h-full w-full object-cover" />
         </span>
         {profileName}
@@ -1690,7 +1690,7 @@ function RevealScreen({
         think of you?
       </h1>
 
-      <div className="mt-[51px] px-4">
+      <div className="mt-[49px] px-4">
         <div className="mb-[6px] flex items-center justify-between text-[11px] font-black text-white/65">
           <span>{isExpired ? 'LINK EXPIRED' : 'LINK EXPIRES IN'}</span>
           <span className={displaySeconds <= 20 ? 'text-[#ff4545]' : 'text-white'}>{String(displaySeconds).padStart(2, '0')}s</span>
@@ -1708,8 +1708,8 @@ function RevealScreen({
         disabled={isExpired}
         className="reveal-button mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] bg-white px-8 text-[20px] font-black text-[#c000df] shadow-[0_7px_0_rgba(0,0,0,0.10)] transition active:translate-y-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:active:translate-y-0"
       >
-        <span className="flex-1">{isExpired ? 'Link Expired' : 'Reveal'}</span>
-        {!isExpired && <span className="text-[27px] font-light">{"->"}</span>}
+        <span className="flex-1">👀 Reveal</span>
+        <span className="text-[27px] font-light">{'→'}</span>
       </button>
 
       {/* <button

@@ -28,6 +28,11 @@ body {
   padding-bottom: 32px;
 }
 
+.share-reveal-screen {
+  padding-top: clamp(80px, 10vh, 82px);
+  padding-bottom: 35px;
+}
+
 .share-question-screen .friends-playing {
   margin-bottom: clamp(24px, calc(58.65dvh - 367px), 102px);
 }
