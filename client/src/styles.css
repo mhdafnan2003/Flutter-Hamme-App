@@ -8,6 +8,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Schibsted Grotesk";
+  src: url("../../assets/fonts/SchibstedGrotesk-VariableFont_wght.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+}
+
 :root {
   font-family: "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   color-scheme: dark;
@@ -25,6 +33,10 @@ body {
 
 .public-poll-screen {
   font-family: Nunito, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+.poll-tagline {
+  font-family: "Schibsted Grotesk", sans-serif;
 }
 
 .share-question-screen {

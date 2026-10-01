@@ -3,6 +3,8 @@ import friendEmoji from '../../assets/icons/emoji_friend.png';
 import crushEmoji from '../../assets/icons/emoji_crush.png';
 import frenemyEmoji from '../../assets/icons/emoji_frenemy.png';
 import eyesEmoji from '../../assets/icons/emoji_eyes.png';
+import monkeyEmoji from '../../assets/icons/emoji_monkey.png';
+import pointingUp from '../../assets/icons/inbox_pointing_up.svg';
 import revealArrowRight from '../../assets/icons/icon_line/reveal_arrow_right.svg';
 
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
@@ -455,7 +457,7 @@ function ShareFlowApp() {
           <h1 className="m-0 leading-none">
             <img src="/weblogohome.png" alt="Hamme" width={88} height={33} className="h-[33px] w-[88px] object-contain" />
           </h1>
-          <p className="text-[12px] font-extrabold leading-[15px]">play games &amp; meet people</p>
+          <p className="poll-tagline text-[12px] font-extrabold leading-[15px]">play games &amp; meet people</p>
           <SiteLinks className="mt-6" />
           <a
             href={`mailto:${legal.supportEmail}?subject=${encodeURIComponent(`Report profile: ${shareCode}`)}`}
@@ -470,11 +472,11 @@ function ShareFlowApp() {
 }
 
 const playingFriends = [
-  { letter: 'S', className: 'bg-[#ff4f81] text-white' },
-  { letter: 'K', className: 'bg-[#20d67b] text-white' },
-  { letter: 'R', className: 'bg-[#4f95ff] text-white' },
-  { letter: 'N', className: 'bg-[#ffd43b] text-[#5b21b6]' },
-  { letter: 'A', className: 'bg-[#ff5757] text-white' },
+  { letter: 'S', className: 'bg-[#ff457e] text-white' },
+  { letter: 'K', className: 'bg-[#30e584] text-white' },
+  { letter: 'R', className: 'bg-[#4694ff] text-white' },
+  { letter: 'N', className: 'bg-[#ffdb45] text-white' },
+  { letter: 'A', className: 'bg-[#ff5353] text-white' },
 ];
 
 // Cuts a transparent 1.5px ring around the next avatar (24px wide, overlapped by 4px),
@@ -496,7 +498,7 @@ function FriendsPlaying() {
           {playingFriends.map((friend, index) => (
             <span
               key={friend.letter}
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${friend.className} ${index > 0 ? '-ml-1' : ''}`}
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold ${friend.className} ${index > 0 ? '-ml-1' : ''}`}
               style={index < playingFriends.length - 1 ? avatarCutout : undefined}
             >
               {friend.letter}
@@ -505,7 +507,9 @@ function FriendsPlaying() {
         </div>
       </div>
       <p className="flex h-[22px] w-[202px] items-center justify-center whitespace-nowrap text-[14px] font-extrabold leading-none tracking-[-0.01em]">
-        👆 6 friends playing now 👆
+        <img src={pointingUp} alt="" width={16} height={16} className="mr-1" />
+        6 friends playing now
+        <img src={pointingUp} alt="" width={16} height={16} className="ml-1" />
       </p>
     </div>
   );
@@ -1496,7 +1500,7 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
   return (
     <>
       <div className="flex w-full flex-col items-center px-6">
-        <div className="flex w-full flex-col items-center drop-shadow-[0_7px_10px_rgba(0,0,0,0.2)]">
+        <div className="flex w-full flex-col items-center drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
           <div className="relative z-10 h-[100px] w-[100px] overflow-hidden rounded-full border-[5px] border-white bg-[#d8b09f]">
             <img
               src={profileImage}
@@ -1506,7 +1510,7 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
           </div>
 
           {/* Overlaps the avatar's white border so the two whites merge into one shape */}
-          <div className="relative -mt-[5px] flex h-[36px] w-full items-center justify-center rounded-xl bg-white px-4 text-[18px] font-black leading-none tracking-[0.01em] text-black">
+          <div className="relative -mt-[5px] flex min-h-[36px] w-full items-center justify-center rounded-xl bg-white px-2 text-[18px] font-extrabold leading-[25px] text-black">
             {/* Concave fillets where the avatar meets the bar */}
             <span
               aria-hidden="true"
@@ -1522,17 +1526,19 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
           </div>
         </div>
 
-        <p className="mt-3 text-[14px] font-medium text-white/95">🙈 send anonymously</p>
+        <p className="mt-2 flex h-[19px] items-center justify-center gap-1 text-[14px] font-semibold leading-[19px] text-[#eae7e7]">
+          <img src={monkeyEmoji} alt="" className="h-4 w-4 object-contain" /> send anonymously
+        </p>
 
-        <div className="mt-[3px] flex w-[260px] max-w-full flex-col gap-[8px]">
-          <button onClick={() => onAnswer('friend')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#00ccfe,#005efa)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
-            🤝 Friend
+        <div className="mt-2 flex w-[260px] max-w-full flex-col gap-[8px]">
+          <button onClick={() => onAnswer('friend')} disabled={votingDisabled} className="flex h-[48px] items-center justify-center gap-0.5 rounded-2xl bg-[linear-gradient(90deg,#00ccfe,#005efa)] text-[18px] font-extrabold shadow-[0_2px_4px_rgba(0,0,0,0.25)] transition active:translate-y-1 disabled:opacity-60">
+            <img src={friendEmoji} alt="" className="h-[22px] w-[22px] object-contain" /> Friend
           </button>
-          <button onClick={() => onAnswer('crush')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#cf59e7,#ff3c9e)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
-           😍 Crush
+          <button onClick={() => onAnswer('crush')} disabled={votingDisabled} className="flex h-[48px] items-center justify-center gap-0.5 rounded-2xl bg-[linear-gradient(90deg,#ce58e6,#fe3b9d)] text-[18px] font-extrabold shadow-[0_2px_4px_rgba(0,0,0,0.25)] transition active:translate-y-1 disabled:opacity-60">
+           <img src={crushEmoji} alt="" className="h-[22px] w-[22px] object-contain" /> Crush
           </button>
-          <button onClick={() => onAnswer('frenemy')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#bbaeed,#50528d)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
-            😈 Frenemy 
+          <button onClick={() => onAnswer('frenemy')} disabled={votingDisabled} className="flex h-[48px] items-center justify-center gap-0.5 rounded-2xl bg-[linear-gradient(90deg,#bbaded,#50528d)] text-[18px] font-extrabold shadow-[0_2px_4px_rgba(0,0,0,0.25)] transition active:translate-y-1 disabled:opacity-60">
+            <img src={frenemyEmoji} alt="" className="h-[22px] w-[22px] object-contain" /> Frenemy
           </button>
           {submitError ? (
             <p

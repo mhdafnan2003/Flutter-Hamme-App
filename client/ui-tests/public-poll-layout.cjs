@@ -18,6 +18,7 @@ const screenshotDir = process.env.UI_SCREENSHOT_DIR;
       await page.goto(`${origin}/poll/layout-review`);
       await page.getByRole('button', { name: /Friend$/ }).waitFor();
       await page.evaluate(() => document.fonts.ready);
+      await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       const reactions = page.getByRole('button').filter({ hasText: /Friend|Crush|Frenemy/ });
       assert.equal(await reactions.count(), 3);
@@ -26,10 +27,17 @@ const screenshotDir = process.env.UI_SCREENSHOT_DIR;
         assert(rect.width > 180 && rect.height >= 44, 'Reaction remains usable at narrow widths');
         assert(rect.x >= 0 && rect.x + rect.width <= width);
       }
+      if (width === 360 && height === 800) {
+        const friend = await page.getByRole('button', { name: /Friend$/ }).boundingBox();
+        assert(Math.abs(friend.x - 50) < 1 && Math.abs(friend.y - 298) < 1);
+        assert.equal(friend.width, 260);
+        assert.equal(await page.getByRole('button', { name: /Friend$/ }).evaluate(n => getComputedStyle(n).fontSize), '18px');
+      }
       if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/question-${width}x${height}.png`, fullPage: true });
       await page.getByRole('button', { name: /Friend$/ }).click();
       const reveal = page.getByRole('button', { name: 'Reveal' });
       await reveal.waitFor();
+      await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
       const geometry = await reveal.evaluate(button => {
         const r = button.getBoundingClientRect();
         const label = button.querySelector('span').getBoundingClientRect();
