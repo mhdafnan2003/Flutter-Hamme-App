@@ -106,7 +106,7 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                   // gaps remain unchanged; on shorter devices they contract
                   // before the page falls back to scrolling.
                   const fixedContentHeight = 350.0;
-                  const referenceTrailingSpace = 72.0;
+                  const referenceTrailingSpace = 69.0;
                   const referenceGapTotal = 241.0;
                   final gapScale = ((constraints.maxHeight -
                               fixedContentHeight -
@@ -208,7 +208,7 @@ class _DobScreenState extends ConsumerState<DobScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 27),
               child: GradientButton(
                 label: TTexts.next,
                 borderRadius: 22,
