@@ -55,6 +55,13 @@ void main() {
     expect(tester.getRect(find.text('Privacy')).bottom, lessThanOrEqualTo(852));
     expect(tester.getRect(find.text('Restore')).bottom, lessThanOrEqualTo(852));
     expect(tester.getRect(find.text('Terms')).bottom, lessThanOrEqualTo(852));
+    expect(
+      tester
+          .state<ScrollableState>(find.byType(Scrollable))
+          .position
+          .maxScrollExtent,
+      0,
+    );
     expect(tester.getSize(find.byType(ElevatedButton)), const Size(345, 62));
     expect(tester.takeException(), isNull);
   });
