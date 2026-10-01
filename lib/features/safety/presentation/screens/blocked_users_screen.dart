@@ -363,43 +363,58 @@ class _TileLayout extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 76),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            leading,
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 17,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: TColors.darkGrey,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final stackAction =
+                MediaQuery.textScalerOf(context).scale(17) > 22 ||
+                constraints.maxWidth < 200;
+            final row = Row(
+              children: [
+                leading,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                        ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            trailing,
-          ],
+                      if (subtitle != null)
+                        Text(
+                          subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: TColors.darkGrey,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (!stackAction) ...[const SizedBox(width: 8), trailing],
+              ],
+            );
+            if (!stackAction) return row;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                row,
+                const SizedBox(height: 12),
+                Align(alignment: Alignment.centerRight, child: trailing),
+              ],
+            );
+          },
         ),
       ),
     );
