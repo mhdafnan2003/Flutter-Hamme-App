@@ -111,6 +111,8 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
             ? draft.name!.trim()
             : TTexts.homeProfileName;
     final profileImageUrl = draft.profileImageUrl;
+    final username = draft.username?.trim();
+    final hasUsername = username != null && username.isNotEmpty;
     final hasProfileImage =
         profileImageUrl != null && profileImageUrl.isNotEmpty;
     // During onboarding, show the image the user just selected immediately.
@@ -175,15 +177,39 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        child: Text(
-                          profileName,
-                          style: const TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 20,
-                            color: TColors.white,
-                          ),
+                        padding: EdgeInsets.only(bottom: hasUsername ? 12 : 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              profileName,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 20,
+                                height: 1.35,
+                                color: TColors.white,
+                              ),
+                            ),
+                            if (hasUsername)
+                              Text(
+                                username.startsWith('@')
+                                    ? username
+                                    : '@$username',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: TFonts.nunito,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                  height: 4 / 3,
+                                  color: TColors.white,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -198,6 +224,7 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                     fontFamily: TFonts.nunito,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
+                    height: 25 / 18,
                     color: Colors.black,
                   ),
                 ),
