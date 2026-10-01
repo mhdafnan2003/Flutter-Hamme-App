@@ -4,15 +4,21 @@ import 'package:hamme_app/features/shared/presentation/widgets/top_bar_circle_bu
 import 'package:hamme_app/utils/constants/image_strings.dart';
 
 class HammeTopBar extends StatelessWidget {
-  const HammeTopBar({super.key, this.onLeftTap, this.onRightTap});
+  const HammeTopBar({
+    super.key,
+    this.onLeftTap,
+    this.onRightTap,
+    this.verticalPadding = 12,
+  });
 
   final VoidCallback? onLeftTap;
   final VoidCallback? onRightTap;
+  final double verticalPadding;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: verticalPadding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

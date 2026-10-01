@@ -775,7 +775,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
       body: SafeArea(
         child: Column(
           children: [
-            const HammeTopBar(),
+            const HammeTopBar(verticalPadding: 2),
             Expanded(
               child: limitStatus.when(
                 // Keep the current view while the status is refetched.
@@ -1418,315 +1418,368 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
         'Someone';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 0, 28, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.max,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const contentHeight = 517.0;
+          final remainingSpace = (constraints.maxHeight - contentHeight).clamp(
+            0.0,
+            1000.0,
+          );
+          final topSpace = remainingSpace * 0.8;
+          final bottomSpace = remainingSpace - topSpace;
 
-          // ── Result Card ────────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 36, 24, 36),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0EBFF),
-              borderRadius: BorderRadius.circular(44),
-              border: Border.all(color: const Color(0xFFB18DFF), width: 2),
-            ),
+          return SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── Overlapping Avatars ─────────────────────────────────
-                SizedBox(
-                  height: 80,
-                  width: 172,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Left avatar (other person)
-                      Positioned(
-                        left: 0,
-                        child: _PlayAvatar(
-                          imageUrl: otherImageUrl,
-                          size: 76,
-                          plainCircle: isAnonymous,
+                SizedBox(height: topSpace),
+
+                // ── Result Card ──────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    height: 266,
+                    padding: const EdgeInsets.only(top: 52),
+                    decoration: BoxDecoration(
+                      color: const Color(0x1F9B6AFF),
+                      borderRadius: BorderRadius.circular(40),
+                      border: Border.all(color: const Color(0xFF9B6AFF)),
+                    ),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          width: 156,
+                          height: 72,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned(
+                                left: 0,
+                                child: _PlayAvatar(
+                                  imageUrl: otherImageUrl,
+                                  size: 72,
+                                  plainCircle: isAnonymous,
+                                ),
+                              ),
+                              Positioned(
+                                right: 0,
+                                child: _PlayAvatar(
+                                  imageUrl: myImageUrl,
+                                  size: 72,
+                                ),
+                              ),
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0x40000000),
+                                      blurRadius: 6,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  '?',
+                                  style: TextStyle(
+                                    fontFamily: TFonts.nunito,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF9B6AFF),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      // Right avatar (me)
-                      Positioned(
-                        right: 0,
-                        child: _PlayAvatar(imageUrl: myImageUrl, size: 76),
-                      ),
-                      // Centre question-mark badge
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x22000000),
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '?',
-                            style: TextStyle(
-                              fontFamily: TFonts.nunito,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFFB18DFF),
+                        const SizedBox(height: 16),
+                        const SizedBox(
+                          height: 44,
+                          child: Center(
+                            child: Text(
+                              'Not a Match!',
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 32,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        Text(
+                          '$otherName chose something else.\nyou’ll never know 😭',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            color: Color(0xFF484848),
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                const Text(
-                  'Not a Match!',
-                  style: TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 32,
-                    color: Colors.black,
+                // ── Rewind Button ──────────────────────────────────────────────
+                Container(
+                  height: 78,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFAB82FF),
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                ),
-
-                const SizedBox(height: 10),
-
-                Text(
-                  '$otherName chose something else.\nyou\'ll never know 😭',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: Color(0xFF555555),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // ── Rewind Button ──────────────────────────────────────────────
-          Container(
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFB18DFF), Color(0xFF9060FF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF9060FF).withValues(alpha: 0.35),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(28),
-                onTap: () {
-                  if (ref.read(isProProvider)) {
-                    widget.onRewind();
-                  } else {
-                    context.push('/pro');
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                  child: Row(
-                    children: [
-                      // Rewind icon box
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Image.asset(
-                          'assets/icons/Right Arrow Curving Left.png',
-                          width: 28,
-                          height: 28,
-                          fit: BoxFit.contain,
-                          semanticLabel: 'Rewind',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () {
+                        if (ref.read(isProProvider)) {
+                          widget.onRewind();
+                        } else {
+                          context.push('/pro');
+                        }
+                      },
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: Container(
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF9561FF),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 20, 0),
+                            child: Row(
+                              children: [
+                                // Rewind icon box
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Image.asset(
+                                    'assets/icons/Right Arrow Curving Left.png',
+                                    width: 28,
+                                    height: 28,
+                                    fit: BoxFit.contain,
+                                    semanticLabel: 'Rewind',
+                                  ),
+                                ),
+                                const SizedBox(width: 43),
+                                const SizedBox(
+                                  width: 147,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Rewind',
+                                        style: TextStyle(
+                                          fontFamily: TFonts.nunito,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 18,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      Text(
+                                        'go back and play again',
+                                        style: TextStyle(
+                                          fontFamily: TFonts.nunito,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: Color(0xFFEEEEEE),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 33),
+                                // Pro badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Text(
+                                    'pro',
+                                    style: TextStyle(
+                                      fontFamily: TFonts.nunito,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 13,
+                                      color: Color(0xFFCF25F3),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                  ),
+                ),
+                // Thin separator
+                const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: Color(0xFFE5E1EE),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ── Timer Row ─────────────────────────────────────────────────
+                SizedBox(
+                  height: 44,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 17),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Rewind',
+                            const Text(
+                              'NEXT PROFILE IN',
                               style: TextStyle(
                                 fontFamily: TFonts.nunito,
                                 fontWeight: FontWeight.w900,
-                                fontSize: 19,
-                                color: Colors.white,
+                                fontSize: 10,
+                                color: Color(0xFF9B6AFF),
+                                letterSpacing: 0.8,
                               ),
                             ),
-                            Text(
-                              'go back and play again',
-                              style: TextStyle(
-                                fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: Colors.white70,
+                            AnimatedBuilder(
+                              animation: _animController,
+                              builder:
+                                  (_, __) => Text(
+                                    '${_secondsRemaining}s',
+                                    style: TextStyle(
+                                      fontFamily: TFonts.nunito,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 10,
+                                      color:
+                                          _animController.value > 0.8
+                                              ? Colors.red
+                                              : const Color(0xFF9B6AFF),
+                                    ),
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: AnimatedBuilder(
+                            animation: _animController,
+                            builder:
+                                (_, __) => LinearProgressIndicator(
+                                  value: _animController.value,
+                                  backgroundColor: const Color(0xFFE8DFFF),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    _animController.value > 0.8
+                                        ? Colors.red
+                                        : const Color(0xFF9B6AFF),
+                                  ),
+                                  minHeight: 5,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                // ── See Next Profile Button ────────────────────────────────────
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 305),
+                    child: GestureDetector(
+                      onTap: widget.onSeeNext,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F0FF),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: const Color(0xFF9B6AFF),
+                            width: 1,
+                          ),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Transform.translate(
+                              offset: const Offset(12, 0),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'See next profile',
+                                    style: TextStyle(
+                                      fontFamily: TFonts.nunito,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                      color: Colors.black.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    widget.remainingCount.toString(),
+                                    style: const TextStyle(
+                                      fontFamily: TFonts.nunito,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 16,
+                                      color: Color(0xFF8F56FD),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Positioned(
+                              right: 16,
+                              child: Icon(
+                                CupertinoIcons.arrow_right,
+                                color: Colors.black87,
+                                size: 20,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      // Pro badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'pro',
-                          style: TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                            color: Color(0xFFCF25F3),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                SizedBox(height: bottomSpace),
+              ],
             ),
-          ),
-
-          // Thin separator
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Divider(height: 1, thickness: 0.5, color: Color(0xFFD0D0D0)),
-          ),
-
-          // ── Timer Row ─────────────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'NEXT PROFILE IN',
-                style: TextStyle(
-                  fontFamily: TFonts.nunito,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 11,
-                  color: Color(0xFFB18DFF),
-                  letterSpacing: 0.8,
-                ),
-              ),
-              AnimatedBuilder(
-                animation: _animController,
-                builder:
-                    (_, __) => Text(
-                      '${_secondsRemaining}s',
-                      style: TextStyle(
-                        fontFamily: TFonts.nunito,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 11,
-                        color:
-                            _animController.value > 0.8
-                                ? Colors.red
-                                : const Color(0xFFB18DFF),
-                      ),
-                    ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Smooth Progress Bar ────────────────────────────────────────
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: AnimatedBuilder(
-              animation: _animController,
-              builder:
-                  (_, __) => LinearProgressIndicator(
-                    value: _animController.value,
-                    backgroundColor: const Color(0xFFE8DFFF),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _animController.value > 0.8
-                          ? Colors.red
-                          : const Color(0xFFB18DFF),
-                    ),
-                    minHeight: 5,
-                  ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── See Next Profile Button ────────────────────────────────────
-          GestureDetector(
-            onTap: widget.onSeeNext,
-            child: Container(
-              height: 62,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0EBFF),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFFB18DFF), width: 1),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'See next profile',
-                    style: TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 17,
-                      color: Colors.black.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.remainingCount.toString(),
-                    style: const TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 17,
-                      color: Color(0xFFB18DFF),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Icon(
-                    CupertinoIcons.arrow_right,
-                    color: Colors.black87,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

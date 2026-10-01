@@ -25,3 +25,7 @@
 ## Match success
 
 - The app shows a top-right close button on the match success overlay. The corresponding Figma share screen has no close control. It is retained so users can dismiss the overlay.
+
+## Play non-match state
+
+- `poll_not_a_match_overlay.dart` is currently unreferenced. The matching Figma design is the embedded non-match state inside Play, which retains the top bar and bottom navigation. The live Play state was aligned; the unused standalone widget remains in the repository.
