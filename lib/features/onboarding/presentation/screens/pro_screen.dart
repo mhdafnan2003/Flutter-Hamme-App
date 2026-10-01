@@ -201,10 +201,8 @@ class _ProScreenState extends ConsumerState<ProScreen> {
   Widget build(BuildContext context) {
     final billing = ref.watch(billingControllerProvider);
     final isUpgrade = !widget.isOnboarding;
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final headerHeight = 156.0;
-    final footerBottomPadding =
-        bottomInset > 0 ? (bottomInset - 5).clamp(20.0, 29.0) : 20.0;
+    const footerBottomPadding = 20.0;
 
     // A new Pro purchase can dismiss the paywall. A restored purchase goes
     // through _restoreProProfile so its old profile is restored explicitly.
@@ -288,7 +286,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
               Expanded(
                 child: SafeArea(
                   top: false,
-                  bottom: false,
+                  bottom: true,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       const horizontalPadding = 28.0;
