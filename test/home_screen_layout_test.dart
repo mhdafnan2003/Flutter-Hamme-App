@@ -54,7 +54,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('shows the Figma home sections and all three tabs', (
+  testWidgets('shows the Figma home sections and two visible tabs', (
     tester,
   ) async {
     await pumpHome(tester, const Size(393, 852));
@@ -63,7 +63,9 @@ void main() {
     expect(find.text('Step 2: Share link to your story'), findsOneWidget);
     expect(find.text('Share'), findsOneWidget);
     expect(find.text('Play'), findsOneWidget);
-    expect(find.text('Inbox'), findsOneWidget);
+    expect(find.text('Inbox'), findsNothing);
+    expect(tester.getCenter(find.text('Share')).dx, closeTo(113, 0.1));
+    expect(tester.getCenter(find.text('Play')).dx, closeTo(285, 0.1));
     expect(find.bySemanticsLabel('Edit profile'), findsOneWidget);
     expect(find.text('Share!').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);

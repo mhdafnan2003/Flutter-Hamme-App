@@ -8,7 +8,7 @@ import 'package:hamme_app/providers/settings_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import '../widgets/hamme_bottom_nav_bar.dart';
 
-/// Persistent shell that hosts the main tabs (Share / Play / Inbox).
+/// Persistent shell with Share and Play tabs and a retained Inbox route.
 ///
 /// The bottom navigation bar stays mounted while only the body swaps between
 /// branches via [StatefulNavigationShell], so switching tabs no longer rebuilds

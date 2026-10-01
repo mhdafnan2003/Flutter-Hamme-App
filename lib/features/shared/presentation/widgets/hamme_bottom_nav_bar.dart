@@ -35,72 +35,71 @@ class HammeBottomNavBar extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _HammeNavItem(
-                label: TTexts.navShare,
-                selected: currentIndex == 0,
-                onTap: () => onTap(0),
-                icon: Image.asset(
-                  'assets/icons/Outbox Tray.png',
-                  width: 24,
-                  height: 24,
+        child: Padding(
+          // The two-tab Figma frame centers the icons at x=113 and x=285
+          // on a 393 px canvas. Keep those side margins on smaller phones.
+          padding: const EdgeInsets.only(left: 27, right: 22),
+          child: Row(
+            children: [
+              Expanded(
+                child: _HammeNavItem(
+                  label: TTexts.navShare,
+                  selected: currentIndex == 0,
+                  onTap: () => onTap(0),
+                  icon: Image.asset(
+                    'assets/icons/Outbox Tray.png',
+                    width: 24,
+                    height: 24,
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: _HammeNavItem(
-                label: TTexts.navPlay,
-                selected: currentIndex == 1,
-                onTap: () => onTap(1),
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    Image.asset('assets/icons/Fire.png', width: 24, height: 24),
-                    if ((playBadgeCount ?? 0) > 0)
-                      Positioned(
-                        top: -6,
-                        right: -14,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF0037),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            playBadgeCount! > 99 ? '99+' : '$playBadgeCount',
-                            style: const TextStyle(
-                              color: TColors.white,
-                              fontFamily: TFonts.nunito,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              height: 1,
+              Expanded(
+                child: _HammeNavItem(
+                  label: TTexts.navPlay,
+                  selected: currentIndex == 1,
+                  onTap: () => onTap(1),
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/icons/Fire.png',
+                        width: 24,
+                        height: 24,
+                      ),
+                      if ((playBadgeCount ?? 0) > 0)
+                        Positioned(
+                          top: -6,
+                          right: -14,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF0037),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              playBadgeCount! > 99 ? '99+' : '$playBadgeCount',
+                              style: const TextStyle(
+                                color: TColors.white,
+                                fontFamily: TFonts.nunito,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: _HammeNavItem(
-                label: TTexts.navInbox,
-                selected: currentIndex == 2,
-                onTap: () => onTap(2),
-                icon: Image.asset(
-                  'assets/icons/Open Mailbox With Raised Flag.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-            ),
-          ],
+              // Inbox remains available through its route, but the current
+              // product navigation exposes only Share and Play.
+            ],
+          ),
         ),
       ),
     );
