@@ -290,12 +290,29 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       const horizontalPadding = 28.0;
-                      const fixedContentHeight = 511.0;
-                      const referenceBottomSpace = 29.0;
                       const referenceGapTotal = 156.0;
+                      // Use a compact composition on shorter phones so the
+                      // plan details and pinned legal actions fit together.
+                      final compact = constraints.maxHeight < 560;
+                      final titleHeight = compact ? 60.0 : 76.0;
+                      final featureCardHeight = compact ? 214.0 : 308.0;
+                      final featurePadding = compact ? 16.0 : 24.0;
+                      final featureRowHeight = compact ? 52.0 : 58.0;
+                      final featureGap = compact ? 12.0 : 38.0;
+                      final lastFeatureGap = compact ? 12.0 : 36.0;
+                      final ctaHeight = compact ? 56.0 : 62.0;
+                      final billingHeight = 22.0;
+                      final fixedContentHeight =
+                          titleHeight +
+                          featureCardHeight +
+                          24 +
+                          ctaHeight +
+                          billingHeight;
+                      const footerHeight = 19.0 + footerBottomPadding;
                       final gapScale = ((constraints.maxHeight -
                                   fixedContentHeight -
-                                  referenceBottomSpace) /
+                                  footerHeight -
+                                  1) /
                               referenceGapTotal)
                           .clamp(0.0, 1.25);
 
@@ -313,9 +330,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
                                   minHeight:
-                                      constraints.maxHeight -
-                                      19 -
-                                      footerBottomPadding,
+                                      constraints.maxHeight - footerHeight - 1,
                                 ),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -325,19 +340,19 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       SizedBox(height: gap(40)),
-                                      const SizedBox(
-                                        height: 76,
-                                        child: _UnlockTitle(),
+                                      SizedBox(
+                                        height: titleHeight,
+                                        child: const _UnlockTitle(),
                                       ),
                                       SizedBox(height: gap(32)),
                                       Container(
                                         width: double.infinity,
-                                        height: 308,
-                                        padding: const EdgeInsets.fromLTRB(
+                                        height: featureCardHeight,
+                                        padding: EdgeInsets.fromLTRB(
                                           16,
-                                          24,
+                                          featurePadding,
                                           12,
-                                          24,
+                                          featurePadding,
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFEBEAFA),
@@ -348,10 +363,10 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                             color: const Color(0xFF9B6AFF),
                                           ),
                                         ),
-                                        child: const Column(
+                                        child: Column(
                                           children: [
                                             SizedBox(
-                                              height: 58,
+                                              height: featureRowHeight,
                                               child: ProFeature(
                                                 icon: _UnlimitedPlayIcon(),
                                                 title: 'Unlimited Play',
@@ -359,9 +374,9 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                                     'No waiting, Play every profile,\nanytime.',
                                               ),
                                             ),
-                                            SizedBox(height: 38),
+                                            SizedBox(height: featureGap),
                                             SizedBox(
-                                              height: 58,
+                                              height: featureRowHeight,
                                               child: ProFeature(
                                                 icon: Image(
                                                   image: AssetImage(
@@ -377,9 +392,9 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                                     'Picked wrong? Go back and change\nyour pick.',
                                               ),
                                             ),
-                                            SizedBox(height: 36),
+                                            SizedBox(height: lastFeatureGap),
                                             SizedBox(
-                                              height: 58,
+                                              height: featureRowHeight,
                                               child: ProFeature(
                                                 icon: Image(
                                                   image: AssetImage(
@@ -405,15 +420,15 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                       ),
                                       SizedBox(height: gap(14)),
                                       SizedBox(
-                                        height: 62,
+                                        height: ctaHeight,
                                         child: OverflowBox(
                                           minWidth: ctaWidth,
                                           maxWidth: ctaWidth,
-                                          minHeight: 62,
-                                          maxHeight: 62,
+                                          minHeight: ctaHeight,
+                                          maxHeight: ctaHeight,
                                           child: SizedBox(
                                             width: ctaWidth,
-                                            height: 62,
+                                            height: ctaHeight,
                                             child: DecoratedBox(
                                               decoration: BoxDecoration(
                                                 borderRadius:
