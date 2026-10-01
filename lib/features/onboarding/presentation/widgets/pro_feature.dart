@@ -41,6 +41,7 @@ class ProFeature extends StatelessWidget {
                   style: const TextStyle(
                     fontFamily: TFonts.nunito,
                     fontSize: 16,
+                    height: 22 / 16,
                     fontWeight: FontWeight.w800,
                     color: Colors.black,
                   ),
@@ -54,6 +55,7 @@ class ProFeature extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
                       fontSize: 14,
+                      height: 19 / 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF6D6D6D),
                     ),

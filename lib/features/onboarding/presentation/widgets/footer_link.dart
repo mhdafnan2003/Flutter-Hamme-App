@@ -21,6 +21,7 @@ class FooterLink extends StatelessWidget {
             style: const TextStyle(
               fontFamily: TFonts.nunito,
               fontSize: 14,
+              height: 19 / 14,
               fontWeight: FontWeight.w500,
               color: Color(0xFFA4A1A2),
             ),

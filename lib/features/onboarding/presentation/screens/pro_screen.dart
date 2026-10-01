@@ -202,7 +202,10 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     final billing = ref.watch(billingControllerProvider);
     final isUpgrade = !widget.isOnboarding;
     final headerHeight = 156.0;
-    const footerBottomPadding = 20.0;
+    // The design places the footer just above the home-indicator area rather
+    // than adding a second bottom inset below an already padded footer.
+    final footerBottomPadding = (MediaQuery.paddingOf(context).bottom - 5)
+        .clamp(20.0, double.infinity);
 
     // A new Pro purchase can dismiss the paywall. A restored purchase goes
     // through _restoreProProfile so its old profile is restored explicitly.
@@ -250,7 +253,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                     ),
                     Positioned(
                       top: 78,
-                      right: 100,
+                      left: MediaQuery.sizeOf(context).width / 2 - 46.5,
                       child: Image.asset(
                         TImages.proHammeLogo,
                         width: 143,
@@ -286,7 +289,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
               Expanded(
                 child: SafeArea(
                   top: false,
-                  bottom: true,
+                  bottom: false,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       const horizontalPadding = 28.0;
@@ -296,8 +299,8 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                       final compact = constraints.maxHeight < 560;
                       final titleHeight = compact ? 60.0 : 76.0;
                       final featureCardHeight = compact ? 214.0 : 308.0;
-                      final featurePadding = compact ? 16.0 : 24.0;
-                      final featureRowHeight = compact ? 52.0 : 58.0;
+                      final featurePadding = compact ? 16.0 : 23.0;
+                      final featureRowHeight = compact ? 52.0 : 62.0;
                       final featureGap = compact ? 12.0 : 38.0;
                       final lastFeatureGap = compact ? 12.0 : 36.0;
                       final ctaHeight = compact ? 56.0 : 62.0;
@@ -308,11 +311,10 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                           24 +
                           ctaHeight +
                           billingHeight;
-                      const footerHeight = 19.0 + footerBottomPadding;
+                      final footerHeight = 19.0 + footerBottomPadding;
                       final gapScale = ((constraints.maxHeight -
                                   fixedContentHeight -
-                                  footerHeight -
-                                  1) /
+                                  footerHeight) /
                               referenceGapTotal)
                           .clamp(0.0, 1.25);
 
@@ -330,7 +332,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
                                   minHeight:
-                                      constraints.maxHeight - footerHeight - 1,
+                                      constraints.maxHeight - footerHeight,
                                 ),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -481,6 +483,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                                                     TFonts
                                                                         .nunito,
                                                                 fontSize: 20,
+                                                                height: 27 / 20,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w800,
@@ -519,6 +522,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                             style: const TextStyle(
                                               fontFamily: TFonts.nunito,
                                               fontSize: 16,
+                                              height: 22 / 16,
                                               fontWeight: FontWeight.w500,
                                               color: Color(0xFF98999A),
                                             ),
@@ -595,6 +599,7 @@ class _UnlockTitle extends StatelessWidget {
   static const _titleStyle = TextStyle(
     fontFamily: TFonts.nunito,
     fontSize: 28,
+    height: 38 / 28,
     fontWeight: FontWeight.w900,
     color: Colors.white,
   );
@@ -719,6 +724,7 @@ class _ProSocialProof extends StatelessWidget {
             style: TextStyle(
               fontFamily: TFonts.nunito,
               fontSize: 12,
+              height: 16 / 12,
               fontWeight: FontWeight.w800,
               color: Color(0xFFB2B2B2),
             ),

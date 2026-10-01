@@ -21,10 +21,7 @@ class AvatarBubble extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border:
-            showBorder
-                ? Border.all(color: Colors.white, width: 1)
-                : null,
+        border: showBorder ? Border.all(color: Colors.white, width: 1) : null,
       ),
       alignment: Alignment.center,
       child: Text(
@@ -32,7 +29,7 @@ class AvatarBubble extends StatelessWidget {
         style: const TextStyle(
           fontFamily: TFonts.nunito,
           fontSize: 12,
-          height: 1,
+          height: 16 / 12,
           fontWeight: FontWeight.w800,
           color: Colors.white,
         ),

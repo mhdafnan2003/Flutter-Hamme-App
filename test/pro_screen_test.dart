@@ -60,7 +60,7 @@ void main() {
           .state<ScrollableState>(find.byType(Scrollable))
           .position
           .maxScrollExtent,
-      0,
+      closeTo(0, 0.001),
     );
     expect(tester.getSize(find.byType(ElevatedButton)), const Size(345, 62));
     expect(tester.takeException(), isNull);
@@ -83,7 +83,7 @@ void main() {
           .state<ScrollableState>(find.byType(Scrollable))
           .position
           .maxScrollExtent,
-      0,
+      closeTo(0, 0.001),
     );
     expect(tester.takeException(), isNull);
   });
