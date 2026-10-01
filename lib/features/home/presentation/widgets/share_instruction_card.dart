@@ -10,6 +10,7 @@ class ShareInstructionCard extends StatelessWidget {
     required this.totalSteps,
     required this.instructionTitle,
     required this.image,
+    this.imageSpacing = 24,
     required this.action,
   });
 
@@ -18,13 +19,14 @@ class ShareInstructionCard extends StatelessWidget {
   final int totalSteps;
   final Widget instructionTitle;
   final Widget image;
+  final double imageSpacing;
   final Widget action;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 25, 20, 32),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(31),
@@ -42,13 +44,13 @@ class ShareInstructionCard extends StatelessWidget {
               color: Colors.black,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 7),
           _StepDots(activeStep: activeStep, totalSteps: totalSteps),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           instructionTitle,
-          const SizedBox(height: 16),
+          SizedBox(height: imageSpacing),
           image,
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
           action,
         ],
       ),
@@ -71,9 +73,9 @@ class _StepDots extends StatelessWidget {
         final active = step <= activeStep;
 
         return Container(
-          width: 28,
-          height: 28,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
+          width: 32,
+          height: 32,
+          margin: const EdgeInsets.symmetric(horizontal: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: active ? TColors.hammeProgressFill : const Color(0xFFE8EDF1),
@@ -84,7 +86,7 @@ class _StepDots extends StatelessWidget {
             style: TextStyle(
               fontFamily: TFonts.nunito,
               fontWeight: FontWeight.w900,
-              fontSize: 16,
+              fontSize: 20,
               color: active ? Colors.white : Colors.black,
             ),
           ),

@@ -189,7 +189,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      GoRoute(path: '/share', builder: (_, _) => const SharePreviewScreen()),
+      GoRoute(
+        path: '/share',
+        pageBuilder:
+            (context, state) => CustomTransitionPage<void>(
+              key: state.pageKey,
+              opaque: false,
+              transitionDuration: const Duration(milliseconds: 180),
+              reverseTransitionDuration: const Duration(milliseconds: 160),
+              child: const SharePreviewScreen(),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) =>
+                      FadeTransition(opacity: animation, child: child),
+            ),
+      ),
       GoRoute(
         path: '/share/playing',
         builder: (context, state) {

@@ -17,8 +17,8 @@ class PlatformPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 110,
-        height: 44,
+        width: 116,
+        height: 40,
         decoration: BoxDecoration(
           color: selected ? Colors.white : const Color(0xFF606060),
           borderRadius: BorderRadius.circular(22),
@@ -26,8 +26,8 @@ class PlatformPill extends StatelessWidget {
         child: Center(
           child: Image.asset(
             iconPath,
-            width: 24,
-            height: 24,
+            width: 20,
+            height: 20,
             color: selected ? Colors.black : Colors.white,
           ),
         ),

@@ -10,11 +10,7 @@ class ShareInstructionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (data.highlight.isEmpty) {
-      return Text(
-        data.prefix,
-        textAlign: TextAlign.center,
-        style: _titleStyle,
-      );
+      return Text(data.prefix, textAlign: TextAlign.center, style: _titleStyle);
     }
 
     if (data.highlight == 'LINK') {
@@ -70,8 +66,8 @@ class ShareInstructionTitle extends StatelessWidget {
   static const _titleStyle = TextStyle(
     fontFamily: TFonts.nunito,
     fontWeight: FontWeight.w800,
-    fontSize: 20,
-    height: 1.2,
+    fontSize: 24,
+    height: 1.375,
     color: Colors.black,
   );
 }
