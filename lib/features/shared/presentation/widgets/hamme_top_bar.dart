@@ -1,7 +1,7 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/features/shared/presentation/widgets/top_bar_circle_button.dart';
-import 'package:hamme_app/utils/constants/image_strings.dart';
+import 'package:hamme_app/utils/constants/fonts.dart';
 
 class HammeTopBar extends StatelessWidget {
   const HammeTopBar({
@@ -30,7 +30,7 @@ class HammeTopBar extends StatelessWidget {
             ),
             onTap: onLeftTap ?? () => context.push('/matches'),
           ),
-          Image.asset(TImages.hammeHomeLogo, width: 98, height: 26),
+          const HammeWordmark(),
           TopBarCircleButton(
             icon: Image.asset(
               'assets/icons/icon_filled/user_3.png',
@@ -43,4 +43,39 @@ class HammeTopBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class HammeWordmark extends StatelessWidget {
+  const HammeWordmark({super.key});
+  @override
+  Widget build(BuildContext context) => Stack(
+    children: [
+      Text(
+        'Hamme',
+        textScaler: TextScaler.noScaling,
+        style: TextStyle(
+          fontFamily: TFonts.nunito,
+          fontSize: 24,
+          height: 1.375,
+          fontWeight: FontWeight.w800,
+          foreground:
+              Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 8
+                ..color = const Color(0xFFA678FF),
+        ),
+      ),
+      const Text(
+        'Hamme',
+        textScaler: TextScaler.noScaling,
+        style: TextStyle(
+          fontFamily: TFonts.nunito,
+          fontSize: 24,
+          height: 1.375,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+        ),
+      ),
+    ],
+  );
 }
