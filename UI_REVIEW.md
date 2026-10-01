@@ -24,14 +24,18 @@ This is a coverage and ambiguity log, not a claim that every screen is pixel-per
 | Play cooldown | 4744:4197 | Play / Matches review |
 | Empty Play / empty Matches | 4468:839, 4468:774 | Play / Matches review |
 | Matches list / reply / anonymous reply | 5036:759, 5036:858, 5305:985 | Play / Matches review |
+| Original-poller match popup | 4440:725, 5036:858 | Active Play call site; shared Reply layout with preserved dismissal and haptics |
 | Match share exports: Friend / Frenemy / Crush | 4440:433, 4440:472, 4441:900 | Play / Matches export review |
 | Website landing / question / reveal | 5342:1155, 5305:877, 5365:725 | Client review and production-browser checks |
+| Expired website Reveal | 4702:2047 | Expired control styles applied to current Reveal composition; timer and disabled behavior tested |
 
 ## Screens without an identified current matching design
 
 The DESIGN page's frame text inventory does not identify full screens for Profile editor, Settings, Notification settings, Appearance settings, Community guidelines, Blocked users, Terms acceptance, or Account suspended. Preserve these extra screens and their behavior. Do not substitute onboarding profile-upload or website Terms links for these screens. Exact visual redesign is deferred until matching frames are provided or selected.
 
 Community rules/consent and safety menus are additional functional UI. The file does contain older block/report mockups (4733:3579 and 4733:3660), but they describe a combined block-and-report flow. The app has separate reporting reasons, blocking, hiding, and async error states. Preserve these controls; deciding how to combine them requires a product decision.
+
+The final coverage audit searched all 90 DESIGN frames and checked active app call sites. `PollMatchOverlay` is active and reviewed separately from the post-vote celebration. `PollNotAMatchOverlay`, `AuthTextField`, the old date-picker wheel chain, `PlayingFriendsRow`, and `ShareOptionButton` have no active call sites and are retained as unused code; they are not claimed as verified app pages. The explanatory user-flow diagram 4473:1030 is not an app screen.
 
 ## Remaining decisions
 
