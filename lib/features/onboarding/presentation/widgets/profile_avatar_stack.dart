@@ -106,11 +106,7 @@ class ProfileAvatarStack extends StatelessWidget {
                               ),
                             ),
                   ),
-                  const Positioned(
-                    right: 7,
-                    bottom: 7,
-                    child: _PlusBadge(),
-                  ),
+                  const Positioned(right: 7, bottom: 7, child: _PlusBadge()),
                 ],
               ),
             ),
@@ -159,31 +155,39 @@ class _PromptChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      padding: const EdgeInsets.only(left: 10, right: 14),
-      decoration: BoxDecoration(
-        color: TColors.hammeChip,
-        borderRadius: BorderRadius.circular(14),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width - 32,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(iconPath, width: iconSize, height: iconSize),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            softWrap: false,
-            style: const TextStyle(
-              fontFamily: TFonts.schibstedGrotesk,
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-              height: 1,
-              letterSpacing: -0.9,
-              color: Colors.white,
-            ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.only(left: 10, right: 14),
+          decoration: BoxDecoration(
+            color: TColors.hammeChip,
+            borderRadius: BorderRadius.circular(14),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SvgPicture.asset(iconPath, width: iconSize, height: iconSize),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                softWrap: false,
+                style: const TextStyle(
+                  fontFamily: TFonts.schibstedGrotesk,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  height: 1,
+                  letterSpacing: -0.9,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

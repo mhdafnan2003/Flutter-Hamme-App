@@ -99,33 +99,62 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
               onBack: () => context.go('/onboarding/name'),
               progress: _progress,
             ),
-            const SizedBox(height: 33),
-            const Text(
-              TTexts.onboardingProfileTitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: TFonts.nunito,
-                fontWeight: FontWeight.w900,
-                fontSize: 24,
-                height: 1,
-                color: Colors.black,
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // The 393x852 Figma frame leaves about 208 logical pixels
+                  // below the profile stack. Preserve its spacing there, but
+                  // compress whitespace on short phones before scrolling.
+                  const fixedContentHeight = 303.0;
+                  const referenceTrailingSpace = 208.0;
+                  const referenceGapTotal = 128.0;
+                  final gapScale = ((constraints.maxHeight -
+                              fixedContentHeight -
+                              referenceTrailingSpace) /
+                          referenceGapTotal)
+                      .clamp(0.45, 1.2);
+
+                  double gap(double referenceValue) =>
+                      referenceValue * gapScale;
+
+                  return SingleChildScrollView(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        children: [
+                          SizedBox(height: gap(33)),
+                          const Text(
+                            TTexts.onboardingProfileTitle,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: TFonts.nunito,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 24,
+                              height: 1,
+                              color: Colors.black,
+                            ),
+                          ),
+                          SizedBox(height: gap(21)),
+                          Image.asset(
+                            TImages.emojiCamera,
+                            width: 24,
+                            height: 24,
+                            fit: BoxFit.cover,
+                          ),
+                          SizedBox(height: gap(74)),
+                          ProfileAvatarStack(
+                            onPickImage: _pickProfileImage,
+                            previewBytes: _previewBytes,
+                            profileImageUrl: profileImageUrl,
+                            selectedImageBytes: selectedImage?.bytes,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 21),
-            Image.asset(
-              TImages.emojiCamera,
-              width: 24,
-              height: 24,
-              fit: BoxFit.cover,
-            ),
-            const SizedBox(height: 74),
-            ProfileAvatarStack(
-              onPickImage: _pickProfileImage,
-              previewBytes: _previewBytes,
-              profileImageUrl: profileImageUrl,
-              selectedImageBytes: selectedImage?.bytes,
-            ),
-            const Spacer(),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: GradientButton(
