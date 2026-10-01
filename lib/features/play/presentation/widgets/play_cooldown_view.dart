@@ -22,9 +22,9 @@ class PlayCooldownView extends StatefulWidget {
 }
 
 class _PlayCooldownViewState extends State<PlayCooldownView> {
-  // Figma: 110 from the logo's bottom to the avatar's top. HammeTopBar puts
-  // the logo bottom 19 above this view (12 padding + 40 row, 26 logo).
-  static const double _topSpacing = 91;
+  // Figma's avatar starts at y=207. With Play's 44 px top bar, the expanded
+  // content begins at y=103, leaving 104 px above the avatar.
+  static const double _topSpacing = 104;
 
   late final Timer _tickTimer;
   Timer? _retryTimer;
@@ -89,15 +89,21 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
     final cooldownMinutes = widget.status.cooldownMinutes;
     // Fall back to the remaining time at first build when the backend
     // doesn't send the cooldown length, so the bar still moves.
-    final totalSeconds = (cooldownMinutes != null && cooldownMinutes > 0)
-        ? cooldownMinutes * 60
-        : _initialRemaining.inSeconds;
+    final totalSeconds =
+        (cooldownMinutes != null && cooldownMinutes > 0)
+            ? cooldownMinutes * 60
+            : _initialRemaining.inSeconds;
     if (totalSeconds <= 0) return 0;
     return 1 - (_remaining.inSeconds / totalSeconds).clamp(0.0, 1.0);
   }
 
   @override
   Widget build(BuildContext context) {
+    final maxCards = widget.status.maxCards;
+    final message =
+        'You’ve seen all ${maxCards == null ? '' : '$maxCards '}free profiles\n'
+        'Your next match could be in the queue${maxCards == null ? '😳' : ''}';
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -112,21 +118,20 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
                   progress: _progress,
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  "You've seen all free profiles\n"
-                  'Your next match could be in the queue😳',
+                Text(
+                  message,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: TFonts.nunito,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    height: 1.36,
+                    height: 1.28,
                     color: Color(0xFF6E6E6E),
                   ),
                 ),
                 const SizedBox(height: 24),
                 const _OrDivider(),
-                const SizedBox(height: 26),
+                const SizedBox(height: 24),
                 _PlayNowButton(onPressed: () => context.push('/pro')),
                 const SizedBox(height: 24),
               ],
@@ -145,8 +150,8 @@ class _CountdownCard extends StatelessWidget {
   final double progress;
 
   static const double _avatarSize = 120;
-  static const double _cardTop = 51;
-  static const double _cardHeight = 190;
+  static const double _cardTop = 53;
+  static const double _cardHeight = 186;
 
   @override
   Widget build(BuildContext context) {
@@ -275,16 +280,15 @@ class _CooldownProgress extends StatelessWidget {
 
   final double value;
 
-  static const double _width = 107;
-  static const double _height = 17;
+  static const double _width = 105;
+  static const double _height = 16;
 
   @override
   Widget build(BuildContext context) {
     // Never narrower than the track height, so a small value still reads
     // as a rounded pill instead of a sliver.
-    final fillWidth = value <= 0
-        ? 0.0
-        : (value * _width).clamp(_height, _width).toDouble();
+    final fillWidth =
+        value <= 0 ? 0.0 : (value * _width).clamp(_height, _width).toDouble();
 
     return Container(
       width: _width,
