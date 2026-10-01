@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hamme_app/core/widgets/animated_spoiler.dart';
 import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
-import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/features/play/presentation/widgets/match_success_overlay.dart'
     show MatchAvatarPair, MatchThemeConfig;
 import 'package:hamme_app/features/safety/domain/models/safety_target.dart';
@@ -15,7 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 ///
 /// This is intentionally separate from MatchSuccessOverlay: the latter is the
 /// one-time celebration shown immediately after a new match is created.
-class MatchReplyScreen extends StatelessWidget {
+class MatchReplyScreen extends StatefulWidget {
   const MatchReplyScreen({
     super.key,
     required this.match,
@@ -25,13 +24,30 @@ class MatchReplyScreen extends StatelessWidget {
   final MatchRecord match;
   final String? currentUserImageUrl;
 
+  @override
+  State<MatchReplyScreen> createState() => _MatchReplyScreenState();
+}
+
+class _MatchReplyScreenState extends State<MatchReplyScreen> {
+  bool? _selectedSnapchat;
+  MatchRecord get match => widget.match;
+  String? get currentUserImageUrl => widget.currentUserImageUrl;
+
   bool get _isAnonymous => match.anonymous;
+
+  bool _socialAvailable(bool snapchat) =>
+      !_isAnonymous &&
+      (snapchat ? match.matchedUser.snapchatId : match.matchedUser.instagramId)
+          .replaceAll('@', '')
+          .trim()
+          .isNotEmpty;
 
   // Prefer the matched user's Instagram; fall back to Snapchat when that is
   // the only handle they added.
   bool get _isSnapchat {
-    final user = match.matchedUser;
-    return user.instagramId.trim().isEmpty && user.snapchatId.trim().isNotEmpty;
+    final selected = _selectedSnapchat;
+    if (selected != null && _socialAvailable(selected)) return selected;
+    return !_socialAvailable(false) && _socialAvailable(true);
   }
 
   String get _handle {
@@ -101,9 +117,238 @@ class MatchReplyScreen extends StatelessWidget {
         child: SafeArea(
           child: Stack(
             children: [
+              Align(
+                alignment: Alignment.center,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 74, 16, 74),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 361),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.topCenter,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 58),
+                                height: 225,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(48),
+                                  border: Border.all(
+                                    color: theme.solidBorder,
+                                    width: 8,
+                                  ),
+                                ),
+                                child: Container(
+                                  key: const Key('match-reply-card'),
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    58,
+                                    16,
+                                    12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(40),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 8,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const SizedBox(
+                                        height: 49,
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            'It’s a Match!',
+                                            style: TextStyle(
+                                              fontFamily: TFonts.nunito,
+                                              fontSize: 36,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      SizedBox(
+                                        height: 44,
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: _ReplyDescription(
+                                            name: name,
+                                            choiceText: theme.choiceText,
+                                            anonymous: _isAnonymous,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                child: MatchAvatarPair(
+                                  currentUserImageUrl: currentUserImageUrl,
+                                  currentUserFallbackText: 'Y',
+                                  otherImageUrl:
+                                      _isAnonymous ? null : user.avatarUrl,
+                                  otherFallbackText: name.characters.first,
+                                  ringColor: theme.solidBorder,
+                                  centerIcon: Image.asset(
+                                    theme.emojiAsset,
+                                    width: 36,
+                                    height: 36,
+                                  ),
+                                  plainOtherAvatar: _isAnonymous,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (!_isAnonymous) ...[
+                            const SizedBox(height: 48),
+                            Container(
+                              key: const Key('match-social-pill'),
+                              width: 84,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(19),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: _isSnapchat ? 46 : 0,
+                                    child: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: theme.socialPillColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: 0,
+                                    top: 0,
+                                    child: Semantics(
+                                      label: 'Reply on Instagram',
+                                      selected: !_isSnapchat,
+                                      button: true,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap:
+                                            _socialAvailable(false)
+                                                ? () => setState(
+                                                  () =>
+                                                      _selectedSnapchat = false,
+                                                )
+                                                : null,
+                                        child: SizedBox(
+                                          width: 38,
+                                          height: 38,
+                                          child: Center(
+                                            child: Image.asset(
+                                              'assets/icons/insta-outline.png',
+                                              width: 20,
+                                              height: 20,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Semantics(
+                                      label: 'Reply on Snapchat',
+                                      selected: _isSnapchat,
+                                      button: true,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap:
+                                            _socialAvailable(true)
+                                                ? () => setState(
+                                                  () =>
+                                                      _selectedSnapchat = true,
+                                                )
+                                                : null,
+                                        child: SizedBox(
+                                          width: 38,
+                                          height: 38,
+                                          child: Center(
+                                            child: Image.asset(
+                                              'assets/icons/snap-fill.png',
+                                              width: 20,
+                                              height: 20,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: SizedBox(
+                                key: const Key('match-reply-button'),
+                                width: double.infinity,
+                                height: 62,
+                                child: ElevatedButton.icon(
+                                  onPressed:
+                                      _handle.isEmpty ? null : _openSocial,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.black,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.zero,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(22),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  icon: Image.asset(
+                                    _isSnapchat
+                                        ? 'assets/icons/snap-fill.png'
+                                        : 'assets/icons/insta-outline.png',
+                                    width: 24,
+                                    height: 24,
+                                    color: Colors.white,
+                                  ),
+                                  label: const Text(
+                                    'Reply',
+                                    style: TextStyle(
+                                      fontFamily: TFonts.nunito,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          SizedBox(height: _isAnonymous ? 98 : 30),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Positioned(
                 right: 24,
-                top: 20,
+                top: 19,
                 child: AppCloseCircleButton(
                   onPressed: () => Navigator.of(context).pop(),
                 ),
@@ -112,7 +357,7 @@ class MatchReplyScreen extends StatelessWidget {
               // 6pt on each side is tap target.
               Positioned(
                 left: 18,
-                top: 14,
+                top: 13,
                 child: SafetyMenuButton(
                   onPressed: () => _openSafetyActions(context),
                   label:
@@ -121,184 +366,6 @@ class MatchReplyScreen extends StatelessWidget {
                           : 'Report or block $name',
                   iconColor: Colors.white,
                   backgroundColor: Colors.white.withValues(alpha: 0.25),
-                ),
-              ),
-              Align(
-                alignment: Alignment.center,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.topCenter,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(top: 58),
-                            height: 225,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(48),
-                              border: Border.all(
-                                color: theme.solidBorder,
-                                width: 8,
-                              ),
-                            ),
-                            child: Container(
-                              key: const Key('match-reply-card'),
-                              width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                58,
-                                16,
-                                12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(40),
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 8,
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  const SizedBox(
-                                    height: 49,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        "It's a Match!",
-                                        style: TextStyle(
-                                          fontFamily: TFonts.nunito,
-                                          fontSize: 36,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    height: 44,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: _ReplyDescription(
-                                        name: name,
-                                        choiceText: theme.choiceText,
-                                        anonymous: _isAnonymous,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 0,
-                            child: MatchAvatarPair(
-                              currentUserImageUrl: currentUserImageUrl,
-                              currentUserFallbackText: 'Y',
-                              otherImageUrl:
-                                  _isAnonymous ? null : user.avatarUrl,
-                              otherFallbackText: name.characters.first,
-                              ringColor: theme.solidBorder,
-                              centerIcon: EmojiImage(
-                                emoji: theme.emoji,
-                                size: 36,
-                              ),
-                              plainOtherAvatar: _isAnonymous,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (!_isAnonymous) ...[
-                        const SizedBox(height: 48),
-                        Container(
-                          key: const Key('match-social-pill'),
-                          width: 84,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(19),
-                          ),
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                left: _isSnapchat ? 46 : 0,
-                                child: Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: theme.socialPillColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                left: 9,
-                                top: 9,
-                                child: Image.asset(
-                                  'assets/icons/insta-outline.png',
-                                  width: 20,
-                                  height: 20,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Positioned(
-                                right: 9,
-                                top: 9,
-                                child: Image.asset(
-                                  'assets/icons/snap-fill.png',
-                                  width: 20,
-                                  height: 20,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: SizedBox(
-                            key: const Key('match-reply-button'),
-                            width: double.infinity,
-                            height: 62,
-                            child: ElevatedButton.icon(
-                              onPressed: _openSocial,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.black,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(22),
-                                ),
-                                elevation: 0,
-                              ),
-                              icon: Image.asset(
-                                _isSnapchat
-                                    ? 'assets/icons/snap-fill.png'
-                                    : 'assets/icons/insta-outline.png',
-                                width: 24,
-                                height: 24,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Reply',
-                                style: TextStyle(
-                                  fontFamily: TFonts.nunito,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 30),
-                    ],
-                  ),
                 ),
               ),
             ],
