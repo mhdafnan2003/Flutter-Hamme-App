@@ -27,6 +27,7 @@ void main() {
 
     expect(find.text('What’s your age?'), findsOneWidget);
     expect(find.text('19'), findsNWidgets(2));
+    expect(find.text('22'), findsNothing);
     expect(
       tester.getSize(find.byType(AgePickerWheel)).height,
       AgePickerWheel.wheelHeight,

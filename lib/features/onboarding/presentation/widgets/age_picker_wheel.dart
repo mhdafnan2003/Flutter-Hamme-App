@@ -33,8 +33,7 @@ class AgePickerWheel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      // Exactly five rows are visible. Extra viewport height reveals a sliver
-      // of the sixth value (22 when 19 is selected).
+      // Match the five complete rows in Figma and clip the neighboring values.
       height: wheelHeight,
       child: Stack(
         alignment: Alignment.center,
