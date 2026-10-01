@@ -18,7 +18,7 @@ class DobTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+      padding: const EdgeInsets.only(top: 14, left: 16, right: 16),
       child: SizedBox(
         height: 24,
         child: Stack(
@@ -38,6 +38,7 @@ class DobTopBar extends StatelessWidget {
                 ),
               ),
             SizedBox(
+              key: const Key('onboarding-progress-track'),
               width: 170,
               child: Stack(
                 children: [

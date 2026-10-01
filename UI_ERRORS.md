@@ -7,6 +7,7 @@
 ## Onboarding community rules
 
 - `CommunityRulesScreen` is present in the app's onboarding route, but no matching community rules frame was found among the 90 top-level frames on Figma's DESIGN page. The screen has been kept for review rather than removed.
+- The social onboarding screen has two near-duplicate Figma references: `iPhone 16 - 90` places the keyboard-safe Next button at y=413, while the later `iPhone 16 - 139` places it at y=429. The implementation follows the later frame; the older reference remains a 16 px conflict in the source design.
 
 ## Share/Home profile card
 

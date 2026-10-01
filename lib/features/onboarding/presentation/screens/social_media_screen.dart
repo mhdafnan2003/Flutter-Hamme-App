@@ -89,7 +89,6 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                     fontFamily: TFonts.nunito,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    height: 1,
                     color: TColors.hammePickerInactive,
                   ),
                 ),
@@ -98,8 +97,8 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // Preserve the keyboard-open Figma positions at 393x852.
-                  // On shorter screens, contract whitespace before scrolling.
+                  // Preserve Figma's keyboard-open spacing at 393x852. On
+                  // shorter screens, contract whitespace before scrolling.
                   const fixedContentHeight = 88.0;
                   const referenceTrailingSpace = 102.0;
                   const referenceGapTotal = 126.0;
@@ -107,7 +106,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               fixedContentHeight -
                               referenceTrailingSpace) /
                           referenceGapTotal)
-                      .clamp(0.45, 1.2);
+                      .clamp(0.45, 1.0);
 
                   double gap(double referenceValue) =>
                       referenceValue * gapScale;
@@ -131,7 +130,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               color: Colors.black,
                             ),
                           ),
-                          SizedBox(height: gap(41)),
+                          SizedBox(height: gap(38)),
                           SizedBox(
                             height: 40,
                             width: 282,
@@ -214,7 +213,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               ),
                             ),
                           ),
-                          SizedBox(height: gap(52)),
+                          SizedBox(height: gap(55)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: TextField(
@@ -303,7 +302,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: GradientButton(
                 label: TTexts.next,
                 borderRadius: 22,
