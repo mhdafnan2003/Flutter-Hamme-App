@@ -46,25 +46,25 @@ class SettingsPageScaffold extends StatelessWidget {
                 }
               },
               style: IconButton.styleFrom(
-              backgroundColor:
-                  Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0xFF2A2A2E)
-                      : TColors.hammeSurface,
+                backgroundColor:
+                    Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF2A2A2E)
+                        : TColors.hammeSurface,
+              ),
+              icon: const Icon(CupertinoIcons.left_chevron, size: 20),
             ),
-            icon: const Icon(CupertinoIcons.left_chevron, size: 20),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontFamily: TFonts.nunito,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontFamily: TFonts.nunito,
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        body: SafeArea(top: false, child: child),
       ),
-      body: SafeArea(top: false, child: child),
-    ),
     );
   }
 }
@@ -93,13 +93,15 @@ class SettingsSection extends StatelessWidget {
             children: [
               Icon(icon, color: TColors.darkGrey, size: 25),
               const SizedBox(width: 9),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: TFonts.nunito,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                  color: TColors.darkGrey,
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: TFonts.nunito,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                    color: TColors.darkGrey,
+                  ),
                 ),
               ),
             ],
