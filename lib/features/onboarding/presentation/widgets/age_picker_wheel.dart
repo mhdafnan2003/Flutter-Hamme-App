@@ -28,13 +28,13 @@ class AgePickerWheel extends StatelessWidget {
   // Keep the five visible ages close enough together that the values around
   // the default selection (19) don't look artificially spaced out.
   static const double itemExtent = 30;
-  static const double wheelHeight = itemExtent * 5 + 10;
+  static const double wheelHeight = itemExtent * 5;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      // The extra room prevents the first and last visible values (17 and
-      // 21 when 19 is selected) from being clipped at the viewport edges.
+      // Exactly five rows are visible. Extra viewport height reveals a sliver
+      // of the sixth value (22 when 19 is selected).
       height: wheelHeight,
       child: Stack(
         alignment: Alignment.center,
@@ -44,7 +44,7 @@ class AgePickerWheel extends StatelessWidget {
             right: 16,
             child: IgnorePointer(
               child: Container(
-                height: itemExtent,
+                height: 35,
                 decoration: BoxDecoration(
                   color: TColors.hammePickerHighlight,
                   borderRadius: BorderRadius.circular(8),
@@ -74,11 +74,11 @@ class AgePickerWheel extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: 28,
+            left: 12,
             child: _PickerChevron(pointsRight: true, onTap: onDecrement),
           ),
           Positioned(
-            right: 28,
+            right: 12,
             child: _PickerChevron(pointsRight: false, onTap: onIncrement),
           ),
         ],
@@ -95,15 +95,20 @@ class _PickerChevron extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: RotatedBox(
-        quarterTurns: pointsRight ? 1 : 3,
-        child: SvgPicture.asset(
-          TImages.iconPickerChevron,
-          width: 12,
-          height: 12,
+    return SizedBox.square(
+      dimension: 44,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Center(
+          child: RotatedBox(
+            quarterTurns: pointsRight ? 1 : 3,
+            child: SvgPicture.asset(
+              TImages.iconPickerChevron,
+              width: 12,
+              height: 12,
+            ),
+          ),
         ),
       ),
     );
@@ -133,9 +138,9 @@ class _AgePickerItem extends StatelessWidget {
       ),
     );
 
-    // Keep the two edge values visible when 19 is selected; only values
-    // beyond the visible 17–21 range should receive the fade treatment.
-    if (absDistance >= 3) {
+    // Figma fades the two values at the visible edges (17 and 21 when 19 is
+    // selected) into the white page background.
+    if (absDistance >= 2) {
       final fadeDown = distance > 0;
       label = ShaderMask(
         blendMode: BlendMode.srcIn,
