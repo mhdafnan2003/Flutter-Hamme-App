@@ -8,6 +8,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       const page = await browser.newPage({ viewport: { width, height } });
       await page.goto(process.env.UI_TEST_ORIGIN || 'http://127.0.0.1:5173');
       await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => document.fonts.load('700 62px Nunito'));
       await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       const copy = await page.locator('.landing-copy').boundingBox();
