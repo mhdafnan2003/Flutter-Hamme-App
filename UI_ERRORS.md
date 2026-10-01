@@ -15,6 +15,7 @@
 ## Inbox
 
 - The app can show a vote-management section below the reaction cards for hiding, reporting, and blocking votes. The visible Inbox Figma frames do not depict this section. It has been preserved because it supports existing moderation actions.
+- The Inbox share-export widget accepts `isInstagram`, and its comment says the value changes a cosmetic badge color, but the parameter is not read and currently has no effect. This behavior was left unchanged during the UI alignment pass.
 
 ## Matches
 

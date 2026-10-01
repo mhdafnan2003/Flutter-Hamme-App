@@ -10,12 +10,14 @@ class InboxReactionCard extends StatelessWidget {
     required this.variation,
     required this.count,
     this.imageUrl,
+    this.showEmptyState = true,
     super.key,
   });
 
   final InboxVariation variation;
   final int count;
   final String? imageUrl;
+  final bool showEmptyState;
 
   String? get _emojiAsset {
     return switch (variation.typeKey) {
@@ -32,7 +34,7 @@ class InboxReactionCard extends StatelessWidget {
       'friend' =>
         '$count ${plural ? 'people want' : 'person wants'} to be your Friend',
       'frenemy' => '$count ${plural ? 'people are' : 'person is'} your Frenemy',
-      _ => '$count ${plural ? 'people have' : 'person has'} crush on you',
+      _ => '$count ${plural ? 'people have' : 'person has'} Crush on you',
     };
   }
 
@@ -89,6 +91,7 @@ class InboxReactionCard extends StatelessWidget {
                   ),
                 ),
                 Positioned(
+                  key: const Key('inbox-reaction-avatar'),
                   top: 0,
                   child: Container(
                     width: avatarSize,
@@ -133,6 +136,7 @@ class InboxReactionCard extends StatelessWidget {
                   ),
                 ),
                 Positioned(
+                  key: const Key('inbox-reaction-emoji-badge'),
                   top: 90,
                   child: Container(
                     width: 42,
@@ -161,6 +165,7 @@ class InboxReactionCard extends StatelessWidget {
                   ),
                 ),
                 Positioned(
+                  key: const Key('inbox-reaction-count'),
                   top: 138,
                   left: 24,
                   right: 24,
@@ -183,7 +188,7 @@ class InboxReactionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (count == 0)
+                if (count == 0 && showEmptyState)
                   Positioned(
                     top: 199,
                     left: 35,
@@ -222,6 +227,7 @@ class InboxReactionCard extends StatelessWidget {
                   )
                 else ...[
                   Positioned(
+                    key: const Key('inbox-reaction-subtitle'),
                     top: 187,
                     left: 24,
                     right: 24,
@@ -231,6 +237,7 @@ class InboxReactionCard extends StatelessWidget {
                     ),
                   ),
                   Positioned(
+                    key: const Key('inbox-reaction-tagline'),
                     top: 221,
                     child: Container(
                       height: 32,
