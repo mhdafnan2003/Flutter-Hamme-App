@@ -86,6 +86,8 @@ class _DobScreenState extends ConsumerState<DobScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final cardScale = (textScaler.scale(48) / 48).clamp(1.0, 3.0);
     final displayAge = _selectedAge.toString().padLeft(2, '0');
     final ageController =
         _ageController ??= FixedExtentScrollController(
@@ -137,11 +139,11 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                               fontFamily: TFonts.nunito,
                               fontWeight: FontWeight.w900,
                               fontSize: 24,
-                              height: 1,
+                              height: 33 / 24,
                               color: Colors.black,
                             ),
                           ),
-                          SizedBox(height: gap(21)),
+                          SizedBox(height: gap(12)),
                           Image.asset(
                             TImages.emojiBirthday,
                             width: 24,
@@ -150,34 +152,39 @@ class _DobScreenState extends ConsumerState<DobScreen> {
                           ),
                           SizedBox(height: gap(80)),
                           Container(
-                            width: 130,
-                            height: 112,
+                            width: 130 * cardScale,
+                            height: 112 * cardScale,
                             decoration: BoxDecoration(
                               color: TColors.hammeSurface,
                               borderRadius: BorderRadius.circular(24),
                             ),
-                            child: Column(
+                            child: Stack(
+                              alignment: Alignment.topCenter,
                               children: [
-                                const SizedBox(height: 8),
-                                Text(
-                                  displayAge,
-                                  style: const TextStyle(
-                                    fontFamily: TFonts.nunito,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 48,
-                                    color: Colors.black,
-                                    height: 1,
+                                Positioned(
+                                  top: 8 * cardScale,
+                                  child: Text(
+                                    displayAge,
+                                    style: const TextStyle(
+                                      fontFamily: TFonts.nunito,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 48,
+                                      color: Colors.black,
+                                      height: 65 / 48,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 13),
-                                const Text(
-                                  TTexts.yearsOld,
-                                  style: TextStyle(
-                                    fontFamily: TFonts.nunito,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 20,
-                                    color: TColors.hammeYearsOld,
-                                    height: 1,
+                                Positioned(
+                                  top: 69 * cardScale,
+                                  child: const Text(
+                                    TTexts.yearsOld,
+                                    style: TextStyle(
+                                      fontFamily: TFonts.nunito,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 20,
+                                      color: TColors.hammeYearsOld,
+                                      height: 27 / 20,
+                                    ),
                                   ),
                                 ),
                               ],
