@@ -14,7 +14,7 @@ import 'package:hamme_app/providers/interaction_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
-import 'package:hamme_app/utils/constants/image_strings.dart';
+import 'package:hamme_app/features/shared/presentation/widgets/hamme_top_bar.dart';
 
 import 'match_reply_screen.dart';
 
@@ -99,15 +99,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: Center(
-                        child: Image.asset(
-                          TImages.hammeHomeLogo,
-                          width: 98,
-                          height: 26,
-                        ),
-                      ),
-                    ),
+                    Expanded(child: Center(child: const HammeWordmark())),
                     const SizedBox(width: 40),
                   ],
                 ),
@@ -295,6 +287,8 @@ class _MatchTile extends StatelessWidget {
                 ] else ...[
                   Text(
                     name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
                       fontWeight: FontWeight.w800,
@@ -304,6 +298,8 @@ class _MatchTile extends StatelessWidget {
                   ),
                   Text(
                     '$platformLabel: $handle',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
                       fontWeight: FontWeight.w800,
@@ -408,6 +404,7 @@ class _EmptyMatchesView extends StatelessWidget {
           const SizedBox(height: 40),
           const Text(
             'Go play to find yours',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: TFonts.nunito,
               fontSize: 14,
