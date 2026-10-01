@@ -29,6 +29,7 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           children: [
             HammeTopBar(
+              verticalPadding: 2,
               onLeftTap: () => context.push('/matches'),
               onRightTap: () => context.push('/profile'),
             ),
@@ -39,11 +40,11 @@ class HomeScreen extends ConsumerWidget {
                   // The reference canvas leaves generous blank space around
                   // the cards. Shorter phones use that space to keep Share
                   // visible above the bottom navigation.
-                  final room = ((constraints.maxHeight - 535) / 113).clamp(
+                  final room = ((constraints.maxHeight - 555) / 113).clamp(
                     0.0,
                     1.0,
                   );
-                  final profileGap = 53 + 27 * room;
+                  final profileGap = 73 + 27 * room;
                   final firstCardGap = 4 + 36 * room;
                   final secondCardGap = 8 + 10 * room;
                   final bottomGap = 40 * room;

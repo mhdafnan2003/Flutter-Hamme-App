@@ -106,4 +106,21 @@ void main() {
     expect(handle.top, closeTo(name.bottom, 0.1));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('keeps Share reachable by scrolling on a narrow short phone', (
+    tester,
+  ) async {
+    await pumpHome(tester, const Size(320, 568));
+    await tester.scrollUntilVisible(
+      find.text('Share!'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Share!').hitTestable(), findsOneWidget);
+    expect(
+      tester.getRect(find.text('Share!')).bottom,
+      lessThan(tester.getRect(find.byType(HammeBottomNavBar)).top),
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
