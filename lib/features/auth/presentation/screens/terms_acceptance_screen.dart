@@ -159,8 +159,9 @@ class _TermsAcceptanceScreenState extends ConsumerState<TermsAcceptanceScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     TextButton(
                       onPressed: _isBusy ? null : _logOut,
