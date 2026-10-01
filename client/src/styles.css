@@ -37,19 +37,6 @@ body {
   padding-bottom: 35px;
 }
 
-.reveal-button::before {
-  position: absolute;
-  z-index: -1;
-  top: 6px;
-  right: 0;
-  left: 0;
-  height: 56px;
-  border-radius: 33px;
-  background: #e3e3e3;
-  content: "";
-  pointer-events: none;
-}
-
 .share-question-screen .friends-playing {
   margin-bottom: clamp(24px, calc(58.65dvh - 367px), 102px);
 }
@@ -242,6 +229,8 @@ body {
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  /* Outside the clipping box so the glaze cannot hide the raised base. */
+  box-shadow: 0 6px 0 #e3e3e3;
 }
 
 .reveal-button::after {
@@ -262,7 +251,7 @@ body {
 }
 
 .reveal-button > * {
-  position: relative;
+  /* Child placement is defined by the label and arrow's absolute utilities. */
   z-index: 1;
 }
 
