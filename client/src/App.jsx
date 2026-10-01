@@ -1703,8 +1703,8 @@ function RevealScreen({
 
       <div className="mt-[16px] px-4">
         <div className="flex h-[44px] items-center justify-between font-extrabold leading-[44px] text-white/60">
-          <span className="text-[10px]">{isExpired ? 'LINK EXPIRED' : 'LINK EXPIRES IN'}</span>
-          <span className={`text-[12px] ${displaySeconds <= 20 ? 'text-[#ff4545]' : 'text-white'}`}>{String(displaySeconds).padStart(2, '0')}s</span>
+          <span className={`text-[10px] ${isExpired ? 'text-[#ff5757]' : ''}`}>{isExpired ? 'LINK EXPIRED' : 'LINK EXPIRES IN'}</span>
+          <span className={`text-[12px] ${isExpired ? 'text-[#ff5757]' : displaySeconds <= 20 ? 'text-[#ff4545]' : 'text-white'}`}>{String(displaySeconds).padStart(2, '0')}s</span>
         </div>
         <div className="mt-[-10px] h-[3px] overflow-hidden rounded-full bg-white/35">
           <div

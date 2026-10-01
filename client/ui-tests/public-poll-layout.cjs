@@ -11,6 +11,7 @@ const screenshotDir = process.env.UI_SCREENSHOT_DIR;
   try {
     for (const [width, height, profileName = 'Sneha'] of [[360, 800], [320, 568], [390, 844], [844, 390], [320, 568, 'AveryVeryLongUnbrokenDisplayName']]) {
       const page = await browser.newPage({ viewport: { width, height } });
+      await page.clock.install();
       await page.route('**/public-profile/**', route => route.fulfill({
         json: { user: { name: profileName, profileImageUrl: `${origin}/tic.png` } },
       }));
@@ -69,6 +70,15 @@ const screenshotDir = process.env.UI_SCREENSHOT_DIR;
       if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/reveal-${screenshotName}.png`, fullPage: true });
       await reveal.scrollIntoViewIfNeeded();
       assert(await reveal.isVisible());
+      await page.clock.runFor(31000);
+      assert(await reveal.isDisabled(), 'Expiration keeps Reveal disabled');
+      const expiredLabel = page.getByText('LINK EXPIRED', { exact: true });
+      assert(await expiredLabel.isVisible());
+      assert.equal(await expiredLabel.evaluate(n => getComputedStyle(n).color), 'rgb(255, 87, 87)');
+      assert.equal(await page.getByText('00s', { exact: true }).evaluate(n => getComputedStyle(n).color), 'rgb(255, 87, 87)');
+      assert.equal(await reveal.evaluate(n => getComputedStyle(n).opacity), '0.4');
+      assert.equal(await reveal.evaluate(n => getComputedStyle(n, '::after').animationName), 'none');
+      if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/reveal-expired-${screenshotName}.png`, fullPage: true });
       await page.close();
       console.log(`Question and Reveal passed at ${width}x${height}`);
     }
