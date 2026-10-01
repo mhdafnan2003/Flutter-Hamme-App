@@ -35,7 +35,8 @@
 
 ## Screens without a current DESIGN reference
 
-- The active Figma `DESIGN` page has no complete screen matching the current `/profile`, `/settings`, `/settings/notifications`, `/settings/appearance`, community-guidelines, or blocked-users routes. The `MISC` page has an older combined profile/preferences frame (`iPhone 16 - 38`, 360×1080) with different content (age/stats, socials, and “Pause my link”), so it is not a safe visual target for the current screens. The app UI is preserved pending confirmation that this older frame is still authoritative.
+- The active Figma `DESIGN` page has no complete screen matching the current `/profile`, `/settings`, `/settings/notifications`, `/settings/appearance`, community-guidelines, blocked-users, terms-acceptance gate, or account-suspended routes. The `MISC` page has an older combined profile/preferences frame (`iPhone 16 - 38`, 360×1080) with different content (age/stats, socials, and “Pause my link”), so it is not a safe visual target for the current screens. The app UI is preserved pending confirmation that this older frame is still authoritative.
+- The client website's `/privacy-policy`, `/terms-of-service`, `/support`, and `/community-guidelines` routes have no corresponding full-page frames on the active Figma `DESIGN` page. They were left unchanged rather than inventing a visual target.
 
 ## Play non-match state
 
