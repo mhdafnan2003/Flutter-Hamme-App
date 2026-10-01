@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import friendEmoji from '../../assets/icons/emoji_friend.png';
+import crushEmoji from '../../assets/icons/emoji_crush.png';
+import frenemyEmoji from '../../assets/icons/emoji_frenemy.png';
 
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
@@ -126,6 +129,9 @@ function buildDeepLink({ shareCode, type, token }) {
 }
 
 function App() {
+  if (currentPath === '/') {
+    return <LandingPage />;
+  }
   if (isPrivacyPolicyRoute) {
     return <PrivacyPolicyPage />;
   }
@@ -140,6 +146,36 @@ function App() {
   }
 
   return <ShareFlowApp />;
+}
+
+function LandingPage() {
+  return (
+    <main className="landing-page">
+      <section className="landing-hero" aria-labelledby="landing-title">
+        <div className="landing-copy">
+          <h1 id="landing-title">
+            See what your
+            <br />
+            friends think
+            <br />
+            of you
+          </h1>
+          <p>Share a link. Get reactions. Find matches.</p>
+        </div>
+        <div className="landing-reactions" aria-label="Friend, Crush, and Frenemy reactions">
+          <div className="landing-reaction landing-reaction-friend">
+            <img src={friendEmoji} alt="" /> Friend
+          </div>
+          <div className="landing-reaction landing-reaction-crush">
+            <img src={crushEmoji} alt="" /> Crush
+          </div>
+          <div className="landing-reaction landing-reaction-frenemy">
+            <img src={frenemyEmoji} alt="" /> Frenemy
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
 
 function ShareFlowApp() {

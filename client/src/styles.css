@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: Nunito;
+  src: url("../../assets/fonts/Nunito-VariableFont_wght.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+}
+
 :root {
   font-family: "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   color-scheme: dark;
@@ -13,6 +21,174 @@ body {
   margin: 0;
   min-width: 320px;
   background: transparent;
+}
+
+.landing-page {
+  display: flex;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, #9e6efd 0%, #7737fd 100%);
+  color: #fff;
+  font-family: Nunito, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-hero {
+  position: relative;
+  width: min(100%, 1024px);
+  height: 500px;
+  flex: 0 0 auto;
+}
+
+.landing-copy {
+  position: absolute;
+  top: 90px;
+  left: 90px;
+  width: 471px;
+}
+
+.landing-copy h1 {
+  width: 415px;
+  margin: 0;
+  color: #fff;
+  font-size: 62px;
+  font-weight: 700;
+  line-height: 74px;
+  letter-spacing: 0;
+}
+
+.landing-copy p {
+  height: 74px;
+  margin: 0;
+  color: #fff700;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 74px;
+  white-space: nowrap;
+}
+
+.landing-reactions {
+  position: absolute;
+  top: 102px;
+  left: 620px;
+  width: 343px;
+  height: 253px;
+}
+
+.landing-reaction {
+  position: absolute;
+  display: flex;
+  width: 339px;
+  height: 69px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 32px;
+  box-shadow: 0 5px 8px rgb(0 0 0 / 15%);
+  color: white;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.landing-reaction > img {
+  width: 34px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.landing-reaction-friend {
+  top: 24px;
+  left: 0;
+  transform: rotate(4deg);
+  background: linear-gradient(100deg, #00ccfe 0%, #005efa 100%);
+}
+
+.landing-reaction-crush {
+  top: 86px;
+  left: 4px;
+  transform: rotate(-3deg);
+  background: linear-gradient(100deg, #cf59e7 0%, #ff3c9e 100%);
+}
+
+.landing-reaction-frenemy {
+  top: 184px;
+  left: 1px;
+  transform: rotate(2deg);
+  background: linear-gradient(100deg, #bbaeed 0%, #50528d 100%);
+}
+
+@media (max-height: 520px) and (min-width: 981px) {
+  .landing-page {
+    align-items: flex-start;
+    overflow: auto;
+  }
+}
+
+@media (max-width: 980px) {
+  .landing-page {
+    min-height: 100dvh;
+    padding: 20px 16px;
+    overflow: auto;
+  }
+
+  .landing-hero {
+    display: flex;
+    width: min(100%, 520px);
+    height: auto;
+    min-height: calc(100dvh - 40px);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: clamp(28px, 7vh, 48px);
+    padding: 40px 0;
+  }
+
+  .landing-copy {
+    position: static;
+    width: 100%;
+  }
+
+  .landing-copy h1 {
+    width: 100%;
+    font-size: clamp(42px, 10vw, 62px);
+    line-height: 1.16;
+  }
+
+  .landing-copy p {
+    height: auto;
+    margin-top: 16px;
+    font-size: clamp(16px, 4.7vw, 24px);
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .landing-reactions {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: min(343px, calc(100% - 12px));
+    height: 253px;
+    align-self: center;
+  }
+
+  .landing-reaction {
+    width: 100%;
+  }
+
+  .landing-reaction-friend {
+    left: 0;
+  }
+
+  .landing-reaction-crush {
+    left: 4px;
+  }
+
+  .landing-reaction-frenemy {
+    left: 1px;
+  }
 }
 
 .brand-text {

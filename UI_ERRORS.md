@@ -29,3 +29,7 @@
 ## Play non-match state
 
 - `poll_not_a_match_overlay.dart` is currently unreferenced. The matching Figma design is the embedded non-match state inside Play, which retains the top bar and bottom navigation. The live Play state was aligned; the unused standalone widget remains in the repository.
+
+## Client website
+
+- The Figma desktop landing hero had no matching root page in `client/`; `/` showed an invalid share-link state. A responsive landing hero was added at `/`. The production build passes. The existing ESLint run still reports four issues in `client/src/App.jsx` (an empty catch and unused values/functions); these are outside the UI change and were present before this page was added.
