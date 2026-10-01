@@ -145,6 +145,7 @@ class MatchReplyScreen extends StatelessWidget {
                               ),
                             ),
                             child: Container(
+                              key: const Key('match-reply-card'),
                               width: double.infinity,
                               padding: const EdgeInsets.fromLTRB(
                                 16,
@@ -153,7 +154,7 @@ class MatchReplyScreen extends StatelessWidget {
                                 12,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.transparent,
+                                color: Colors.white.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(40),
                                 border: Border.all(
                                   color: Colors.white,
@@ -162,20 +163,32 @@ class MatchReplyScreen extends StatelessWidget {
                               ),
                               child: Column(
                                 children: [
-                                  const Text(
-                                    "It's a Match!",
-                                    style: TextStyle(
-                                      fontFamily: TFonts.nunito,
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
+                                  const SizedBox(
+                                    height: 49,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        "It's a Match!",
+                                        style: TextStyle(
+                                          fontFamily: TFonts.nunito,
+                                          fontSize: 36,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-                                  _ReplyDescription(
-                                    name: name,
-                                    choiceText: theme.choiceText,
-                                    anonymous: _isAnonymous,
+                                  SizedBox(
+                                    height: 44,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: _ReplyDescription(
+                                        name: name,
+                                        choiceText: theme.choiceText,
+                                        anonymous: _isAnonymous,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -201,9 +214,54 @@ class MatchReplyScreen extends StatelessWidget {
                       ),
                       if (!_isAnonymous) ...[
                         const SizedBox(height: 48),
+                        Container(
+                          key: const Key('match-social-pill'),
+                          width: 84,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(19),
+                          ),
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left: _isSnapchat ? 46 : 0,
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: theme.socialPillColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                left: 9,
+                                top: 9,
+                                child: Image.asset(
+                                  'assets/icons/insta-outline.png',
+                                  width: 20,
+                                  height: 20,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Positioned(
+                                right: 9,
+                                top: 9,
+                                child: Image.asset(
+                                  'assets/icons/snap-fill.png',
+                                  width: 20,
+                                  height: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: SizedBox(
+                            key: const Key('match-reply-button'),
                             width: double.infinity,
                             height: 62,
                             child: ElevatedButton.icon(
@@ -238,6 +296,7 @@ class MatchReplyScreen extends StatelessWidget {
                           ),
                         ),
                       ],
+                      const SizedBox(height: 30),
                     ],
                   ),
                 ),
