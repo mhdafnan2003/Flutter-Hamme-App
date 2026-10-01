@@ -39,12 +39,12 @@ class ShareInstructionCard extends StatelessWidget {
             style: const TextStyle(
               fontFamily: TFonts.nunito,
               fontWeight: FontWeight.w800,
-              fontSize: 20,
-              height: 1.25,
+              fontSize: 24,
+              height: 1.375,
               color: Colors.black,
             ),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 6),
           _StepDots(activeStep: activeStep, totalSteps: totalSteps),
           const SizedBox(height: 24),
           instructionTitle,
@@ -81,13 +81,17 @@ class _StepDots extends StatelessWidget {
             color: active ? TColors.hammeProgressFill : const Color(0xFFE8EDF1),
             shape: BoxShape.circle,
           ),
-          child: Text(
-            '$step',
-            style: TextStyle(
-              fontFamily: TFonts.nunito,
-              fontWeight: FontWeight.w900,
-              fontSize: 20,
-              color: active ? Colors.white : Colors.black,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$step',
+              style: TextStyle(
+                fontFamily: TFonts.nunito,
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                height: 1.35,
+                color: active ? Colors.white : Colors.black,
+              ),
             ),
           ),
         );

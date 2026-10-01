@@ -47,19 +47,15 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
           SafeArea(
             child: Stack(
               children: [
-                Positioned(
-                  top: 4,
-                  right: 16,
-                  child: AppCloseCircleButton(
-                    onPressed: () => context.go('/home'),
-                  ),
-                ),
                 LayoutBuilder(
                   builder: (context, constraints) {
+                    final topReserve = constraints.maxHeight < 640 ? 48.0 : 0.0;
                     return SingleChildScrollView(
+                      padding: EdgeInsets.only(top: topReserve, bottom: 6),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
+                          minHeight: (constraints.maxHeight - topReserve - 6)
+                              .clamp(0.0, double.infinity),
                         ),
                         child: Center(
                           child: ConstrainedBox(
@@ -102,6 +98,7 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                                   ),
                                   const SizedBox(height: 24),
                                   ShareInstructionCard(
+                                    key: const Key('share-tutorial-card'),
                                     title: 'How to add the Link\nto your story',
                                     activeStep: _step,
                                     totalSteps: 4,
@@ -148,6 +145,15 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                       ),
                     );
                   },
+                ),
+                // Keep this above the scroll view so the full-screen scroll
+                // hit target cannot intercept taps on Close.
+                Positioned(
+                  top: 4,
+                  right: 16,
+                  child: AppCloseCircleButton(
+                    onPressed: () => context.go('/home'),
+                  ),
                 ),
               ],
             ),

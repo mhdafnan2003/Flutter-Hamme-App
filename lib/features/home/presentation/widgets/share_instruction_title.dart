@@ -65,7 +65,7 @@ class ShareInstructionTitle extends StatelessWidget {
 
   static const _titleStyle = TextStyle(
     fontFamily: TFonts.nunito,
-    fontWeight: FontWeight.w800,
+    fontWeight: FontWeight.w700,
     fontSize: 24,
     height: 1.375,
     color: Colors.black,
