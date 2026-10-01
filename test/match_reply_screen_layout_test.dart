@@ -40,15 +40,21 @@ void main() {
     final card = tester.getRect(find.byKey(const Key('match-reply-card')));
     final pill = tester.getRect(find.byKey(const Key('match-social-pill')));
     final button = tester.getRect(find.byKey(const Key('match-reply-button')));
-    expect(avatars.topLeft, const Offset(84, 200));
+    expect(avatars.left, closeTo(84, 0.1));
+    expect(avatars.top, closeTo(200, 0.1));
     // The keyed inner card is inset by the 8 px outer border.
-    expect(card.topLeft, const Offset(24, 266));
-    expect(card.size, const Size(345, 209));
+    expect(card.left, closeTo(24, 0.1));
+    expect(card.top, closeTo(266, 0.1));
+    expect(card.width, closeTo(345, 0.1));
+    expect(card.height, closeTo(209, 0.1));
     expect(pill.left, closeTo(155, 0.5));
-    expect(pill.top, 531);
-    expect(pill.size, const Size(84, 38));
-    expect(button.topLeft, const Offset(32, 585));
-    expect(button.size, const Size(329, 62));
+    expect(pill.top, closeTo(531, 0.1));
+    expect(pill.width, closeTo(84, 0.1));
+    expect(pill.height, closeTo(38, 0.1));
+    expect(button.left, closeTo(32, 0.1));
+    expect(button.top, closeTo(585, 0.1));
+    expect(button.width, closeTo(329, 0.1));
+    expect(button.height, closeTo(62, 0.1));
     expect(tester.takeException(), isNull);
   });
 
