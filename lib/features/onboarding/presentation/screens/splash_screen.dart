@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
-import 'package:hamme_app/utils/constants/image_strings.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -63,11 +62,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 scale: _animation,
                 child: FadeTransition(
                   opacity: _animation,
-                  child: Image.asset(
-                    TImages.splashLogo,
-                    width: 220,
-                    fit: BoxFit.fill,
-                  ),
+                  child: const _SplashWordmark(),
                 ),
               ),
             ),
@@ -113,6 +108,53 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SplashWordmark extends StatelessWidget {
+  const _SplashWordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    const wordmark = 'Hamme';
+    const fontSize = 48.0;
+
+    return SizedBox(
+      key: const Key('splash-wordmark'),
+      width: 176,
+      height: 65,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Text(
+              wordmark,
+              style: TextStyle(
+                fontFamily: TFonts.nunito,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w800,
+                foreground:
+                    Paint()
+                      ..style = PaintingStyle.stroke
+                      ..strokeWidth = 12
+                      ..strokeJoin = StrokeJoin.miter
+                      ..color = Colors.black,
+              ),
+            ),
+            const Text(
+              wordmark,
+              style: TextStyle(
+                fontFamily: TFonts.nunito,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
           ],
         ),
       ),
