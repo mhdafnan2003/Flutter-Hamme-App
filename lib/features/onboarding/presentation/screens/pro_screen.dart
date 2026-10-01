@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
 import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
 import 'package:hamme_app/core/utils/app_exception.dart';
+import 'package:hamme_app/core/constants/app_constants.dart';
+import 'package:hamme_app/core/utils/link_launcher.dart';
 import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/billing_providers.dart';
@@ -504,19 +505,10 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                           alignment: Alignment.centerLeft,
                                           child: FooterLink(
                                             label: 'Privacy',
-                                            onTap: () async {
-                                              final url = Uri.parse(
-                                                'https://www.hamme.app/privacy-policy',
-                                              );
-                                              if (await canLaunchUrl(url)) {
-                                                await launchUrl(
-                                                  url,
-                                                  mode:
-                                                      LaunchMode
-                                                          .externalApplication,
-                                                );
-                                              }
-                                            },
+                                            onTap: () => openExternalLink(
+                                              context,
+                                              kPrivacyPolicyUrl,
+                                            ),
                                           ),
                                         ),
                                         FooterLink(
@@ -531,19 +523,10 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                           alignment: Alignment.centerRight,
                                           child: FooterLink(
                                             label: 'Terms',
-                                            onTap: () async {
-                                              final url = Uri.parse(
-                                                'https://www.hamme.app/terms-of-service',
-                                              );
-                                              if (await canLaunchUrl(url)) {
-                                                await launchUrl(
-                                                  url,
-                                                  mode:
-                                                      LaunchMode
-                                                          .externalApplication,
-                                                );
-                                              }
-                                            },
+                                            onTap: () => openExternalLink(
+                                              context,
+                                              kTermsOfUseUrl,
+                                            ),
                                           ),
                                         ),
                                       ],
