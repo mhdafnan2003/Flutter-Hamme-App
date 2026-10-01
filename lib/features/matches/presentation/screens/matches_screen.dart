@@ -72,7 +72,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
             children: [
               // ── Top Bar ───────────────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+                padding: const EdgeInsets.fromLTRB(24, 2, 24, 0),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -84,109 +84,112 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                         }
                       },
                       child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: TColors.hammeSurface,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: SvgPicture.asset(
-                          'assets/icons/icon_line/matches_chevron_left.svg',
-                          width: 9,
-                          height: 16,
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: TColors.hammeSurface,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'assets/icons/icon_line/matches_chevron_left.svg',
+                            width: 9,
+                            height: 16,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Image.asset(
-                        TImages.hammeHomeLogo,
-                        width: 98,
-                        height: 26,
+                    Expanded(
+                      child: Center(
+                        child: Image.asset(
+                          TImages.hammeHomeLogo,
+                          width: 98,
+                          height: 26,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 40),
-                ],
+                    const SizedBox(width: 40),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // ── Match List ────────────────────────────────────────────────
-            Expanded(
-              child: matches.when(
-                data: (items) {
-                  final visibleItems =
-                      items
-                          .where((m) => !_dismissedIds.contains(m.id))
-                          .toList();
-                  if (visibleItems.isEmpty) return const _EmptyMatchesView();
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    itemCount: visibleItems.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (_, index) {
-                      final match = visibleItems[index];
-                      return _MatchTile(
-                        match: match,
-                        currentUserImageUrl: currentUserImageUrl,
-                        onDismiss: () => _dismissMatch(match.id),
-                        // The screen's context, which outlives the tile.
-                        onSafetyActions:
-                            () => showSafetyActions(
-                              context,
-                              SafetyTarget.match(match),
-                            ),
-                      );
-                    },
-                  );
-                },
-                loading:
-                    () => const Center(child: CupertinoActivityIndicator()),
-                error:
-                    (error, _) => Center(
-                      child: Text(
-                        'Error: $error',
-                        style: const TextStyle(fontFamily: TFonts.nunito),
+              // ── Match List ────────────────────────────────────────────────
+              Expanded(
+                child: matches.when(
+                  data: (items) {
+                    final visibleItems =
+                        items
+                            .where((m) => !_dismissedIds.contains(m.id))
+                            .toList();
+                    if (visibleItems.isEmpty) return const _EmptyMatchesView();
+                    return ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
+                      itemCount: visibleItems.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 18),
+                      itemBuilder: (_, index) {
+                        final match = visibleItems[index];
+                        return _MatchTile(
+                          match: match,
+                          currentUserImageUrl: currentUserImageUrl,
+                          onDismiss: () => _dismissMatch(match.id),
+                          // The screen's context, which outlives the tile.
+                          onSafetyActions:
+                              () => showSafetyActions(
+                                context,
+                                SafetyTarget.match(match),
+                              ),
+                        );
+                      },
+                    );
+                  },
+                  loading:
+                      () => const Center(child: CupertinoActivityIndicator()),
+                  error:
+                      (error, _) => Center(
+                        child: Text(
+                          'Error: $error',
+                          style: const TextStyle(fontFamily: TFonts.nunito),
+                        ),
                       ),
-                    ),
+                ),
               ),
-            ),
 
-            // ── Footer ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24, top: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    'assets/images/matches_police_light.png',
-                    width: 16,
-                    height: 16,
-                  ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    'Matches are vanished after 24hrs',
-                    style: TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFFB2B2B2),
+              // ── Footer ────────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.only(bottom: 21, top: 10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/images/matches_police_light.png',
+                          width: 16,
+                          height: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Matches are vanished after 24hrs',
+                          style: TextStyle(
+                            fontFamily: TFonts.nunito,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFB2B2B2),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }
@@ -234,8 +237,9 @@ class _MatchTile extends StatelessWidget {
         children: [
           // Avatar
           Container(
-            width: 60,
-            height: 60,
+            key: const Key('match-avatar'),
+            width: 52,
+            height: 52,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               color: Color(0xFFE5E5EA),
@@ -268,7 +272,7 @@ class _MatchTile extends StatelessWidget {
                       ),
                     ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
 
           // Name & Social
           Expanded(
@@ -293,8 +297,8 @@ class _MatchTile extends StatelessWidget {
                     name,
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
                       color: Colors.black,
                     ),
                   ),
@@ -302,7 +306,7 @@ class _MatchTile extends StatelessWidget {
                     '$platformLabel: $handle',
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       fontSize: 14,
                       color: Colors.black,
                     ),
@@ -326,8 +330,9 @@ class _MatchTile extends StatelessWidget {
           GestureDetector(
             onTap: onDismiss,
             child: Container(
-              width: 36,
-              height: 36,
+              key: const Key('match-close'),
+              width: 40,
+              height: 40,
               decoration: const BoxDecoration(
                 color: Color(0xFFF2F2F7),
                 shape: BoxShape.circle,
@@ -352,42 +357,55 @@ class _EmptyMatchesView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          const SizedBox(height: 93),
+          const SizedBox(height: 97),
           // Title row with emoji inline
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'No matches yet ',
-                style: TextStyle(
-                  fontFamily: TFonts.nunito,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: TColors.hammepinkcolor,
-                ),
+          SizedBox(
+            key: const Key('matches-empty-title'),
+            height: 38,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'No matches yet ',
+                    style: TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: TColors.hammepinkcolor,
+                    ),
+                  ),
+                  Image.asset(
+                    'assets/images/matches_pleading_face.png',
+                    width: 32,
+                    height: 32,
+                  ),
+                ],
               ),
-              Image.asset(
-                'assets/images/matches_pleading_face.png',
-                width: 32,
-                height: 32,
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          const Text(
-            'A match happens when someone\npicks the same option as you',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: TFonts.nunito,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-              height: 1.3,
             ),
           ),
-          const SizedBox(height: 31),
+          const SizedBox(height: 24),
+          const SizedBox(
+            height: 38,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'A match happens when someone\npicks the same option as you',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: TFonts.nunito,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
           const Text(
             'Go play to find yours',
             style: TextStyle(
@@ -397,7 +415,7 @@ class _EmptyMatchesView extends StatelessWidget {
               color: Color(0xFF878787),
             ),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 32),
           // Skeleton placeholder rows
           ...List.generate(
             5,
@@ -405,10 +423,11 @@ class _EmptyMatchesView extends StatelessWidget {
               padding: EdgeInsets.only(bottom: index == 4 ? 0 : 24),
               child: Center(
                 child: Container(
+                  key: index == 0 ? const Key('matches-skeleton-first') : null,
                   width: 297,
                   height: 56,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8E8E8).withValues(alpha: 0.8),
+                    color: const Color(0xFFE8E8E8),
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
