@@ -7,9 +7,9 @@ This is a coverage and ambiguity log, not a claim that every screen is pixel-per
 | App page/state | Reference | Review coverage |
 | --- | --- | --- |
 | Splash | 4424:2844 | Onboarding review |
-| Age / date wheel | 4373:697, 4482:410 | Actual Nunito, scaled text and compact layout tests; onboarding visual review |
-| Name / keyboard | 4373:698, 4473:1135 | Onboarding review |
-| Profile photo upload | 4593:478, 4673:1534 | Onboarding review |
+| Age / date wheel | 4593:478, 4673:1534 | Actual Nunito, scaled text and compact layout tests; onboarding visual review |
+| Name / keyboard | 4373:697, 4482:410 | Onboarding review |
+| Profile photo upload | 4373:698, 4473:1135 | Onboarding review |
 | Social selection / keyboard | 4408:1753, 4482:427 | Onboarding review |
 | Pro | 5064:1085, 4744:4263 | Onboarding review; retained extra social proof |
 | Home | 5347:1176 | Home / Inbox review |
