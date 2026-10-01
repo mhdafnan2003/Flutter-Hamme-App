@@ -70,91 +70,117 @@ class _NameScreenState extends ConsumerState<NameScreen> {
               progress: _progress,
             ),
             Expanded(
-              child: SingleChildScrollView(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 33),
-                      const Text(
-                        TTexts.nameTitle,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 24,
-                          height: 1,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 21),
-                      Image.asset(
-                        TImages.emojiSpeaking,
-                        width: 24,
-                        height: 24,
-                        fit: BoxFit.cover,
-                      ),
-                      const SizedBox(height: 86),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: TextField(
-                          controller: _nameController,
-                          autofocus: true,
-                          cursorColor: Colors.black,
-                          cursorWidth: 2,
-                          cursorHeight: 32,
-                          cursorRadius: const Radius.circular(8),
-                          textAlign: TextAlign.center,
-                          onChanged: (_) {
-                            if (_nameError != null) {
-                              setState(() => _nameError = null);
-                            }
-                          },
-                          style: const TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 24,
-                            height: 1,
-                            color: Colors.black,
-                          ),
-                          decoration: const InputDecoration(
-                            hintText: TTexts.nameHint,
-                            hintStyle: TextStyle(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Preserve the Figma spacing when the iPhone keyboard leaves
+                  // roughly 301 logical pixels here. Shorter viewports first
+                  // compress the whitespace, then scroll as a final fallback.
+                  const fixedContentHeight = 72.0;
+                  const referenceTrailingSpace = 89.0;
+                  const referenceGapTotal = 140.0;
+                  final gapScale = ((constraints.maxHeight -
+                              fixedContentHeight -
+                              referenceTrailingSpace) /
+                          referenceGapTotal)
+                      .clamp(0.45, 1.25);
+
+                  double gap(double referenceValue) =>
+                      referenceValue * gapScale;
+
+                  return SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        children: [
+                          SizedBox(height: gap(33)),
+                          const Text(
+                            TTexts.nameTitle,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
                               fontFamily: TFonts.nunito,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w900,
                               fontSize: 24,
                               height: 1,
-                              color: TColors.hammePlaceholder,
+                              color: Colors.black,
                             ),
-                            isDense: true,
-                            isCollapsed: true,
-                            filled: false,
-                            contentPadding: EdgeInsets.zero,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            errorBorder: InputBorder.none,
-                            focusedErrorBorder: InputBorder.none,
-                            disabledBorder: InputBorder.none,
                           ),
-                        ),
+                          SizedBox(height: gap(21)),
+                          Image.asset(
+                            TImages.emojiSpeaking,
+                            width: 24,
+                            height: 24,
+                            fit: BoxFit.cover,
+                          ),
+                          SizedBox(height: gap(86)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: TextField(
+                              controller: _nameController,
+                              autofocus: true,
+                              cursorColor: Colors.black,
+                              cursorWidth: 2,
+                              cursorHeight: 32,
+                              cursorRadius: const Radius.circular(8),
+                              textAlign: TextAlign.center,
+                              onChanged: (_) {
+                                if (_nameError != null) {
+                                  setState(() => _nameError = null);
+                                }
+                              },
+                              style: const TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 24,
+                                height: 1,
+                                color: Colors.black,
+                              ),
+                              decoration: const InputDecoration(
+                                hintText: TTexts.nameHint,
+                                hintStyle: TextStyle(
+                                  fontFamily: TFonts.nunito,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 24,
+                                  height: 1,
+                                  color: TColors.hammePlaceholder,
+                                ),
+                                isDense: true,
+                                isCollapsed: true,
+                                filled: false,
+                                contentPadding: EdgeInsets.zero,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          if (_nameError != null) ...[
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              child: Text(
+                                _nameError!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontFamily: TFonts.nunito,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      if (_nameError != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          _nameError!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ),
             const Text(

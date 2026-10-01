@@ -72,7 +72,7 @@ class TTexts {
   // -- Hamme UI Texts
   static const String next = "Next";
   static const String skipAction = "Skip";
-  static const String nameTitle = "What's your name?";
+  static const String nameTitle = "What’s your name?";
   static const String ageTitle = "What’s your age?";
   static const String birthdayTitle = "When's your birthday?";
   static const String socialsTitle = "Add your socials";
