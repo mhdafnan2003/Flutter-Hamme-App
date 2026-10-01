@@ -59,7 +59,7 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(180deg, #9e6efd 0%, #7737fd 100%);
+  background: linear-gradient(180deg, #9e6efe 0%, #7737fd 100%);
   color: #fff;
   font-family: Nunito, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
@@ -110,17 +110,18 @@ body {
   position: absolute;
   display: flex;
   width: 339px;
-  height: 69px;
+  height: 68.542px;
   align-items: center;
   justify-content: center;
   gap: 4px;
   border-radius: 32px;
-  box-shadow: 0 5px 8px rgb(0 0 0 / 15%);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 25%);
   color: white;
   font-size: 20px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+  transform-origin: top left;
 }
 
 .landing-reaction > img {
@@ -130,24 +131,28 @@ body {
 }
 
 .landing-reaction-friend {
-  top: 24px;
+  top: 23.652px;
   left: 0;
-  transform: rotate(4deg);
-  background: linear-gradient(100deg, #00ccfe 0%, #005efa 100%);
+  transform: rotate(-4deg);
+  background: linear-gradient(90deg, #00ccfe 0%, #005efb 100%);
 }
 
 .landing-reaction-crush {
-  top: 86px;
+  top: 86.15px;
   left: 4px;
-  transform: rotate(-3deg);
-  background: linear-gradient(100deg, #cf59e7 0%, #ff3c9e 100%);
+  transform: rotate(3deg);
+  background: linear-gradient(90deg, #cf59e7 0%, #ff3c9e 100%);
 }
 
 .landing-reaction-frenemy {
-  top: 184px;
+  top: 184.139px;
   left: 1px;
-  transform: rotate(2deg);
-  background: linear-gradient(100deg, #bbaeed 0%, #50528d 100%);
+  transform: rotate(-2deg);
+  background: linear-gradient(90deg, #bbaded 0%, #50528d 100%);
+}
+
+.landing-reaction-frenemy > img {
+  height: 34px;
 }
 
 @media (max-height: 520px) and (min-width: 981px) {
