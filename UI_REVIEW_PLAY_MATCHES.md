@@ -22,7 +22,8 @@ Reference: HAMME Figma file `m2H92wOLmAMzXX7z0DfXGb`, DESIGN page. Read from the
 6. Match success has a close control in the app although its 360 px Figma frame omits it. It remains available and now stays tappable when the content scrolls.
 7. Non-match's crying glyph still uses the device emoji font because no corresponding bundled exact asset was found. Queue and match-choice emojis now use the existing verified bitmap assets that match the Figma images. Native emoji can differ between Android and iOS.
 8. Match image exports follow the mapped 393 × 852 story composition for all three match types, uniformly contained in the existing 1080 × 1920 capture canvas. Extra canvas space uses the matching gradient. The original poller match overlay reuses the aligned Reply screen, retains haptics/dismiss callbacks and its Continue fallback, and keeps anonymous social handles hidden. It does not add the Reply screen’s extra safety menu to the poll overlay.
-9. Native Instagram/Snapchat launching and image sharing still require a device-level integration check. Unit/widget verification covers available-platform selection, disabled missing profiles, anonymity, scrolling, and dismiss callbacks.
+9. Anonymous celebration share exports sanitize both the match and interaction fallback identity before rendering: the other photo is omitted, the name is Anonymous, and the avatar remains a plain circle. Named export data is preserved.
+10. Native Instagram/Snapchat launching and image sharing still require a device-level integration check. Unit/widget verification covers available-platform selection, disabled missing profiles, anonymity, scrolling, and dismiss callbacks.
 
 ## Verification approach
 

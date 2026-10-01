@@ -100,10 +100,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
     HapticFeedback.heavyImpact();
   }
 
-  Future<Uint8List> _renderShareImage({
-    required String otherName,
-    String? otherImageUrl,
-  }) async {
+  Future<Uint8List> _renderShareImage() async {
     final boundaryKey = GlobalKey();
     late final OverlayEntry entry;
 
@@ -117,10 +114,8 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
               child: SizedBox(
                 width: 1080,
                 height: 1920,
-                child: MatchShareExportWidget(
-                  type: widget.result.interaction.type,
-                  otherName: otherName,
-                  otherImageUrl: otherImageUrl,
+                child: MatchShareExportWidget.fromResult(
+                  result: widget.result,
                   myImageUrl: widget.currentUserImageUrl,
                 ),
               ),
@@ -151,20 +146,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
 
     try {
       final interaction = widget.result.interaction;
-      final match = widget.result.match;
-      final otherName =
-          match?.matchedUser.name.trim().isNotEmpty == true
-              ? match!.matchedUser.name.trim()
-              : interaction.fromUserName?.trim().isNotEmpty == true
-              ? interaction.fromUserName!.trim()
-              : 'Someone';
-      final otherImageUrl =
-          match?.matchedUser.avatarUrl ?? interaction.fromUserProfileImageUrl;
-
-      final bytes = await _renderShareImage(
-        otherName: otherName,
-        otherImageUrl: otherImageUrl,
-      );
+      final bytes = await _renderShareImage();
       final tempDir = await getTemporaryDirectory();
       final file =
           await File(

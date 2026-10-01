@@ -6,6 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hamme_app/features/play/presentation/widgets/match_share_export_widget.dart';
 import 'package:hamme_app/models/interaction_type.dart';
+import 'package:hamme_app/models/interaction_result.dart';
+import 'package:hamme_app/models/interaction_record.dart';
+import 'package:hamme_app/models/app_user.dart';
+import 'package:hamme_app/features/play/presentation/widgets/match_success_overlay.dart';
+import 'safety_test_fakes.dart';
 
 void main() {
   Future<void> pump(WidgetTester tester, Widget child, Size size) async {
@@ -29,6 +34,88 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   }
 
+  testWidgets('anonymous share omits both match and interaction identity', (
+    tester,
+  ) async {
+    final interaction = InteractionRecord(
+      id: 'vote',
+      toUser: 'me',
+      type: InteractionType.friend,
+      createdAt: DateTime(2026),
+      fromUserName: 'Fallback Identity',
+      fromUserProfileImageUrl: 'https://example.com/fallback-avatar.png',
+    );
+    final named = testNamedMatch(
+      'match',
+      userId: 'other',
+      name: 'Matched Identity',
+    ).copyWith(
+      matchedUser: const AppUser(
+        id: 'other',
+        name: 'Matched Identity',
+        email: '',
+        instagramId: 'private-handle',
+        shareCode: 'code',
+        avatarUrl: 'https://example.com/matched-avatar.png',
+      ),
+    );
+    final result = InteractionResult(
+      interaction: interaction,
+      matched: true,
+      match: named.copyWith(anonymous: true),
+    );
+    final export = MatchShareExportWidget.fromResult(
+      result: result,
+      myImageUrl: null,
+    );
+    expect(export.otherName, 'Anonymous');
+    expect(export.otherImageUrl, isNull);
+    await pump(tester, export, const Size(393, 852));
+    expect(find.textContaining('Matched Identity'), findsNothing);
+    expect(find.textContaining('Fallback Identity'), findsNothing);
+    expect(
+      tester
+          .widget<MatchAvatarPair>(find.byType(MatchAvatarPair))
+          .plainOtherAvatar,
+      isTrue,
+    );
+    expect(
+      tester
+          .widgetList<Image>(find.byType(Image))
+          .where((image) => image.image is NetworkImage),
+      isEmpty,
+    );
+    final namedExport = MatchShareExportWidget.fromResult(
+      result: result.copyWith(match: named),
+    );
+    expect(namedExport.otherName, 'Matched Identity');
+    expect(namedExport.otherImageUrl, 'https://example.com/matched-avatar.png');
+    expect(namedExport.anonymous, isFalse);
+    final fallbackExport = MatchShareExportWidget.fromResult(
+      result: result.copyWith(match: null),
+    );
+    expect(fallbackExport.otherName, 'Fallback Identity');
+    expect(
+      fallbackExport.otherImageUrl,
+      'https://example.com/fallback-avatar.png',
+    );
+    final missingMatchIdentity = named.copyWith(
+      matchedUser: const AppUser(
+        id: 'other',
+        name: '',
+        email: '',
+        instagramId: '',
+        shareCode: '',
+      ),
+    );
+    final anonymousFallback = MatchShareExportWidget.fromResult(
+      result: result.copyWith(
+        match: missingMatchIdentity.copyWith(anonymous: true),
+      ),
+    );
+    expect(anonymousFallback.otherName, 'Anonymous');
+    expect(anonymousFallback.otherImageUrl, isNull);
+  });
   for (final type in InteractionType.values) {
     for (final size in [
       const Size(393, 852),

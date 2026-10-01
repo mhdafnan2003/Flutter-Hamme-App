@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hamme_app/models/interaction_type.dart';
+import 'package:hamme_app/models/interaction_result.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 
 import 'match_success_overlay.dart' show MatchAvatarPair;
@@ -13,12 +14,45 @@ class MatchShareExportWidget extends StatelessWidget {
     required this.otherName,
     this.otherImageUrl,
     this.myImageUrl,
+    this.anonymous = false,
   });
+
+  /// Resolve share content once, before rendering, so fallback interaction data
+  /// cannot reveal the voter behind an anonymous match.
+  factory MatchShareExportWidget.fromResult({
+    required InteractionResult result,
+    String? myImageUrl,
+  }) {
+    final match = result.match;
+    final interaction = result.interaction;
+    final anonymous = match?.anonymous == true;
+    final name = match?.matchedUser.name.trim();
+    final fallbackName = interaction.fromUserName?.trim();
+    return MatchShareExportWidget(
+      type: interaction.type,
+      anonymous: anonymous,
+      otherName:
+          anonymous
+              ? 'Anonymous'
+              : name?.isNotEmpty == true
+              ? name!
+              : fallbackName?.isNotEmpty == true
+              ? fallbackName!
+              : 'Someone',
+      otherImageUrl:
+          anonymous
+              ? null
+              : match?.matchedUser.avatarUrl ??
+                  interaction.fromUserProfileImageUrl,
+      myImageUrl: myImageUrl,
+    );
+  }
 
   final InteractionType type;
   final String otherName;
   final String? otherImageUrl;
   final String? myImageUrl;
+  final bool anonymous;
 
   static const double _designW = 393;
   static const double _designH = 852;
@@ -51,7 +85,12 @@ class MatchShareExportWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = _theme;
-    final displayName = otherName.trim().isEmpty ? 'Someone' : otherName.trim();
+    final displayName =
+        anonymous
+            ? 'Anonymous'
+            : otherName.trim().isEmpty
+            ? 'Someone'
+            : otherName.trim();
 
     return MediaQuery(
       data: (MediaQuery.maybeOf(context) ?? const MediaQueryData()).copyWith(
@@ -115,9 +154,10 @@ class MatchShareExportWidget extends StatelessWidget {
                           child: MatchAvatarPair(
                             key: const Key('match-export-avatars'),
                             animate: false,
+                            plainOtherAvatar: anonymous,
                             currentUserImageUrl: myImageUrl,
                             currentUserFallbackText: 'Y',
-                            otherImageUrl: otherImageUrl,
+                            otherImageUrl: anonymous ? null : otherImageUrl,
                             otherFallbackText: displayName.characters.first,
                             ringColor: theme.avatarRing,
                             centerIcon: Transform.translate(
