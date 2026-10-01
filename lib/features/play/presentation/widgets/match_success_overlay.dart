@@ -6,7 +6,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:hamme_app/core/widgets/animated_spoiler.dart';
 import 'package:hamme_app/core/widgets/app_close_circle_button.dart';
-import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/interaction_result.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -30,6 +29,12 @@ class MatchThemeConfig {
     required this.emoji,
     required this.choiceText,
   });
+
+  String get emojiAsset => switch (choiceText) {
+    'Friend' => 'assets/icons/emoji_friend.png',
+    'Frenemy' => 'assets/icons/emoji_frenemy.png',
+    _ => 'assets/icons/emoji_crush.png',
+  };
 
   static MatchThemeConfig fromType(InteractionType type) {
     switch (type) {
@@ -222,15 +227,10 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
         child: SafeArea(
           child: Stack(
             children: [
-              Positioned(
-                right: 24,
-                top: 20,
-                child: AppCloseCircleButton(onPressed: widget.onDismiss),
-              ),
               Align(
                 alignment: Alignment.center,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 15.5),
+                  padding: const EdgeInsets.fromLTRB(15.5, 74, 15.5, 74),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 329),
@@ -257,7 +257,7 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                     width: double.infinity,
                                     padding: const EdgeInsets.fromLTRB(
                                       16,
-                                      61,
+                                      53,
                                       16,
                                       12,
                                     ),
@@ -275,7 +275,8 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                       children: [
                                         const SizedBox(
                                           height: 44,
-                                          child: Center(
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
                                             child: Text(
                                               'It’s a Match!',
                                               style: TextStyle(
@@ -288,10 +289,16 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                           ),
                                         ),
                                         const SizedBox(height: 12),
-                                        _MatchDescription(
-                                          otherName: otherName,
-                                          choiceText: theme.choiceText,
-                                          anonymous: isAnonymous,
+                                        SizedBox(
+                                          height: 40,
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: _MatchDescription(
+                                              otherName: otherName,
+                                              choiceText: theme.choiceText,
+                                              anonymous: isAnonymous,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -309,9 +316,10 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                     ringColor: theme.solidBorder,
                                     avatarSize: 106,
                                     centerSize: 38,
-                                    centerIcon: EmojiImage(
-                                      emoji: theme.emoji,
-                                      size: 32,
+                                    centerIcon: Image.asset(
+                                      theme.emojiAsset,
+                                      width: 32,
+                                      height: 32,
                                     ),
                                     plainOtherAvatar: isAnonymous,
                                   ),
@@ -340,16 +348,28 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                                 color: Color(0xFF30415A),
                                               ),
                                             )
-                                            : const Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.ios_share, size: 22),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  'Share this match with friends',
-                                                ),
-                                              ],
+                                            : const FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.ios_share,
+                                                    size: 22,
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    'Share this match with friends',
+                                                    style: TextStyle(
+                                                      fontFamily: TFonts.nunito,
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                   ),
                                 ),
@@ -365,7 +385,17 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                   onPressed: widget.onDismiss,
                                   backgroundColor: Colors.black,
                                   foregroundColor: Colors.white,
-                                  child: const Text('Try Another Profile'),
+                                  child: const FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'Try Another Profile',
+                                      style: TextStyle(
+                                        fontFamily: TFonts.nunito,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -375,6 +405,11 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                     ),
                   ),
                 ),
+              ),
+              Positioned(
+                right: 24,
+                top: 20,
+                child: AppCloseCircleButton(onPressed: widget.onDismiss),
               ),
             ],
           ),
@@ -459,13 +494,15 @@ class _MatchDescription extends StatelessWidget {
           )
         else
           Text(
-            '$otherName also chose $choiceText.',
+            '$otherName also chose $choiceText. You',
             maxLines: 1,
             style: _style,
             textAlign: TextAlign.center,
           ),
-        const Text(
-          'You both want the same thing.',
+        Text(
+          anonymous
+              ? 'You both want the same thing.'
+              : 'both want the same thing.',
           textAlign: TextAlign.center,
           style: _style,
         ),
