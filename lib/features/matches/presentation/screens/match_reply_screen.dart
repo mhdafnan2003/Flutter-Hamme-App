@@ -19,10 +19,16 @@ class MatchReplyScreen extends StatefulWidget {
     super.key,
     required this.match,
     required this.currentUserImageUrl,
+    this.onDismiss,
+    this.continueWhenUnavailable = false,
+    this.showSafetyActions = true,
   });
 
   final MatchRecord match;
   final String? currentUserImageUrl;
+  final VoidCallback? onDismiss;
+  final bool continueWhenUnavailable;
+  final bool showSafetyActions;
 
   @override
   State<MatchReplyScreen> createState() => _MatchReplyScreenState();
@@ -56,6 +62,14 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
     return value.replaceAll('@', '').trim();
   }
 
+  void _dismiss() {
+    if (widget.onDismiss != null) {
+      widget.onDismiss!();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _openSocial() async {
     if (_isAnonymous || _handle.isEmpty) return;
 
@@ -86,6 +100,10 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
       onRemoved: () {
         // The match is gone, so leave its detail screen.
         if (!context.mounted) return;
+        if (widget.onDismiss != null) {
+          _dismiss();
+          return;
+        }
         final route = ModalRoute.of(context);
         if (route == null) return;
         if (route.isCurrent) {
@@ -308,7 +326,11 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
                                 height: 62,
                                 child: ElevatedButton.icon(
                                   onPressed:
-                                      _handle.isEmpty ? null : _openSocial,
+                                      _handle.isEmpty
+                                          ? (widget.continueWhenUnavailable
+                                              ? _dismiss
+                                              : null)
+                                          : _openSocial,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.black,
                                     foregroundColor: Colors.white,
@@ -318,22 +340,55 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
                                     ),
                                     elevation: 0,
                                   ),
-                                  icon: Image.asset(
-                                    _isSnapchat
-                                        ? 'assets/icons/snap-fill.png'
-                                        : 'assets/icons/insta-outline.png',
-                                    width: 24,
-                                    height: 24,
-                                    color: Colors.white,
-                                  ),
-                                  label: const Text(
-                                    'Reply',
-                                    style: TextStyle(
+                                  icon:
+                                      _handle.isEmpty &&
+                                              widget.continueWhenUnavailable
+                                          ? const SizedBox.shrink()
+                                          : Image.asset(
+                                            _isSnapchat
+                                                ? 'assets/icons/snap-fill.png'
+                                                : 'assets/icons/insta-outline.png',
+                                            width: 24,
+                                            height: 24,
+                                            color: Colors.white,
+                                          ),
+                                  label: Text(
+                                    _handle.isEmpty &&
+                                            widget.continueWhenUnavailable
+                                        ? 'Continue'
+                                        : 'Reply',
+                                    style: const TextStyle(
                                       fontFamily: TFonts.nunito,
                                       fontSize: 20,
                                       fontWeight: FontWeight.w800,
                                       color: Colors.white,
                                     ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (_isAnonymous &&
+                              widget.continueWhenUnavailable) ...[
+                            const SizedBox(height: 48),
+                            SizedBox(
+                              width: 305,
+                              height: 62,
+                              child: ElevatedButton(
+                                onPressed: _dismiss,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Continue',
+                                  style: TextStyle(
+                                    fontFamily: TFonts.nunito,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                               ),
@@ -349,25 +404,24 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
               Positioned(
                 right: 24,
                 top: 19,
-                child: AppCloseCircleButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+                child: AppCloseCircleButton(onPressed: _dismiss),
               ),
               // Lines its 36pt circle up with the close button; the extra
               // 6pt on each side is tap target.
-              Positioned(
-                left: 18,
-                top: 13,
-                child: SafetyMenuButton(
-                  onPressed: () => _openSafetyActions(context),
-                  label:
-                      _isAnonymous
-                          ? 'Hide, report or block this anonymous voter'
-                          : 'Report or block $name',
-                  iconColor: Colors.white,
-                  backgroundColor: Colors.white.withValues(alpha: 0.25),
+              if (widget.showSafetyActions)
+                Positioned(
+                  left: 18,
+                  top: 13,
+                  child: SafetyMenuButton(
+                    onPressed: () => _openSafetyActions(context),
+                    label:
+                        _isAnonymous
+                            ? 'Hide, report or block this anonymous voter'
+                            : 'Report or block $name',
+                    iconColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
