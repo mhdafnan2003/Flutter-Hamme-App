@@ -220,7 +220,7 @@ class _SharePlayingScreenState extends ConsumerState<SharePlayingScreen> {
   }
 }
 
-/// The exact design widget for the Instagram/Snapchat Story (9:16 ratio)
+/// Figma story artwork fitted uniformly onto an Instagram/Snapchat 9:16 canvas.
 class StoryExportWidget extends StatelessWidget {
   final OnboardingDraft draft;
   final bool showBrandLink;
@@ -230,7 +230,7 @@ class StoryExportWidget extends StatelessWidget {
     this.showBrandLink = false,
   });
 
-  // Figma's story template is authored at 360 px wide; the export is 3x.
+  // Keep Figma's 360x800 composition uniformly scaled on the 9:16 canvas.
   static const double _avatarSize = 300;
   static const double _contentWidth = 840;
 
@@ -265,241 +265,258 @@ class StoryExportWidget extends StatelessWidget {
             colors: [Color(0xFF9E6EFE), Color(0xFF7737FD)],
           ),
         ),
-        child: Column(
-          children: [
-            const Spacer(),
-            // The card covers the bottom of the avatar's white ring, so the
-            // two white shapes join into one.
-            SizedBox(
-              width: _contentWidth,
-              height: _avatarSize + 108 - 15,
-              child: Stack(
-                alignment: Alignment.topCenter,
-                children: [
-                  // Shadows first, so neither white shape casts onto the other
-                  // and the ring and card read as one joined shape.
-                  Container(
-                    width: _avatarSize,
-                    height: _avatarSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 108,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(36),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: _avatarSize,
-                    height: _avatarSize,
-                    padding: const EdgeInsets.all(15),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                    ),
-                    child: ClipOval(
-                      child:
-                          hasProfileImage
-                              ? Image.network(
-                                profileImageUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => avatarFallback,
-                              )
-                              : avatarFallback,
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 108,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(36),
-                      ),
-                      child: const Text(
-                        'What do you think of me?',
-                        style: TextStyle(
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 54,
-                          color: Colors.black,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Anonymous Text
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: 1080,
+            height: 2400,
+            child: Column(
               children: [
-                Image.asset(TImages.emojiMonkey, width: 48, height: 48),
-                const SizedBox(width: 12),
-                Text(
-                  'send anonymously',
-                  style: TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 42,
-                    color: const Color(0xFFEAE7E7),
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-            // Buttons
-            const _StoryButton(
-              text: 'Friend',
-              emojiPath: TImages.emojiFriend,
-              colors: [Color(0xFF00CCFE), Color(0xFF005EFB)],
-            ),
-            const SizedBox(height: 24),
-            const _StoryButton(
-              text: 'Crush',
-              emojiPath: TImages.emojiCrush,
-              colors: [Color(0xFFCE58E6), Color(0xFFFE3B9D)],
-            ),
-            const SizedBox(height: 24),
-            const _StoryButton(
-              text: 'Frenemy',
-              emojiPath: TImages.emojiFrenemy,
-              colors: [Color(0xFFBBADED), Color(0xFF50528D)],
-            ),
-            const SizedBox(height: 96),
-            SizedBox(
-              width: 480,
-              height: 493,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Image.asset(
-                      'assets/images/placelink.png',
-                      fit: BoxFit.fill,
-                    ),
-                  ),
-                  if (showBrandLink)
-                    Positioned(
-                      left: 21,
-                      top: 150,
-                      child: Container(
-                        width: 435,
-                        height: 144,
+                const SizedBox(height: 303),
+                // The card covers the bottom of the avatar's white ring, so the
+                // two white shapes join into one.
+                SizedBox(
+                  width: _contentWidth,
+                  height: _avatarSize + 108 - 15,
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                      // Shadows first, so neither white shape casts onto the other
+                      // and the ring and card read as one joined shape.
+                      Container(
+                        width: _avatarSize,
+                        height: _avatarSize,
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 99),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 66,
-                                height: 72,
-                                child: Center(
-                                  child: Transform.scale(
-                                    scale: 3,
-                                    child: SvgPicture.asset(
-                                      'assets/images/story_link_icon.svg',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 3),
-                              SizedBox(
-                                width: 225,
-                                child: FittedBox(
-                                  alignment: Alignment.centerLeft,
-                                  fit: BoxFit.scaleDown,
-                                  child: const Text(
-                                    'HAMME.LINK',
-                                    style: TextStyle(
-                                      fontFamily: TFonts.nunito,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 36,
-                                      height: 1,
-                                      color: Colors.black,
-                                      decoration: TextDecoration.none,
-                                    ),
-                                  ),
-                                ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 108,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(36),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 12,
+                                offset: const Offset(0, 12),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 63),
-            // Footer
-            SizedBox(
-              width: 264,
-              height: 99,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Text(
-                    'Hamme',
-                    style: TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontSize: 72,
-                      fontWeight: FontWeight.w800,
-                      height: 33 / 24,
-                      foreground:
-                          Paint()
-                            ..style = PaintingStyle.stroke
-                            ..strokeWidth = 12
-                            ..color = Colors.black,
-                    ),
+                      Container(
+                        width: _avatarSize,
+                        height: _avatarSize,
+                        padding: const EdgeInsets.all(15),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: ClipOval(
+                          child:
+                              hasProfileImage
+                                  ? Image.network(
+                                    profileImageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => avatarFallback,
+                                  )
+                                  : avatarFallback,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 108,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(36),
+                          ),
+                          child: const Text(
+                            'What do you think of me?',
+                            style: TextStyle(
+                              fontFamily: TFonts.nunito,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 54,
+                              height: 25 / 18,
+                              color: Colors.black,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const Text(
-                    'Hamme',
-                    style: TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontSize: 72,
-                      fontWeight: FontWeight.w800,
-                      height: 33 / 24,
-                      color: Colors.white,
+                ),
+                const SizedBox(height: 24),
+                // Anonymous Text
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(TImages.emojiMonkey, width: 48, height: 48),
+                    const SizedBox(width: 12),
+                    Text(
+                      'send anonymously',
+                      style: TextStyle(
+                        fontFamily: TFonts.nunito,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 42,
+                        height: 19 / 14,
+                        color: const Color(0xFFEAE7E7),
+                        decoration: TextDecoration.none,
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Buttons
+                const _StoryButton(
+                  text: 'Friend',
+                  emojiPath: TImages.emojiFriend,
+                  colors: [Color(0xFF00CCFE), Color(0xFF005EFB)],
+                ),
+                const SizedBox(height: 24),
+                const _StoryButton(
+                  text: 'Crush',
+                  emojiPath: TImages.emojiCrush,
+                  colors: [Color(0xFFCE58E6), Color(0xFFFE3B9D)],
+                ),
+                const SizedBox(height: 24),
+                const _StoryButton(
+                  text: 'Frenemy',
+                  emojiPath: TImages.emojiFrenemy,
+                  colors: [Color(0xFFBBADED), Color(0xFF50528D)],
+                ),
+                const SizedBox(height: 96),
+                SizedBox(
+                  width: 480,
+                  height: 493,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Image.asset(
+                          'assets/images/placelink.png',
+                          fit: BoxFit.fill,
+                        ),
+                      ),
+                      if (showBrandLink)
+                        Positioned(
+                        left: 24,
+                          top: 150,
+                          child: Container(
+                            width: 435,
+                            height: 144,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(27),
+                            ),
+                            child: Padding(
+                            padding: const EdgeInsets.only(left: 96),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 66,
+                                    height: 72,
+                                    child: Center(
+                                      child: Transform.scale(
+                                        scale: 3,
+                                        child: SvgPicture.asset(
+                                          'assets/images/story_link_icon.svg',
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  SizedBox(
+                                    width: 225,
+                                    child: FittedBox(
+                                      alignment: Alignment.centerLeft,
+                                      fit: BoxFit.scaleDown,
+                                      child: const Text(
+                                        'HAMME.LINK',
+                                        style: TextStyle(
+                                          fontFamily: TFonts.nunito,
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 36,
+                                          height: 1,
+                                          color: Colors.black,
+                                          decoration: TextDecoration.none,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 74),
+                // Footer
+                SizedBox(
+                  width: 264,
+                  height: 99,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Text(
+                        'Hamme',
+                        style: TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontSize: 72,
+                          fontWeight: FontWeight.w800,
+                          height: 33 / 24,
+                          foreground:
+                              Paint()
+                                ..style = PaintingStyle.stroke
+                                ..strokeWidth = 12
+                                ..color = Colors.black,
+                        ),
+                      ),
+                      const Text(
+                        'Hamme',
+                        style: TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontSize: 72,
+                          fontWeight: FontWeight.w800,
+                          height: 33 / 24,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  'play games  &  meet people',
+                  style: TextStyle(
+                    fontFamily: TFonts.schibstedGrotesk,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 36,
+                    height: 15 / 12,
+                    letterSpacing: -2.16,
+                    color: Colors.white,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+                const Spacer(),
+              ],
             ),
-            Text(
-              'play games  &  meet people',
-              style: TextStyle(
-                fontFamily: TFonts.schibstedGrotesk,
-                fontWeight: FontWeight.w800,
-                fontSize: 36,
-                letterSpacing: -2.16,
-                color: Colors.white.withValues(alpha: 0.8),
-                decoration: TextDecoration.none,
-              ),
-            ),
-            const Spacer(),
-          ],
+          ),
         ),
       ),
     );
@@ -525,6 +542,13 @@ class _StoryButton extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: colors),
         borderRadius: BorderRadius.circular(54),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -535,8 +559,9 @@ class _StoryButton extends StatelessWidget {
             text,
             style: const TextStyle(
               fontFamily: TFonts.nunito,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
               fontSize: 54,
+              height: 25 / 18,
               color: Colors.white,
               decoration: TextDecoration.none,
             ),

@@ -38,6 +38,11 @@ void main() {
     expect(find.text('Friend'), findsOneWidget);
     expect(find.text('Crush'), findsOneWidget);
     expect(find.text('Frenemy'), findsOneWidget);
+    // 360x800 Figma composition fits uniformly into the 9:16 export.
+    final friend = tester.getRect(find.text('Friend'));
+    expect(friend.center.dx, greaterThan(540));
+    expect(friend.top, closeTo(278 * 2.4, 2));
+    expect(friend.height, closeTo(25 * 2.4, 0.1));
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(
