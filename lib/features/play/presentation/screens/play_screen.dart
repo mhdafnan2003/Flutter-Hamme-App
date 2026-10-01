@@ -1421,7 +1421,7 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          const contentHeight = 517.0;
+          const contentHeight = 551.0;
           final remainingSpace = (constraints.maxHeight - contentHeight).clamp(
             0.0,
             1000.0,
@@ -1501,7 +1501,8 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                         const SizedBox(height: 16),
                         const SizedBox(
                           height: 44,
-                          child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
                             child: Text(
                               'Not a Match!',
                               style: TextStyle(
@@ -1514,15 +1515,21 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Text(
-                          '$otherName chose something else.\nyou’ll never know 😭',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            color: Color(0xFF484848),
-                            height: 1.35,
+                        SizedBox(
+                          height: 38,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '$otherName chose something else.\nyou’ll never know 😭',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: Color(0xFF484848),
+                                height: 1.35,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -1578,13 +1585,14 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                                     semanticLabel: 'Rewind',
                                   ),
                                 ),
-                                const SizedBox(width: 43),
-                                const SizedBox(
-                                  width: 147,
+                                SizedBox(
+                                  width: constraints.maxWidth >= 345 ? 43 : 12,
+                                ),
+                                const Expanded(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                        CrossAxisAlignment.center,
                                     children: [
                                       Text(
                                         'Rewind',
@@ -1595,24 +1603,30 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                                           color: Colors.white,
                                         ),
                                       ),
-                                      Text(
-                                        'go back and play again',
-                                        style: TextStyle(
-                                          fontFamily: TFonts.nunito,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: Color(0xFFEEEEEE),
+                                      SizedBox(height: 4),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          'go back and play again',
+                                          style: TextStyle(
+                                            fontFamily: TFonts.nunito,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: Color(0xFFEEEEEE),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 33),
+                                SizedBox(
+                                  width: constraints.maxWidth >= 345 ? 33 : 8,
+                                ),
                                 // Pro badge
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 3,
+                                    horizontal: 8,
+                                    vertical: 1.5,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -1622,8 +1636,8 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                                     'pro',
                                     style: TextStyle(
                                       fontFamily: TFonts.nunito,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
                                       color: Color(0xFFCF25F3),
                                     ),
                                   ),
@@ -1650,12 +1664,16 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
 
                 // ── Timer Row ─────────────────────────────────────────────────
                 SizedBox(
-                  height: 44,
+                  height:
+                      44 +
+                      (MediaQuery.textScalerOf(context).scale(12) / 12 - 1)
+                              .clamp(0.0, 2.0) *
+                          18,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       children: [
-                        const SizedBox(height: 17),
+                        const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1676,8 +1694,8 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                                     '${_secondsRemaining}s',
                                     style: TextStyle(
                                       fontFamily: TFonts.nunito,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
                                       color:
                                           _animController.value > 0.8
                                               ? Colors.red
@@ -1687,7 +1705,7 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 2),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(6),
                           child: AnimatedBuilder(
@@ -1701,7 +1719,7 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                                         ? Colors.red
                                         : const Color(0xFF9B6AFF),
                                   ),
-                                  minHeight: 5,
+                                  minHeight: 3,
                                 ),
                           ),
                         ),
@@ -1720,6 +1738,7 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                     child: GestureDetector(
                       onTap: widget.onSeeNext,
                       child: Container(
+                        width: double.infinity,
                         height: 56,
                         decoration: BoxDecoration(
                           color: const Color(0xFFF5F0FF),
@@ -1732,33 +1751,41 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            Transform.translate(
-                              offset: const Offset(12, 0),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'See next profile',
-                                    style: TextStyle(
-                                      fontFamily: TFonts.nunito,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 16,
-                                      color: Colors.black.withValues(
-                                        alpha: 0.8,
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 40,
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Transform.translate(
+                                  offset: const Offset(12, 0),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'See next profile',
+                                        style: TextStyle(
+                                          fontFamily: TFonts.nunito,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 16,
+                                          color: Colors.black.withValues(
+                                            alpha: 0.8,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        widget.remainingCount.toString(),
+                                        style: const TextStyle(
+                                          fontFamily: TFonts.nunito,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 16,
+                                          color: Color(0xFF8F56FD),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    widget.remainingCount.toString(),
-                                    style: const TextStyle(
-                                      fontFamily: TFonts.nunito,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 16,
-                                      color: Color(0xFF8F56FD),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                             const Positioned(
@@ -1890,312 +1917,368 @@ class _PlayQueue extends StatelessWidget {
     final socialIcon = _socialIcon(item);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 32),
 
-          // ── "👀 reacted to you" pill ───────────────────────────────────
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8E1FF),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const EmojiImage(emoji: '👀', size: 14),
-                const SizedBox(width: 8),
-                Text(
-                  ' reacted to you', //$remainingCount
-                  style: const TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: Colors.black,
+            // ── "👀 reacted to you" pill ───────────────────────────────────
+            Container(
+              height: 26 * (MediaQuery.textScalerOf(context).scale(16) / 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8E1FF),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/icons/emoji_eyes.png',
+                    width: 20,
+                    height: 20,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 2),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text:
+                              isAnonymous
+                                  ? 'reacted to you'
+                                  : 'reacted to you ',
+                        ),
+                        if (!isAnonymous)
+                          TextSpan(
+                            text: remainingCount.toString(),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                      ],
+                    ),
+                    style: const TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 62),
+            const SizedBox(height: 46),
 
-          // ── Stacked card (scaled down) ────────────────
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              final backW = w * 0.7;
-              final midW = w * 0.88;
-              final frontW = w;
+            // ── Stacked card (scaled down) ────────────────
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                final backW = w * (226 / 345);
+                final midW = w * (290 / 345);
+                final frontW = w;
 
-              const frontCardH = 195.0;
-              const purpleHeaderH = 130.0;
-              const avatarRadius = 52.0;
-              const backTop = 0.0;
-              const midTop = 10.0;
-              const frontTop = 20.0;
-              const avatarTop = frontTop - 40.0;
+                final textScale =
+                    MediaQuery.textScalerOf(context).scale(20) / 20;
+                final purpleHeaderH =
+                    134.0 + (textScale - 1).clamp(0.0, 2.0) * 43;
+                final frontCardH = purpleHeaderH + 53;
+                const avatarRadius = 60.0;
+                const backTop = 25.0;
+                const midTop = 37.0;
+                const frontTop = 53.0;
+                const avatarTop = 0.0;
 
-              final stackH = frontTop + frontCardH;
+                final stackH = frontTop + frontCardH;
 
-              return SizedBox(
-                height: stackH,
-                width: w,
-                child: Stack(
-                  alignment: Alignment.topCenter,
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Layer 1 — back
-                    Positioned(
-                      top: backTop,
-                      child: Container(
-                        width: backW,
-                        height: frontCardH * 0.8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE0E0E0),
-                          borderRadius: BorderRadius.circular(32),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Layer 2 — mid
-                    Positioned(
-                      top: midTop,
-                      child: Container(
-                        width: midW,
-                        height: frontCardH * 0.9,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0F0F0),
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Layer 3 — front card
-                    Positioned(
-                      top: frontTop,
-                      child: Container(
-                        width: frontW,
-                        height: frontCardH,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.07),
-                              blurRadius: 25,
-                              offset: const Offset(0, 12),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: Column(
-                            children: [
-                              Container(
-                                height: purpleHeaderH,
-                                width: double.infinity,
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFFB18DFF),
-                                      Color(0xFF9E6DFF),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: Stack(
-                                  children: [
-                                    // Every card, anonymous ones included,
-                                    // can be hidden, reported or blocked.
-                                    Positioned(
-                                      top: 4,
-                                      right: 4,
-                                      child: SafetyMenuButton(
-                                        onPressed: onReport,
-                                        icon: CupertinoIcons.flag_fill,
-                                        iconSize: 17,
-                                        iconColor: TColors.hammePrimaryDark,
-                                        backgroundColor: Colors.white
-                                            .withValues(alpha: 0.92),
-                                        label:
-                                            isAnonymous
-                                                ? 'Report or block this '
-                                                    'anonymous voter'
-                                                : 'Report or block $name',
-                                      ),
-                                    ),
-                                    Align(
-                                      alignment: Alignment.bottomCenter,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 16,
-                                        ),
-                                        child:
-                                            isAnonymous
-                                                ? AnimatedSpoiler(
-                                                  width: 148,
-                                                  height: 24,
-                                                  particleColor: Colors.white,
-                                                )
-                                                : Text(
-                                                  name,
-                                                  style: const TextStyle(
-                                                    fontFamily: TFonts.nunito,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Colors.white,
-                                                    fontSize: 20,
-                                                  ),
-                                                ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Expanded(
-                                child: Center(
-                                  child: Text(
-                                    'What do you think of me?',
-                                    style: const TextStyle(
-                                      fontFamily: TFonts.nunito,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.black,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
+                return SizedBox(
+                  height: stackH,
+                  width: w,
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Layer 1 — back
+                      Positioned(
+                        top: backTop,
+                        child: Container(
+                          width: backW,
+                          height: frontCardH * 0.8,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF2F2F2),
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ),
 
-                    // Floating avatar
-                    Positioned(
-                      top: avatarTop,
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
+                      // Layer 2 — mid
+                      Positioned(
+                        top: midTop,
+                        child: Container(
+                          width: midW,
+                          height: frontCardH * 0.9,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0F0F0),
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Layer 3 — front card
+                      Positioned(
+                        top: frontTop,
+                        child: Container(
+                          key: const Key('play-queue-front-card'),
+                          width: frontW,
+                          height: frontCardH,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 40,
+                                spreadRadius: -8,
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: Column(
+                              children: [
+                                Container(
+                                  height: purpleHeaderH,
+                                  width: double.infinity,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFA678FF),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      // Every card, anonymous ones included,
+                                      // can be hidden, reported or blocked.
+                                      Positioned(
+                                        top: -2,
+                                        right: 2,
+                                        child: SafetyMenuButton(
+                                          onPressed: onReport,
+                                          icon: CupertinoIcons.flag_fill,
+                                          iconSize: 17,
+                                          iconColor: Colors.white,
+                                          backgroundColor: Colors.transparent,
+                                          label:
+                                              isAnonymous
+                                                  ? 'Report or block this '
+                                                      'anonymous voter'
+                                                  : 'Report or block $name',
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
+                                          child:
+                                              isAnonymous
+                                                  ? AnimatedSpoiler(
+                                                    width: 128,
+                                                    height: 27,
+                                                    particleColor: Colors.white,
+                                                  )
+                                                  : Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        name,
+                                                        maxLines: 1,
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                        style: const TextStyle(
+                                                          fontFamily:
+                                                              TFonts.nunito,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          color: Colors.white,
+                                                          fontSize: 20,
+                                                        ),
+                                                      ),
+                                                      if (item.fromUserUsername
+                                                              ?.trim()
+                                                              .isNotEmpty ==
+                                                          true)
+                                                        Text(
+                                                          '@${item.fromUserUsername!.replaceAll('@', '')}',
+                                                          style:
+                                                              const TextStyle(
+                                                                fontFamily:
+                                                                    TFonts
+                                                                        .nunito,
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                              ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Center(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'What do you think of me?',
+                                        style: const TextStyle(
+                                          fontFamily: TFonts.nunito,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.black,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                            child:
-                                isAnonymous
-                                    ? ImageFiltered(
-                                      imageFilter: ui.ImageFilter.blur(
-                                        sigmaX: 3,
-                                        sigmaY: 3,
-                                      ),
-                                      child: const CircleAvatar(
-                                        radius: avatarRadius,
-                                        backgroundColor: Color(0xFFD7D7D7),
-                                        child: Icon(
-                                          CupertinoIcons.person_fill,
-                                          color: Color(0xFFAAAAAA),
-                                          size: 58,
-                                        ),
-                                      ),
-                                    )
-                                    : CircleAvatar(
-                                      radius: avatarRadius,
-                                      backgroundColor: const Color(0xFFAEE5F2),
-                                      backgroundImage:
-                                          avatarUrl != null &&
-                                                  avatarUrl.isNotEmpty
-                                              ? NetworkImage(avatarUrl)
-                                              : null,
-                                      child:
-                                          avatarUrl == null || avatarUrl.isEmpty
-                                              ? Text(
-                                                name.characters.first
-                                                    .toUpperCase(),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 28,
-                                                ),
-                                              )
-                                              : null,
-                                    ),
                           ),
-                          if (!isAnonymous && socialIcon != null)
-                            Positioned(
-                              right: -4,
-                              bottom: -4,
-                              child: SizedBox(
-                                width: 38,
-                                height: 38,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: Image.asset(
-                                    socialIcon,
-                                    fit: BoxFit.contain,
+                        ),
+                      ),
+
+                      // Floating avatar
+                      Positioned(
+                        top: avatarTop,
+                        child: Stack(
+                          alignment: Alignment.bottomRight,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child:
+                                  isAnonymous
+                                      ? ImageFiltered(
+                                        imageFilter: ui.ImageFilter.blur(
+                                          sigmaX: 3,
+                                          sigmaY: 3,
+                                        ),
+                                        child: const CircleAvatar(
+                                          radius: avatarRadius,
+                                          backgroundColor: Color(0xFFD7D7D7),
+                                          child: Icon(
+                                            CupertinoIcons.person_fill,
+                                            color: Color(0xFFAAAAAA),
+                                            size: 58,
+                                          ),
+                                        ),
+                                      )
+                                      : CircleAvatar(
+                                        key: const Key('play-queue-avatar'),
+                                        radius: avatarRadius,
+                                        backgroundColor: const Color(
+                                          0xFFAEE5F2,
+                                        ),
+                                        backgroundImage:
+                                            avatarUrl != null &&
+                                                    avatarUrl.isNotEmpty
+                                                ? NetworkImage(avatarUrl)
+                                                : null,
+                                        child:
+                                            avatarUrl == null ||
+                                                    avatarUrl.isEmpty
+                                                ? Text(
+                                                  name.characters.first
+                                                      .toUpperCase(),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 28,
+                                                  ),
+                                                )
+                                                : null,
+                                      ),
+                            ),
+                            if (!isAnonymous && socialIcon != null)
+                              Positioned(
+                                right: -4,
+                                bottom: -4,
+                                child: SizedBox(
+                                  width: 38,
+                                  height: 38,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: Image.asset(
+                                      socialIcon,
+                                      fit: BoxFit.contain,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                    ],
+                  ),
+                );
+              },
+            ),
 
-          const SizedBox(height: 45),
+            const SizedBox(height: 40),
 
-          // ── Response buttons ──────────────────────────────────────────────
-          _ResponseButton(
-            label: 'Friend',
-            emoji: '🤝',
-            colors: const [Color(0xFF00CCFE), Color(0xFF005EFB)],
-            onTap: () => onSelect(InteractionType.friend),
-          ),
-          const SizedBox(height: 10),
-          _ResponseButton(
-            label: 'Crush',
-            emoji: '😍',
-            colors: const [Color(0xFFCF59E7), Color(0xFFFF3C9E)],
-            onTap: () => onSelect(InteractionType.crush),
-          ),
-          const SizedBox(height: 10),
-          _ResponseButton(
-            label: 'Frenemy',
-            emoji: '😈',
-            colors: const [Color(0xFFBBADED), Color(0xFF50528D)],
-            onTap: () => onSelect(InteractionType.frenemy),
-          ),
+            // ── Response buttons ──────────────────────────────────────────────
+            _ResponseButton(
+              label: 'Friend',
+              emoji: '🤝',
+              colors: const [Color(0xFF00CCFE), Color(0xFF005EFB)],
+              onTap: () => onSelect(InteractionType.friend),
+            ),
+            const SizedBox(height: 12),
+            _ResponseButton(
+              label: 'Crush',
+              emoji: '😍',
+              colors: const [Color(0xFFCF59E7), Color(0xFFFF3C9E)],
+              onTap: () => onSelect(InteractionType.crush),
+            ),
+            const SizedBox(height: 12),
+            _ResponseButton(
+              label: 'Frenemy',
+              emoji: '😈',
+              colors: const [Color(0xFFBBADED), Color(0xFF50528D)],
+              onTap: () => onSelect(InteractionType.frenemy),
+            ),
 
-          const Spacer(),
-        ],
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
@@ -2228,7 +2311,7 @@ class _ResponseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 300,
+      width: 277,
       height: 56,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -2240,9 +2323,9 @@ class _ResponseButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: colors.last.withValues(alpha: 0.22),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -2259,16 +2342,24 @@ class _ResponseButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              EmojiImage(emoji: emoji, size: 24),
-              const SizedBox(width: 10),
+              Image.asset(
+                switch (emoji) {
+                  '🤝' => 'assets/icons/emoji_friend.png',
+                  '😍' => 'assets/icons/emoji_crush.png',
+                  _ => 'assets/icons/emoji_frenemy.png',
+                },
+                fit: BoxFit.fill,
+                width: 28,
+                height: emoji == '😈' ? 28 : 24,
+              ),
+              const SizedBox(width: 2),
               Text(
                 label,
                 style: const TextStyle(
                   color: Colors.white,
                   fontFamily: TFonts.nunito,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                  letterSpacing: 0.4,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
                 ),
               ),
             ],
