@@ -26,6 +26,12 @@
 
 - The app shows a top-right close button on the match success overlay. The corresponding Figma share screen has no close control. It is retained so users can dismiss the overlay.
 
+## Story sharing
+
+- Figma's active DESIGN page contains two story templates: the Instagram-style “PLACE LINK STICKER HERE” prompt (`4593:569`) and a “HAMME.LINK” treatment (`4673:1474`). The export now supports both visual variants, selecting the HAMME.LINK treatment for the Snapchat share path while keeping the existing share destinations and clipboard behavior unchanged.
+- The Figma template frame is 360×800 (9:20), while the exported story image remains 1080×1920 (9:16), the standard story-media canvas. This aspect-ratio difference is preserved for platform compatibility; confirm with the design owner if the export should instead follow the 9:20 Figma frame.
+- `SharePlayingScreen.autoShare` is parsed and passed by the router but not read by the screen; `initState` always starts sharing. A direct `/share/playing` route with `autoShare=false` still triggers a share. This behavior was not changed in the UI-only pass.
+
 ## Play non-match state
 
 - `poll_not_a_match_overlay.dart` is currently unreferenced. The matching Figma design is the embedded non-match state inside Play, which retains the top bar and bottom navigation. The live Play state was aligned; the unused standalone widget remains in the repository.

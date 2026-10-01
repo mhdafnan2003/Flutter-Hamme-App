@@ -5,10 +5,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/core/constants/app_constants.dart';
-import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -36,7 +36,13 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
     try {
       final draft =
           ref.read(onboardingDraftProvider).value ?? const OnboardingDraft();
-      final imageBytes = await _captureStoryFromHiddenOverlay(context, draft);
+      final imageBytes = await _captureStoryFromHiddenOverlay(
+        context,
+        draft,
+        // Instagram needs a place for the user-added link sticker; Snapchat's
+        // Figma template shows the brand link on the shared image.
+        showBrandLink: platform == 'snapchat',
+      );
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final tempDirectory = await getTemporaryDirectory();
@@ -71,7 +77,8 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
           await SharePlus.instance.share(
             ShareParams(
               files: [XFile(tempPath, mimeType: 'image/png')],
-              text: Platform.isIOS ? null : 'What do you think of me? $shareLink',
+              text:
+                  Platform.isIOS ? null : 'What do you think of me? $shareLink',
               sharePositionOrigin: _shareOrigin(context),
             ),
           );
@@ -88,10 +95,7 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
           if (instagramInstalled) {
             final launchResult = await _storyChannel.invokeMethod<String>(
               'shareToInstagramStory',
-              {
-                'imagePath': tempPath,
-                'attributionUrl': shareLink,
-              },
+              {'imagePath': tempPath, 'attributionUrl': shareLink},
             );
             if (launchResult == 'SUCCESS') return;
           }
@@ -124,8 +128,9 @@ class SharePlayingScreen extends ConsumerStatefulWidget {
 
 Future<Uint8List> _captureStoryFromHiddenOverlay(
   BuildContext context,
-  OnboardingDraft draft,
-) async {
+  OnboardingDraft draft, {
+  required bool showBrandLink,
+}) async {
   final boundaryKey = GlobalKey();
   final exportRootKey = GlobalKey();
   final completer = Completer<void>();
@@ -140,7 +145,11 @@ Future<Uint8List> _captureStoryFromHiddenOverlay(
             child: SizedBox(
               width: SharePlayingScreen._storyCanvasSize.width,
               height: SharePlayingScreen._storyCanvasSize.height,
-              child: StoryExportWidget(key: exportRootKey, draft: draft),
+              child: StoryExportWidget(
+                key: exportRootKey,
+                draft: draft,
+                showBrandLink: showBrandLink,
+              ),
             ),
           ),
         ),
@@ -214,10 +223,16 @@ class _SharePlayingScreenState extends ConsumerState<SharePlayingScreen> {
 /// The exact design widget for the Instagram/Snapchat Story (9:16 ratio)
 class StoryExportWidget extends StatelessWidget {
   final OnboardingDraft draft;
-  const StoryExportWidget({super.key, required this.draft});
+  final bool showBrandLink;
+  const StoryExportWidget({
+    super.key,
+    required this.draft,
+    this.showBrandLink = false,
+  });
 
-  static const double _avatarSize = 270;
-  static const double _contentWidth = 750;
+  // Figma's story template is authored at 360 px wide; the export is 3x.
+  static const double _avatarSize = 300;
+  static const double _contentWidth = 840;
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +262,7 @@ class StoryExportWidget extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFA47CFF), Color(0xFF7B3FF2)],
+            colors: [Color(0xFF9E6EFE), Color(0xFF7737FD)],
           ),
         ),
         child: Column(
@@ -257,7 +272,7 @@ class StoryExportWidget extends StatelessWidget {
             // two white shapes join into one.
             SizedBox(
               width: _contentWidth,
-              height: _avatarSize + 96 - 12,
+              height: _avatarSize + 108 - 15,
               child: Stack(
                 alignment: Alignment.topCenter,
                 children: [
@@ -270,9 +285,9 @@ class StoryExportWidget extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 12,
+                          offset: const Offset(0, 12),
                         ),
                       ],
                     ),
@@ -282,23 +297,16 @@ class StoryExportWidget extends StatelessWidget {
                     left: 0,
                     right: 0,
                     child: Container(
-                      height: 96,
+                      height: 108,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.18),
-                            blurRadius: 24,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(36),
                       ),
                     ),
                   ),
                   Container(
                     width: _avatarSize,
                     height: _avatarSize,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(15),
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white,
@@ -319,18 +327,18 @@ class StoryExportWidget extends StatelessWidget {
                     left: 0,
                     right: 0,
                     child: Container(
-                      height: 96,
+                      height: 108,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(36),
                       ),
                       child: const Text(
                         'What do you think of me?',
                         style: TextStyle(
                           fontFamily: TFonts.nunito,
                           fontWeight: FontWeight.w900,
-                          fontSize: 48,
+                          fontSize: 54,
                           color: Colors.black,
                           decoration: TextDecoration.none,
                         ),
@@ -345,56 +353,148 @@ class StoryExportWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const EmojiImage(emoji: '\u{1F648}', size: 34),
-                const SizedBox(width: 10),
+                Image.asset(TImages.emojiMonkey, width: 48, height: 48),
+                const SizedBox(width: 12),
                 Text(
                   'send anonymously',
                   style: TextStyle(
                     fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 34,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 42,
+                    color: const Color(0xFFEAE7E7),
                     decoration: TextDecoration.none,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 30),
             // Buttons
             const _StoryButton(
               text: 'Friend',
-              emoji: '\u{1F91D}',
-              colors: [Color(0xFF14D5F5), Color(0xFF3A63FF)],
+              emojiPath: TImages.emojiFriend,
+              colors: [Color(0xFF00CCFE), Color(0xFF005EFB)],
             ),
             const SizedBox(height: 24),
             const _StoryButton(
               text: 'Crush',
-              emoji: '\u{1F60D}',
-              colors: [Color(0xFFD74CDB), Color(0xFFFF3190)],
+              emojiPath: TImages.emojiCrush,
+              colors: [Color(0xFFCE58E6), Color(0xFFFE3B9D)],
             ),
             const SizedBox(height: 24),
             const _StoryButton(
               text: 'Frenemy',
-              emoji: '\u{1F608}',
-              colors: [Color(0xFFB6A8EA), Color(0xFF595A96)],
+              emojiPath: TImages.emojiFrenemy,
+              colors: [Color(0xFFBBADED), Color(0xFF50528D)],
             ),
-            const SizedBox(height: 80),
-            Image.asset(
-              'assets/images/placelink.png',
-              width: 410,
-              fit: BoxFit.contain,
+            const SizedBox(height: 96),
+            SizedBox(
+              width: 480,
+              height: 493,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Image.asset(
+                      'assets/images/placelink.png',
+                      fit: BoxFit.fill,
+                    ),
+                  ),
+                  if (showBrandLink)
+                    Positioned(
+                      left: 21,
+                      top: 150,
+                      child: Container(
+                        width: 435,
+                        height: 144,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(27),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 99),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 66,
+                                height: 72,
+                                child: Center(
+                                  child: Transform.scale(
+                                    scale: 3,
+                                    child: SvgPicture.asset(
+                                      'assets/images/story_link_icon.svg',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 3),
+                              SizedBox(
+                                width: 225,
+                                child: FittedBox(
+                                  alignment: Alignment.centerLeft,
+                                  fit: BoxFit.scaleDown,
+                                  child: const Text(
+                                    'HAMME.LINK',
+                                    style: TextStyle(
+                                      fontFamily: TFonts.nunito,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 36,
+                                      height: 1,
+                                      color: Colors.black,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            const SizedBox(height: 70),
+            const SizedBox(height: 63),
             // Footer
-            Image.asset(TImages.hammeLogo, height: 95),
-            const SizedBox(height: 10),
+            SizedBox(
+              width: 264,
+              height: 99,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Text(
+                    'Hamme',
+                    style: TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontSize: 72,
+                      fontWeight: FontWeight.w800,
+                      height: 33 / 24,
+                      foreground:
+                          Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 12
+                            ..color = Colors.black,
+                    ),
+                  ),
+                  const Text(
+                    'Hamme',
+                    style: TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontSize: 72,
+                      fontWeight: FontWeight.w800,
+                      height: 33 / 24,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Text(
-              'play games & meet people',
+              'play games  &  meet people',
               style: TextStyle(
-                fontFamily: TFonts.nunito,
-                fontWeight: FontWeight.w700,
-                fontSize: 30,
-                color: Colors.white.withValues(alpha: 0.85),
+                fontFamily: TFonts.schibstedGrotesk,
+                fontWeight: FontWeight.w800,
+                fontSize: 36,
+                letterSpacing: -2.16,
+                color: Colors.white.withValues(alpha: 0.8),
                 decoration: TextDecoration.none,
               ),
             ),
@@ -408,42 +508,35 @@ class StoryExportWidget extends StatelessWidget {
 
 class _StoryButton extends StatelessWidget {
   final String text;
-  final String emoji;
+  final String emojiPath;
   final List<Color> colors;
 
   const _StoryButton({
     required this.text,
-    required this.emoji,
+    required this.emojiPath,
     required this.colors,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 700,
-      height: 128,
+      width: 780,
+      height: 144,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: colors),
-        borderRadius: BorderRadius.circular(40),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(54),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          EmojiImage(emoji: emoji, size: 46),
+          Image.asset(emojiPath, width: 66, height: 66),
           const SizedBox(width: 6),
           Text(
             text,
             style: const TextStyle(
               fontFamily: TFonts.nunito,
               fontWeight: FontWeight.w900,
-              fontSize: 46,
+              fontSize: 54,
               color: Colors.white,
               decoration: TextDecoration.none,
             ),
