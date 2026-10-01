@@ -23,6 +23,10 @@ body {
   background: transparent;
 }
 
+.public-poll-screen {
+  font-family: Nunito, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
 .share-question-screen {
   padding-top: clamp(24px, calc(81.2dvh - 517px), 132px);
   padding-bottom: 32px;
@@ -31,6 +35,19 @@ body {
 .share-reveal-screen {
   padding-top: clamp(80px, 10vh, 82px);
   padding-bottom: 35px;
+}
+
+.reveal-button::before {
+  position: absolute;
+  z-index: -1;
+  top: 6px;
+  right: 0;
+  left: 0;
+  height: 56px;
+  border-radius: 33px;
+  background: #e3e3e3;
+  content: "";
+  pointer-events: none;
 }
 
 .share-question-screen .friends-playing {

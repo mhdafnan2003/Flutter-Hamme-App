@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import friendEmoji from '../../assets/icons/emoji_friend.png';
 import crushEmoji from '../../assets/icons/emoji_crush.png';
 import frenemyEmoji from '../../assets/icons/emoji_frenemy.png';
+import eyesEmoji from '../../assets/icons/emoji_eyes.png';
+import revealArrowRight from '../../assets/icons/icon_line/reveal_arrow_right.svg';
 
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
@@ -419,7 +421,9 @@ function ShareFlowApp() {
   const profileImage = optimizeProfileImage(profile.profileImageUrl) || fallbackProfileImage;
 
   return (
-    <main className="min-h-[100dvh] overflow-x-hidden bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
+    <main
+      className={`public-poll-screen min-h-[100dvh] overflow-x-hidden text-white ${alreadyVoted ? 'bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)]' : 'bg-[linear-gradient(180deg,#9e6efe_0%,#7737fd_100%)]'}`}
+    >
       <section className={`mx-auto flex min-h-[100dvh] w-full max-w-[360px] flex-col items-center px-4 text-center ${isSent ? 'share-reveal-screen' : alreadyVoted ? 'pb-6 pt-[clamp(24px,8vh,82px)]' : 'share-question-screen'}`}>
         {isSent ? (
           <RevealScreen
@@ -1706,10 +1710,21 @@ function RevealScreen({
       <button
         onClick={handleReveal}
         disabled={isExpired}
-        className="reveal-button mt-[12px] flex h-[61px] w-full items-center justify-center rounded-[27px] bg-white px-8 text-[20px] font-black text-[#c000df] shadow-[0_7px_0_rgba(0,0,0,0.10)] transition active:translate-y-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:active:translate-y-0"
+        className="reveal-button relative isolate mt-[12px] flex h-[56px] w-full items-center justify-center overflow-visible rounded-[33px] bg-white text-[20px] font-extrabold text-[#be01d1] transition active:translate-y-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0"
       >
-        <span className="flex-1">👀 Reveal</span>
-        <span className="text-[27px] font-light">{'→'}</span>
+        <span
+          className="pointer-events-none absolute flex -translate-x-1/2 items-center gap-1 whitespace-nowrap"
+          style={{ left: 'calc(50% - 10px)' }}
+        >
+          <img src={eyesEmoji} alt="" className="h-5 w-5 object-contain" />
+          <span>Reveal</span>
+        </span>
+        <img
+          src={revealArrowRight}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute right-6 h-5 w-5"
+        />
       </button>
 
       {/* <button
