@@ -37,6 +37,8 @@ Community rules/consent and safety menus are additional functional UI. The file 
 
 The final coverage audit searched all 90 DESIGN frames and checked active app call sites. `PollMatchOverlay` is active and reviewed separately from the post-vote celebration. `PollNotAMatchOverlay`, `AuthTextField`, the old date-picker wheel chain, `PlayingFriendsRow`, and `ShareOptionButton` have no active call sites and are retained as unused code; they are not claimed as verified app pages. The explanatory user-flow diagram 4473:1030 is not an app screen.
 
+Profile, Account suspended, Terms acceptance, Settings, and Blocked users also received responsive fixes after all five failed at 320×480 with 2× text scaling. Seven regression checks now pass, including normal-size position preservation. Their unmatched design styling is preserved; see [extra-screen responsive audit](UI_REVIEW_EXTRA_SCREENS.md).
+
 ## Remaining decisions
 
 - Multiple old and new Figma versions coexist. Use the listed current references; record conflicting variants rather than silently combining them.
@@ -46,6 +48,14 @@ The final coverage audit searched all 90 DESIGN frames and checked active app ca
 
 ## Verification
 
-Targeted widget checks load the real bundled fonts where metrics matter. Tutorial tests exercise Close routing and all platform steps on a 320×568 phone. Home and Inbox tests cover reference and shorter devices. Browser tests use production CSS and include narrow, short, landscape, and long-name cases. Full-suite results and build status will be recorded after all parallel page changes land.
+Targeted widget checks load the real bundled fonts where metrics matter. Tutorial tests exercise Close routing and all platform steps on a 320×568 phone. Home and Inbox tests cover reference and shorter devices. Browser tests use production CSS and include narrow, short, landscape, and long-name cases.
 
-Related notes: [Onboarding](UI_REVIEW_ONBOARDING.md), [Client](UI_REVIEW_CLIENT.md), [Home and Inbox](UI_REVIEW_HOME_INBOX.md), [Play and Matches](UI_REVIEW_PLAY_MATCHES.md).
+- Final serialized Flutter suite: **245 tests passed**, zero failures, including all new responsive, callback, platform-selection and anonymous-export privacy checks.
+- Final Flutter analysis: **no issues found**.
+- Final Android debug APK build passed on 2026-10-01 at 20:07 IST. Fresh artifact: `build/app/outputs/flutter-apk/app-debug.apk` (199,817,592 bytes).
+- Website production build passed. Four landing viewport cases and five public question/Reveal cases passed; the latter include expiration color, timer and disabled-action assertions.
+- Website lint retains four pre-existing App.jsx findings, detailed in the client notes.
+
+Native Instagram/Snapchat launch and sharing still require a device integration check. Widget tests and APK compilation do not establish that external apps accept each share payload.
+
+Related notes: [Onboarding](UI_REVIEW_ONBOARDING.md), [Client](UI_REVIEW_CLIENT.md), [Home and Inbox](UI_REVIEW_HOME_INBOX.md), [Play and Matches](UI_REVIEW_PLAY_MATCHES.md), [Extra screens](UI_REVIEW_EXTRA_SCREENS.md).
