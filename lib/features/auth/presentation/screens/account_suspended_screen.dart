@@ -33,83 +33,105 @@ class AccountSuspendedScreen extends ConsumerWidget {
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-            child: Column(
-              children: [
-                const Spacer(),
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.exclamationmark_shield_fill,
-                    size: 48,
-                    color: Colors.redAccent,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Account suspended',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 24,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  CommunityRules.accountSuspendedMessage,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                    height: 1.4,
-                    color: TColors.darkerGrey,
-                  ),
-                ),
-                const Spacer(),
-                GradientButton(
-                  label: 'Contact support',
-                  borderRadius: 22,
-                  fontWeight: FontWeight.w800,
-                  onTap:
-                      () => emailSupport(
-                        context,
-                        subject: 'Account suspended',
-                        body:
-                            'I think my Hamme account was suspended by '
-                            'mistake.\n\n',
+            child: LayoutBuilder(
+              builder:
+                  (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
                       ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed:
-                          () => openExternalLink(context, kTermsOfUseUrl),
-                      style: secondaryActionStyle,
-                      child: const Text('Terms of Use'),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          children: [
+                            const Spacer(),
+                            Container(
+                              width: 96,
+                              height: 96,
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                CupertinoIcons.exclamationmark_shield_fill,
+                                size: 48,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Account suspended',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 24,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              CommunityRules.accountSuspendedMessage,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                height: 1.4,
+                                color: TColors.darkerGrey,
+                              ),
+                            ),
+                            const Spacer(),
+                            GradientButton(
+                              label: 'Contact support',
+                              borderRadius: 22,
+                              fontWeight: FontWeight.w800,
+                              onTap:
+                                  () => emailSupport(
+                                    context,
+                                    subject: 'Account suspended',
+                                    body:
+                                        'I think my Hamme account was suspended by '
+                                        'mistake.\n\n',
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                TextButton(
+                                  onPressed:
+                                      () => openExternalLink(
+                                        context,
+                                        kTermsOfUseUrl,
+                                      ),
+                                  style: secondaryActionStyle,
+                                  child: const Text('Terms of Use'),
+                                ),
+                                const Text(
+                                  '·',
+                                  style: TextStyle(color: TColors.darkGrey),
+                                ),
+                                TextButton(
+                                  // The router leaves this screen once acknowledged.
+                                  onPressed:
+                                      () =>
+                                          ref
+                                              .read(
+                                                accountSuspendedProvider
+                                                    .notifier,
+                                              )
+                                              .acknowledge(),
+                                  style: secondaryActionStyle,
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const Text('·', style: TextStyle(color: TColors.darkGrey)),
-                    TextButton(
-                      // The router leaves this screen once acknowledged.
-                      onPressed:
-                          () =>
-                              ref
-                                  .read(accountSuspendedProvider.notifier)
-                                  .acknowledge(),
-                      style: secondaryActionStyle,
-                      child: const Text('OK'),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
             ),
           ),
         ),
