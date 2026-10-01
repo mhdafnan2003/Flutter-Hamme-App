@@ -96,189 +96,214 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 33),
-                      const Text(
-                        TTexts.socialsTitle,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 24,
-                          height: 1,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 41),
-                      SizedBox(
-                        height: 40,
-                        width: 282,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: TColors.hammeSurface,
-                            borderRadius: BorderRadius.circular(20),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Preserve the keyboard-open Figma positions at 393x852.
+                  // On shorter screens, contract whitespace before scrolling.
+                  const fixedContentHeight = 88.0;
+                  const referenceTrailingSpace = 102.0;
+                  const referenceGapTotal = 126.0;
+                  final gapScale = ((constraints.maxHeight -
+                              fixedContentHeight -
+                              referenceTrailingSpace) /
+                          referenceGapTotal)
+                      .clamp(0.45, 1.2);
+
+                  double gap(double referenceValue) =>
+                      referenceValue * gapScale;
+
+                  return SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        children: [
+                          SizedBox(height: gap(33)),
+                          const Text(
+                            TTexts.socialsTitle,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: TFonts.nunito,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 24,
+                              height: 1,
+                              color: Colors.black,
+                            ),
                           ),
-                          child: Stack(
-                            children: [
-                              AnimatedPositioned(
-                                duration: const Duration(milliseconds: 200),
-                                curve: Curves.easeInOut,
-                                left: _isInstagramSelected ? 144 : 3,
-                                top: 3,
-                                width: 135,
-                                height: 34,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: TColors.borderPrimary,
-                                    borderRadius: BorderRadius.circular(17),
-                                  ),
-                                ),
+                          SizedBox(height: gap(41)),
+                          SizedBox(
+                            height: 40,
+                            width: 282,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: TColors.hammeSurface,
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              Row(
+                              child: Stack(
                                 children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTap:
-                                          () =>
-                                              _selectPlatform(instagram: false),
-                                      child: Center(
-                                        child: Text(
-                                          TTexts.socialSnapchat,
-                                          style: TextStyle(
-                                            fontFamily: TFonts.nunito,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 16,
-                                            height: 1,
-                                            color:
-                                                !_isInstagramSelected
-                                                    ? Colors.black
-                                                    : TColors.hammeInactiveText,
-                                          ),
-                                        ),
+                                  AnimatedPositioned(
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.easeInOut,
+                                    left: _isInstagramSelected ? 144 : 3,
+                                    top: 3,
+                                    width: 135,
+                                    height: 34,
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: TColors.borderPrimary,
+                                        borderRadius: BorderRadius.circular(17),
                                       ),
                                     ),
                                   ),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTap:
-                                          () =>
-                                              _selectPlatform(instagram: true),
-                                      child: Center(
-                                        child: Text(
-                                          TTexts.socialInstagram,
-                                          style: TextStyle(
-                                            fontFamily: TFonts.nunito,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 16,
-                                            height: 1,
-                                            color:
-                                                _isInstagramSelected
-                                                    ? Colors.black
-                                                    : TColors.hammeInactiveText,
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap:
+                                              () => _selectPlatform(
+                                                instagram: false,
+                                              ),
+                                          child: Center(
+                                            child: Text(
+                                              TTexts.socialSnapchat,
+                                              style: TextStyle(
+                                                fontFamily: TFonts.nunito,
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 16,
+                                                height: 1,
+                                                color:
+                                                    !_isInstagramSelected
+                                                        ? Colors.black
+                                                        : TColors
+                                                            .hammeInactiveText,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap:
+                                              () => _selectPlatform(
+                                                instagram: true,
+                                              ),
+                                          child: Center(
+                                            child: Text(
+                                              TTexts.socialInstagram,
+                                              style: TextStyle(
+                                                fontFamily: TFonts.nunito,
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 16,
+                                                height: 1,
+                                                color:
+                                                    _isInstagramSelected
+                                                        ? Colors.black
+                                                        : TColors
+                                                            .hammeInactiveText,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 52),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: TextField(
-                          controller: _usernameController,
-                          autofocus: true,
-                          cursorColor: Colors.black,
-                          cursorWidth: 2,
-                          cursorHeight: 32,
-                          cursorRadius: const Radius.circular(8),
-                          textAlign: TextAlign.center,
-                          textInputAction: TextInputAction.done,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[a-zA-Z0-9._]'),
+                          SizedBox(height: gap(52)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: TextField(
+                              controller: _usernameController,
+                              autofocus: true,
+                              cursorColor: Colors.black,
+                              cursorWidth: 2,
+                              cursorHeight: 32,
+                              cursorRadius: const Radius.circular(8),
+                              textAlign: TextAlign.center,
+                              textInputAction: TextInputAction.done,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[a-zA-Z0-9._]'),
+                                ),
+                              ],
+                              onChanged: (_) {
+                                if (_usernameError != null) {
+                                  setState(() => _usernameError = null);
+                                }
+                                final normalized =
+                                    _usernameController.text.toLowerCase();
+                                if (_usernameController.text != normalized) {
+                                  _usernameController.value =
+                                      _usernameController.value.copyWith(
+                                        text: normalized,
+                                        selection: TextSelection.collapsed(
+                                          offset: normalized.length,
+                                        ),
+                                      );
+                                }
+                              },
+                              focusNode: _usernameFocusNode,
+                              style: const TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 24,
+                                height: 1,
+                                color: Colors.black,
+                              ),
+                              decoration: const InputDecoration(
+                                hintText: TTexts.usernameHint,
+                                hintStyle: TextStyle(
+                                  fontFamily: TFonts.nunito,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 24,
+                                  height: 1,
+                                  color: TColors.hammePlaceholder,
+                                ),
+                                isDense: true,
+                                isCollapsed: true,
+                                filled: false,
+                                contentPadding: EdgeInsets.zero,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          if (_usernameError != null) ...[
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              child: Text(
+                                _usernameError!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontFamily: TFonts.nunito,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
                           ],
-                          onChanged: (_) {
-                            if (_usernameError != null) {
-                              setState(() => _usernameError = null);
-                            }
-                            final normalized =
-                                _usernameController.text.toLowerCase();
-                            if (_usernameController.text != normalized) {
-                              _usernameController.value = _usernameController
-                                  .value
-                                  .copyWith(
-                                    text: normalized,
-                                    selection: TextSelection.collapsed(
-                                      offset: normalized.length,
-                                    ),
-                                  );
-                            }
-                          },
-                          focusNode: _usernameFocusNode,
-                          style: const TextStyle(
-                            fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 24,
-                            height: 1,
-                            color: Colors.black,
-                          ),
-                          decoration: const InputDecoration(
-                            hintText: TTexts.usernameHint,
-                            hintStyle: TextStyle(
-                              fontFamily: TFonts.nunito,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 24,
-                              height: 1,
-                              color: TColors.hammePlaceholder,
-                            ),
-                            isDense: true,
-                            isCollapsed: true,
-                            filled: false,
-                            contentPadding: EdgeInsets.zero,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            errorBorder: InputBorder.none,
-                            focusedErrorBorder: InputBorder.none,
-                            disabledBorder: InputBorder.none,
-                          ),
-                        ),
+                        ],
                       ),
-                      if (_usernameError != null) ...[
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Text(
-                            _usernameError!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontFamily: TFonts.nunito,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
               child: GradientButton(
                 label: TTexts.next,
                 borderRadius: 22,
