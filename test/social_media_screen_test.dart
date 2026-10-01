@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hamme_app/core/widgets/gradient_button.dart';
@@ -6,6 +7,12 @@ import 'package:hamme_app/features/onboarding/presentation/screens/social_media_
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUpAll(() async {
+    final font = FontLoader('Nunito')
+      ..addFont(rootBundle.load('assets/fonts/Nunito-VariableFont_wght.ttf'));
+    await font.load();
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });

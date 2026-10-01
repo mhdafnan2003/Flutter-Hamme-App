@@ -126,11 +126,11 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               fontFamily: TFonts.nunito,
                               fontWeight: FontWeight.w900,
                               fontSize: 24,
-                              height: 1,
+                              height: 33 / 24,
                               color: Colors.black,
                             ),
                           ),
-                          SizedBox(height: gap(38)),
+                          SizedBox(height: gap(32)),
                           SizedBox(
                             height: 40,
                             width: 282,
@@ -171,7 +171,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                                                 fontFamily: TFonts.nunito,
                                                 fontWeight: FontWeight.w900,
                                                 fontSize: 16,
-                                                height: 1,
+                                                height: 22 / 16,
                                                 color:
                                                     !_isInstagramSelected
                                                         ? Colors.black
@@ -196,7 +196,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                                                 fontFamily: TFonts.nunito,
                                                 fontWeight: FontWeight.w900,
                                                 fontSize: 16,
-                                                height: 1,
+                                                height: 22 / 16,
                                                 color:
                                                     _isInstagramSelected
                                                         ? Colors.black
@@ -213,7 +213,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                               ),
                             ),
                           ),
-                          SizedBox(height: gap(55)),
+                          SizedBox(height: gap(52)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: TextField(
@@ -251,7 +251,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                                 fontFamily: TFonts.nunito,
                                 fontWeight: FontWeight.w500,
                                 fontSize: 24,
-                                height: 1,
+                                height: 33 / 24,
                                 color: Colors.black,
                               ),
                               decoration: const InputDecoration(
@@ -260,7 +260,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
                                   fontFamily: TFonts.nunito,
                                   fontWeight: FontWeight.w500,
                                   fontSize: 24,
-                                  height: 1,
+                                  height: 33 / 24,
                                   color: TColors.hammePlaceholder,
                                 ),
                                 isDense: true,
