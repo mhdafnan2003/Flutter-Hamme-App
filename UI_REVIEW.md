@@ -24,6 +24,7 @@ This is a coverage and ambiguity log, not a claim that every screen is pixel-per
 | Play cooldown | 4744:4197 | Play / Matches review |
 | Empty Play / empty Matches | 4468:839, 4468:774 | Play / Matches review |
 | Matches list / reply / anonymous reply | 5036:759, 5036:858, 5305:985 | Play / Matches review |
+| Match share exports: Friend / Frenemy / Crush | 4440:433, 4440:472, 4441:900 | Play / Matches export review |
 | Website landing / question / reveal | 5342:1155, 5305:877, 5365:725 | Client review and production-browser checks |
 
 ## Screens without an identified current matching design
@@ -43,4 +44,4 @@ Community rules/consent and safety menus are additional functional UI. The file 
 
 Targeted widget checks load the real bundled fonts where metrics matter. Tutorial tests exercise Close routing and all platform steps on a 320×568 phone. Home and Inbox tests cover reference and shorter devices. Browser tests use production CSS and include narrow, short, landscape, and long-name cases. Full-suite results and build status will be recorded after all parallel page changes land.
 
-Related notes: [Onboarding](UI_REVIEW_ONBOARDING.md), [Client](UI_REVIEW_CLIENT.md), Home/Inbox and Play/Matches notes are written by their respective reviews.
+Related notes: [Onboarding](UI_REVIEW_ONBOARDING.md), [Client](UI_REVIEW_CLIENT.md), [Home and Inbox](UI_REVIEW_HOME_INBOX.md), [Play and Matches](UI_REVIEW_PLAY_MATCHES.md).
