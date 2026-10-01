@@ -524,6 +524,7 @@ class MatchAvatarPair extends StatefulWidget {
     this.avatarSize = 116,
     this.centerSize = 42,
     this.plainOtherAvatar = false,
+    this.animate = true,
   });
 
   final String? currentUserImageUrl;
@@ -535,6 +536,7 @@ class MatchAvatarPair extends StatefulWidget {
   final double avatarSize;
   final double centerSize;
   final bool plainOtherAvatar;
+  final bool animate;
 
   @override
   State<MatchAvatarPair> createState() => _MatchAvatarPairState();
@@ -550,7 +552,9 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
     _entranceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 850),
-    )..forward();
+      value: widget.animate ? 0 : 1,
+    );
+    if (widget.animate) _entranceController.forward();
   }
 
   @override
@@ -643,15 +647,29 @@ class MatchAvatar extends StatelessWidget {
   final double size;
   final bool plainCircle;
 
+  Widget _fallback() => Container(
+    color: const Color(0xFFF2F2F7),
+    alignment: Alignment.center,
+    child: Text(
+      fallbackText.toUpperCase(),
+      style: const TextStyle(
+        fontFamily: TFonts.nunito,
+        fontWeight: FontWeight.w900,
+        fontSize: 32,
+        color: Colors.black54,
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size,
       height: size,
-      padding: const EdgeInsets.all(5),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(color: ringColor, shape: BoxShape.circle),
       child: Container(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(6),
         decoration: const BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
@@ -662,20 +680,12 @@ class MatchAvatar extends StatelessWidget {
                 : ClipOval(
                   child:
                       imageUrl != null && imageUrl!.isNotEmpty
-                          ? Image.network(imageUrl!, fit: BoxFit.cover)
-                          : Container(
-                            color: const Color(0xFFF2F2F7),
-                            alignment: Alignment.center,
-                            child: Text(
-                              fallbackText.toUpperCase(),
-                              style: const TextStyle(
-                                fontFamily: TFonts.nunito,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 32,
-                                color: Colors.black54,
-                              ),
-                            ),
-                          ),
+                          ? Image.network(
+                            imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _fallback(),
+                          )
+                          : _fallback(),
                 ),
       ),
     );
