@@ -2289,7 +2289,7 @@ class _CompletedQueueView extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Align(alignment: Alignment(0, -0.33), child: PlayEmptyState()),
+      child: Align(alignment: Alignment(0, -0.26), child: PlayEmptyState()),
     );
   }
 }
