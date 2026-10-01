@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/features/inbox/domain/models/inbox_variation.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -176,7 +175,7 @@ class InboxReactionCard extends StatelessWidget {
                       fontFamily: TFonts.nunito,
                       fontWeight: FontWeight.w900,
                       fontSize: 36,
-                      height: 1.35,
+                      height: 49 / 36,
                       color: Colors.white,
                       shadows: [
                         Shadow(
@@ -214,8 +213,8 @@ class InboxReactionCard extends StatelessWidget {
                                 style: _hintStyle,
                               ),
                               const SizedBox(width: 4),
-                              SvgPicture.asset(
-                                'assets/icons/inbox_pointing_up.svg',
+                              Image.asset(
+                                'assets/icons/inbox_pointing_up.png',
                                 width: 16,
                                 height: 16,
                               ),
@@ -255,8 +254,9 @@ class InboxReactionCard extends StatelessWidget {
                         maxLines: 1,
                         style: const TextStyle(
                           fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          height: 19 / 14,
                           color: Colors.white,
                         ),
                       ),
@@ -275,6 +275,7 @@ class InboxReactionCard extends StatelessWidget {
     fontFamily: TFonts.nunito,
     fontWeight: FontWeight.w800,
     fontSize: 16,
+    height: 22 / 16,
     color: Colors.white,
   );
 }

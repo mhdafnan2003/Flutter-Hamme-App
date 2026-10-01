@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hamme_app/features/inbox/presentation/screens/inbox_screen.dart';
@@ -18,6 +19,11 @@ void main() {
     Size size, {
     List<InteractionRecord> votes = const [],
   }) async {
+    await tester.runAsync(() async {
+      await (FontLoader('Nunito')..addFont(
+        rootBundle.load('assets/fonts/Nunito-VariableFont_wght.ttf'),
+      )).load();
+    });
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -66,7 +72,7 @@ void main() {
       tester.getRect(find.text('Numbers fill up the moment someone').first).top,
       closeTo(409, 2),
     );
-    expect(find.text('Inbox'), findsOneWidget);
+    expect(find.text('Inbox'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -120,6 +126,26 @@ void main() {
     await tester.drag(find.byType(PageView), const Offset(-350, 0));
     await tester.pumpAndSettle();
     expect(find.text('1 person is your Frenemy'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps sharing reachable after scrolling at 320x568', (
+    tester,
+  ) async {
+    await pumpInbox(
+      tester,
+      const Size(320, 568),
+      votes: [testVote('anonymous', anonymous: true)],
+    );
+    await tester.scrollUntilVisible(
+      find.byType(ElevatedButton),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byType(ElevatedButton).hitTestable(), findsOneWidget);
+    final style =
+        tester.widget<ElevatedButton>(find.byType(ElevatedButton)).style!;
+    expect(style.side!.resolve({}), BorderSide.none);
     expect(tester.takeException(), isNull);
   });
 }

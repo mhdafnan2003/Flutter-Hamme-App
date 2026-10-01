@@ -266,14 +266,14 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const HammeTopBar(),
+            const HammeTopBar(verticalPadding: 2),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final topGap =
                       hasReactions
-                          ? (constraints.maxHeight - 467).clamp(20.0, 59.0)
-                          : 87.0;
+                          ? (constraints.maxHeight - 467).clamp(40.0, 79.0)
+                          : 107.0;
                   return SingleChildScrollView(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
@@ -514,6 +514,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                                           ),
                                         ),
                                         elevation: 0,
+                                        side: BorderSide.none,
                                       ),
                                       child:
                                           _isSharing
@@ -538,8 +539,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                                                     style: TextStyle(
                                                       fontFamily: TFonts.nunito,
                                                       fontWeight:
-                                                          FontWeight.w900,
-                                                      fontSize: 18,
+                                                          FontWeight.w800,
+                                                      fontSize: 20,
+                                                      height: 1.35,
                                                       color: Colors.white,
                                                     ),
                                                   ),
