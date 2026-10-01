@@ -138,6 +138,7 @@ class _SplashWordmark extends StatelessWidget {
                 fontFamily: TFonts.nunito,
                 fontSize: fontSize,
                 fontWeight: FontWeight.w800,
+                height: 65 / 48,
                 foreground:
                     Paint()
                       ..style = PaintingStyle.stroke
@@ -152,6 +153,7 @@ class _SplashWordmark extends StatelessWidget {
                 fontFamily: TFonts.nunito,
                 fontSize: fontSize,
                 fontWeight: FontWeight.w800,
+                height: 65 / 48,
                 color: Colors.white,
               ),
             ),
