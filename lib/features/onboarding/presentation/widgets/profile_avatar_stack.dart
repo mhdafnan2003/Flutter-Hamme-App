@@ -35,7 +35,7 @@ class ProfileAvatarStack extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const _PromptChip(
-          iconPath: TImages.iconClockCircle,
+          iconPath: 'assets/icons/onboarding_profile_clock.svg',
           iconSize: 20,
           height: 38,
           label: TTexts.onboardingRecentPhoto,
@@ -48,7 +48,7 @@ class ProfileAvatarStack extends StatelessWidget {
               angle: _tilt,
               child: const _PromptChip(
                 iconPath: TImages.iconUserRectangle,
-                iconSize: 17,
+                iconSize: 16,
                 height: 35,
                 label: TTexts.onboardingShowFace,
               ),
@@ -70,7 +70,7 @@ class ProfileAvatarStack extends StatelessWidget {
           ],
         ),
         Transform.translate(
-          offset: const Offset(0, -8),
+          offset: const Offset(0, -5),
           child: GestureDetector(
             onTap: onPickImage,
             child: SizedBox(
@@ -96,7 +96,7 @@ class ProfileAvatarStack extends StatelessWidget {
                             )
                             : Center(
                               child: SvgPicture.asset(
-                                TImages.iconUserFilled,
+                                'assets/icons/onboarding_profile_user.svg',
                                 width: 60,
                                 height: 60,
                                 colorFilter: const ColorFilter.mode(
@@ -163,7 +163,7 @@ class _PromptChip extends StatelessWidget {
         fit: BoxFit.scaleDown,
         child: Container(
           height: height,
-          padding: const EdgeInsets.only(left: 10, right: 14),
+          padding: const EdgeInsets.only(left: 8, right: 5),
           decoration: BoxDecoration(
             color: TColors.hammeChip,
             borderRadius: BorderRadius.circular(14),

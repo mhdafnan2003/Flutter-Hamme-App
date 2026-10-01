@@ -106,7 +106,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                   // below the profile stack. Preserve its spacing there, but
                   // compress whitespace on short phones before scrolling.
                   const fixedContentHeight = 303.0;
-                  const referenceTrailingSpace = 208.0;
+                  const referenceTrailingSpace = 207.0;
                   const referenceGapTotal = 128.0;
                   final gapScale = ((constraints.maxHeight -
                               fixedContentHeight -
@@ -156,7 +156,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 27),
               child: GradientButton(
                 label: TTexts.next,
                 borderRadius: 22,
