@@ -32,6 +32,10 @@
 - The Figma template frame is 360×800 (9:20), while the exported story image remains 1080×1920 (9:16), the standard story-media canvas. This aspect-ratio difference is preserved for platform compatibility; confirm with the design owner if the export should instead follow the 9:20 Figma frame.
 - `SharePlayingScreen.autoShare` is parsed and passed by the router but not read by the screen; `initState` always starts sharing. A direct `/share/playing` route with `autoShare=false` still triggers a share. This behavior was not changed in the UI-only pass.
 
+## Screens without a current DESIGN reference
+
+- The active Figma `DESIGN` page has no complete screen matching the current `/profile`, `/settings`, `/settings/notifications`, `/settings/appearance`, community-guidelines, or blocked-users routes. The `MISC` page has an older combined profile/preferences frame (`iPhone 16 - 38`, 360×1080) with different content (age/stats, socials, and “Pause my link”), so it is not a safe visual target for the current screens. The app UI is preserved pending confirmation that this older frame is still authoritative.
+
 ## Play non-match state
 
 - `poll_not_a_match_overlay.dart` is currently unreferenced. The matching Figma design is the embedded non-match state inside Play, which retains the top bar and bottom navigation. The live Play state was aligned; the unused standalone widget remains in the repository.
