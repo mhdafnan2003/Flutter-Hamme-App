@@ -200,13 +200,13 @@ class _CountdownCard extends StatelessWidget {
             child: Container(
               height: _cardHeight,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0EAFE),
-                borderRadius: BorderRadius.circular(20),
+                color: const Color(0xFFEBE5F6),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, 10),
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 40,
+                    spreadRadius: -8,
                   ),
                 ],
               ),
@@ -227,7 +227,7 @@ class _CountdownCard extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: TFonts.nunito,
                       fontSize: 20,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       color: Colors.black,
                     ),
                   ),
@@ -261,8 +261,8 @@ class _CountdownCard extends StatelessWidget {
                   ),
                   Image.asset(
                     'assets/images/lock.png',
-                    width: 22,
-                    height: 25,
+                    width: 32,
+                    height: 32,
                     fit: BoxFit.contain,
                   ),
                 ],
@@ -339,7 +339,7 @@ class _OrDivider extends StatelessWidget {
             style: TextStyle(
               fontFamily: TFonts.nunito,
               fontWeight: FontWeight.w900,
-              fontSize: 15,
+              fontSize: 16,
               color: Color(0xFFB0B1FD),
             ),
           ),
@@ -359,7 +359,7 @@ class _PlayNowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 73,
+      height: 72,
       decoration: BoxDecoration(
         color: const Color(0xFF9A62FC),
         borderRadius: BorderRadius.circular(24),
@@ -378,35 +378,39 @@ class _PlayNowButton extends StatelessWidget {
             children: [
               // Centred on the whole button, not on the space left between
               // the icon and the pro badge.
-              const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Play Now',
-                    style: TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      height: 1.2,
-                      color: Colors.white,
-                    ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 68),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Play Now',
+                        style: TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Skip the wait & play now',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 9),
-                  Text(
-                    'Skip the wait & play now',
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      height: 1.2,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+                ),
               ),
               Positioned(
-                left: 17,
+                left: 16,
                 child: Container(
                   width: 44,
                   height: 44,
@@ -422,11 +426,11 @@ class _PlayNowButton extends StatelessWidget {
                 ),
               ),
               Positioned(
-                right: 22,
+                right: 20,
                 child: Container(
-                  height: 23,
+                  height: 25,
                   alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 7),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(99),
@@ -435,7 +439,7 @@ class _PlayNowButton extends StatelessWidget {
                     'pro',
                     style: TextStyle(
                       fontFamily: TFonts.nunito,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       fontSize: 16,
                       height: 1,
                       color: Color(0xFFDC33ED),
