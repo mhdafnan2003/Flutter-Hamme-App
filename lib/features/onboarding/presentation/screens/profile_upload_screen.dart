@@ -130,11 +130,11 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
                               fontFamily: TFonts.nunito,
                               fontWeight: FontWeight.w900,
                               fontSize: 24,
-                              height: 1,
+                              height: 33 / 24,
                               color: Colors.black,
                             ),
                           ),
-                          SizedBox(height: gap(21)),
+                          SizedBox(height: gap(12)),
                           Image.asset(
                             TImages.emojiCamera,
                             width: 24,
