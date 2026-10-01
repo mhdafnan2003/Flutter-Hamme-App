@@ -308,236 +308,261 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                               .clamp(0.0, 345.0)
                               .toDouble();
 
-                      return SingleChildScrollView(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: horizontalPadding,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(height: gap(40)),
-                                const SizedBox(
-                                  height: 76,
-                                  child: _UnlockTitle(),
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight:
+                                      constraints.maxHeight -
+                                      19 -
+                                      footerBottomPadding,
                                 ),
-                                SizedBox(height: gap(32)),
-                                Container(
-                                  width: double.infinity,
-                                  height: 308,
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    24,
-                                    12,
-                                    24,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: horizontalPadding,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEBEAFA),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: const Color(0xFF9B6AFF),
-                                    ),
-                                  ),
-                                  child: const Column(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      SizedBox(
-                                        height: 58,
-                                        child: ProFeature(
-                                          icon: _UnlimitedPlayIcon(),
-                                          title: 'Unlimited Play',
-                                          subtitle:
-                                              'No waiting, Play every profile,\nanytime.',
-                                        ),
+                                      SizedBox(height: gap(40)),
+                                      const SizedBox(
+                                        height: 76,
+                                        child: _UnlockTitle(),
                                       ),
-                                      SizedBox(height: 38),
-                                      SizedBox(
-                                        height: 58,
-                                        child: ProFeature(
-                                          icon: Image(
-                                            image: AssetImage(
-                                              TImages.proRewind,
-                                            ),
-                                            width: 32,
-                                            height: 32,
-                                            filterQuality: FilterQuality.high,
+                                      SizedBox(height: gap(32)),
+                                      Container(
+                                        width: double.infinity,
+                                        height: 308,
+                                        padding: const EdgeInsets.fromLTRB(
+                                          16,
+                                          24,
+                                          12,
+                                          24,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEBEAFA),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
                                           ),
-                                          title: 'Unlimited Rewinds',
-                                          subtitle:
-                                              'Picked wrong? Go back and change\nyour pick.',
-                                        ),
-                                      ),
-                                      SizedBox(height: 36),
-                                      SizedBox(
-                                        height: 58,
-                                        child: ProFeature(
-                                          icon: Image(
-                                            image: AssetImage(
-                                              TImages.proHighVoltage,
-                                            ),
-                                            width: 32,
-                                            height: 32,
-                                            filterQuality: FilterQuality.high,
+                                          border: Border.all(
+                                            color: const Color(0xFF9B6AFF),
                                           ),
-                                          title: 'Priority Profile',
-                                          subtitle:
-                                              'Appear first in queues of people you\nreacted to.',
+                                        ),
+                                        child: const Column(
+                                          children: [
+                                            SizedBox(
+                                              height: 58,
+                                              child: ProFeature(
+                                                icon: _UnlimitedPlayIcon(),
+                                                title: 'Unlimited Play',
+                                                subtitle:
+                                                    'No waiting, Play every profile,\nanytime.',
+                                              ),
+                                            ),
+                                            SizedBox(height: 38),
+                                            SizedBox(
+                                              height: 58,
+                                              child: ProFeature(
+                                                icon: Image(
+                                                  image: AssetImage(
+                                                    TImages.proRewind,
+                                                  ),
+                                                  width: 32,
+                                                  height: 32,
+                                                  filterQuality:
+                                                      FilterQuality.high,
+                                                ),
+                                                title: 'Unlimited Rewinds',
+                                                subtitle:
+                                                    'Picked wrong? Go back and change\nyour pick.',
+                                              ),
+                                            ),
+                                            SizedBox(height: 36),
+                                            SizedBox(
+                                              height: 58,
+                                              child: ProFeature(
+                                                icon: Image(
+                                                  image: AssetImage(
+                                                    TImages.proHighVoltage,
+                                                  ),
+                                                  width: 32,
+                                                  height: 32,
+                                                  filterQuality:
+                                                      FilterQuality.high,
+                                                ),
+                                                title: 'Priority Profile',
+                                                subtitle:
+                                                    'Appear first in queues of people you\nreacted to.',
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
+                                      SizedBox(height: gap(40)),
+                                      const SizedBox(
+                                        height: 24,
+                                        child: _ProSocialProof(),
+                                      ),
+                                      SizedBox(height: gap(14)),
+                                      SizedBox(
+                                        height: 62,
+                                        child: OverflowBox(
+                                          minWidth: ctaWidth,
+                                          maxWidth: ctaWidth,
+                                          minHeight: 62,
+                                          maxHeight: 62,
+                                          child: SizedBox(
+                                            width: ctaWidth,
+                                            height: 62,
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(33),
+                                                gradient: const LinearGradient(
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                  colors: [
+                                                    Color(0xFF9F6FFF),
+                                                    Color(0xFF7838FE),
+                                                  ],
+                                                ),
+                                              ),
+                                              child: ElevatedButton(
+                                                onPressed:
+                                                    ctaBusy
+                                                        ? () {}
+                                                        : () => onCta(),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  shadowColor:
+                                                      Colors.transparent,
+                                                  padding: EdgeInsets.zero,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          33,
+                                                        ),
+                                                  ),
+                                                ),
+                                                child:
+                                                    isUpgrade && ctaBusy
+                                                        ? const SizedBox(
+                                                          width: 24,
+                                                          height: 24,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 2.5,
+                                                            valueColor:
+                                                                AlwaysStoppedAnimation<
+                                                                  Color
+                                                                >(Colors.white),
+                                                          ),
+                                                        )
+                                                        : Text(
+                                                          ctaLabel,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontFamily:
+                                                                    TFonts
+                                                                        .nunito,
+                                                                fontSize: 20,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                color: Color(
+                                                                  0xFFFBFBFB,
+                                                                ),
+                                                              ),
+                                                        ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (errorText != null) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          errorText,
+                                          style: const TextStyle(
+                                            color: Colors.redAccent,
+                                            fontFamily: TFonts.nunito,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                      SizedBox(height: gap(12)),
+                                      SizedBox(
+                                        height: 22,
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            billing.proProduct != null
+                                                ? 'pro renews for ${billing.proProduct!.price}/wk'
+                                                : 'pro renews for \$6.99/wk',
+                                            style: const TextStyle(
+                                              fontFamily: TFonts.nunito,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              color: Color(0xFF98999A),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: gap(18)),
                                     ],
                                   ),
                                 ),
-                                SizedBox(height: gap(40)),
-                                const SizedBox(
-                                  height: 24,
-                                  child: _ProSocialProof(),
-                                ),
-                                SizedBox(height: gap(14)),
-                                SizedBox(
-                                  height: 62,
-                                  child: OverflowBox(
-                                    minWidth: ctaWidth,
-                                    maxWidth: ctaWidth,
-                                    minHeight: 62,
-                                    maxHeight: 62,
-                                    child: SizedBox(
-                                      width: ctaWidth,
-                                      height: 62,
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            33,
-                                          ),
-                                          gradient: const LinearGradient(
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                            colors: [
-                                              Color(0xFF9F6FFF),
-                                              Color(0xFF7838FE),
-                                            ],
-                                          ),
-                                        ),
-                                        child: ElevatedButton(
-                                          onPressed:
-                                              ctaBusy ? () {} : () => onCta(),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.transparent,
-                                            shadowColor: Colors.transparent,
-                                            padding: EdgeInsets.zero,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(33),
-                                            ),
-                                          ),
-                                          child:
-                                              isUpgrade && ctaBusy
-                                                  ? const SizedBox(
-                                                    width: 24,
-                                                    height: 24,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2.5,
-                                                      valueColor:
-                                                          AlwaysStoppedAnimation<
-                                                            Color
-                                                          >(Colors.white),
-                                                    ),
-                                                  )
-                                                  : Text(
-                                                    ctaLabel,
-                                                    style: const TextStyle(
-                                                      fontFamily: TFonts.nunito,
-                                                      fontSize: 20,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      color: Color(0xFFFBFBFB),
-                                                    ),
-                                                  ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (errorText != null) ...[
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    errorText,
-                                    style: const TextStyle(
-                                      color: Colors.redAccent,
-                                      fontFamily: TFonts.nunito,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                                SizedBox(height: gap(12)),
-                                SizedBox(
-                                  height: 22,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      billing.proProduct != null
-                                          ? 'pro renews for ${billing.proProduct!.price}/wk'
-                                          : 'pro renews for \$6.99/wk',
-                                      style: const TextStyle(
-                                        fontFamily: TFonts.nunito,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF98999A),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: gap(18)),
-                                SizedBox(
-                                  height: 19,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: FooterLink(
-                                            label: 'Privacy',
-                                            onTap: () => openExternalLink(
-                                              context,
-                                              kPrivacyPolicyUrl,
-                                            ),
-                                          ),
-                                        ),
-                                        FooterLink(
-                                          label: 'Restore',
-                                          onTap:
-                                              billing.busy ||
-                                                      _isRestoringProfile
-                                                  ? null
-                                                  : _restoreProProfile,
-                                        ),
-                                        Align(
-                                          alignment: Alignment.centerRight,
-                                          child: FooterLink(
-                                            label: 'Terms',
-                                            onTap: () => openExternalLink(
-                                              context,
-                                              kTermsOfUseUrl,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: footerBottomPadding),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                          SizedBox(
+                            height: 19,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 44,
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FooterLink(
+                                      label: 'Privacy',
+                                      onTap:
+                                          () => openExternalLink(
+                                            context,
+                                            kPrivacyPolicyUrl,
+                                          ),
+                                    ),
+                                  ),
+                                  FooterLink(
+                                    label: 'Restore',
+                                    onTap:
+                                        billing.busy || _isRestoringProfile
+                                            ? null
+                                            : _restoreProProfile,
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: FooterLink(
+                                      label: 'Terms',
+                                      onTap:
+                                          () => openExternalLink(
+                                            context,
+                                            kTermsOfUseUrl,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: footerBottomPadding),
+                        ],
                       );
                     },
                   ),

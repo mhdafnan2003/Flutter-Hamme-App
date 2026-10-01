@@ -15,7 +15,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  Future<void> pumpProScreen(WidgetTester tester, {required Size size}) async {
+  Future<void> pumpProScreen(
+    WidgetTester tester, {
+    required Size size,
+    EdgeInsets padding = EdgeInsets.zero,
+  }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -26,7 +30,12 @@ void main() {
         overrides: [
           billingControllerProvider.overrideWith(_FakeBillingController.new),
         ],
-        child: const MaterialApp(home: ProScreen()),
+        child: MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(size: size, padding: padding),
+            child: const ProScreen(),
+          ),
+        ),
       ),
     );
     await tester.pump();
@@ -53,21 +62,45 @@ void main() {
   testWidgets('keeps footer visible without scrolling on a shorter phone', (
     tester,
   ) async {
-    await pumpProScreen(tester, size: const Size(393, 740));
+    await pumpProScreen(
+      tester,
+      size: const Size(393, 740),
+      padding: const EdgeInsets.only(top: 59, bottom: 34),
+    );
 
     expect(tester.getRect(find.text('Privacy')).bottom, lessThanOrEqualTo(740));
     expect(tester.getRect(find.text('Restore')).bottom, lessThanOrEqualTo(740));
     expect(tester.getRect(find.text('Terms')).bottom, lessThanOrEqualTo(740));
+    expect(
+      tester
+          .state<ScrollableState>(find.byType(Scrollable))
+          .position
+          .maxScrollExtent,
+      0,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('uses scrolling only on an extremely short viewport', (
+  testWidgets('keeps legal links pinned on an extremely short viewport', (
     tester,
   ) async {
-    await pumpProScreen(tester, size: const Size(320, 480));
+    await pumpProScreen(
+      tester,
+      size: const Size(320, 480),
+      padding: const EdgeInsets.only(top: 24, bottom: 16),
+    );
 
     expect(find.text('Unlock Unlimited'), findsOneWidget);
     expect(find.text('Continue'), findsOneWidget);
+    final privacyBefore = tester.getRect(find.text('Privacy'));
+    expect(privacyBefore.bottom, lessThanOrEqualTo(480));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.text('Privacy')), privacyBefore);
+    expect(tester.getRect(find.text('Terms')).bottom, lessThanOrEqualTo(480));
     expect(tester.takeException(), isNull);
   });
 }
