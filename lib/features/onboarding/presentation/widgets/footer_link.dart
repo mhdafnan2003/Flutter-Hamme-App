@@ -12,13 +12,19 @@ class FooterLink extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontFamily: TFonts.nunito,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: Color(0xFFA4A1A2),
+      child: SizedBox(
+        height: 19,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: TFonts.nunito,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFFA4A1A2),
+            ),
+          ),
         ),
       ),
     );

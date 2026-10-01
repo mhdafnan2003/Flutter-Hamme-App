@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -252,15 +251,12 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                     ),
                     Positioned(
                       top: 78,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Image.asset(
-                          TImages.proHammeLogo,
-                          width: 144,
-                          height: 38,
-                          filterQuality: FilterQuality.high,
-                        ),
+                      right: 100,
+                      child: Image.asset(
+                        TImages.proHammeLogo,
+                        width: 143,
+                        height: 38,
+                        filterQuality: FilterQuality.high,
                       ),
                     ),
                     Positioned(
@@ -294,32 +290,49 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                   bottom: false,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final horizontalPadding = 28.0;
-                      const minimumContentHeight = 570.0;
-                      final contentHeight =
-                          constraints.maxHeight < minimumContentHeight
-                              ? minimumContentHeight
-                              : constraints.maxHeight;
+                      const horizontalPadding = 28.0;
+                      const fixedContentHeight = 511.0;
+                      const referenceBottomSpace = 29.0;
+                      const referenceGapTotal = 156.0;
+                      final gapScale = ((constraints.maxHeight -
+                                  fixedContentHeight -
+                                  referenceBottomSpace) /
+                              referenceGapTotal)
+                          .clamp(0.0, 1.25);
+
+                      double gap(double referenceValue) =>
+                          referenceValue * gapScale;
+                      final ctaWidth =
+                          (MediaQuery.sizeOf(context).width - 48)
+                              .clamp(0.0, 345.0)
+                              .toDouble();
 
                       return SingleChildScrollView(
-                        child: SizedBox(
-                          height: contentHeight,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
                           child: Padding(
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: horizontalPadding,
                             ),
                             child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Spacer(flex: 2),
-                                const _UnlockTitle(),
-                                const Spacer(flex: 2),
+                                SizedBox(height: gap(40)),
+                                const SizedBox(
+                                  height: 76,
+                                  child: _UnlockTitle(),
+                                ),
+                                SizedBox(height: gap(32)),
                                 Container(
                                   width: double.infinity,
+                                  height: 308,
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
                                     24,
                                     12,
-                                    22,
+                                    24,
                                   ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFEBEAFA),
@@ -330,84 +343,120 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                   ),
                                   child: const Column(
                                     children: [
-                                      ProFeature(
-                                        icon: _UnlimitedPlayIcon(),
-                                        title: 'Unlimited Play',
-                                        subtitle:
-                                            'No waiting, Play every profile,\nanytime.',
-                                      ),
-                                      SizedBox(height: 24),
-                                      ProFeature(
-                                        icon: Text(
-                                          '↩️',
-                                          style: TextStyle(fontSize: 32),
+                                      SizedBox(
+                                        height: 58,
+                                        child: ProFeature(
+                                          icon: _UnlimitedPlayIcon(),
+                                          title: 'Unlimited Play',
+                                          subtitle:
+                                              'No waiting, Play every profile,\nanytime.',
                                         ),
-                                        title: 'Unlimited Rewinds',
-                                        subtitle:
-                                            'Picked wrong? Go back and change\nyour pick.',
                                       ),
-                                      SizedBox(height: 24),
-                                      ProFeature(
-                                        icon: Text(
-                                          '⚡️',
-                                          style: TextStyle(fontSize: 32),
+                                      SizedBox(height: 38),
+                                      SizedBox(
+                                        height: 58,
+                                        child: ProFeature(
+                                          icon: Image(
+                                            image: AssetImage(
+                                              TImages.proRewind,
+                                            ),
+                                            width: 32,
+                                            height: 32,
+                                            filterQuality: FilterQuality.high,
+                                          ),
+                                          title: 'Unlimited Rewinds',
+                                          subtitle:
+                                              'Picked wrong? Go back and change\nyour pick.',
                                         ),
-                                        title: 'Priority Profile',
-                                        subtitle:
-                                            'Appear first in queues of people you\nreacted to.',
+                                      ),
+                                      SizedBox(height: 36),
+                                      SizedBox(
+                                        height: 58,
+                                        child: ProFeature(
+                                          icon: Image(
+                                            image: AssetImage(
+                                              TImages.proHighVoltage,
+                                            ),
+                                            width: 32,
+                                            height: 32,
+                                            filterQuality: FilterQuality.high,
+                                          ),
+                                          title: 'Priority Profile',
+                                          subtitle:
+                                              'Appear first in queues of people you\nreacted to.',
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const Spacer(flex: 3),
-                                const _ProSocialProof(),
-                                const Spacer(flex: 1),
-                                Container(
-                                  width: double.infinity,
+                                SizedBox(height: gap(40)),
+                                const SizedBox(
+                                  height: 24,
+                                  child: _ProSocialProof(),
+                                ),
+                                SizedBox(height: gap(14)),
+                                SizedBox(
                                   height: 62,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(33),
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Color(0xFF9F6FFF),
-                                        Color(0xFF7838FE),
-                                      ],
-                                    ),
-                                  ),
-                                  child: ElevatedButton(
-                                    onPressed: ctaBusy ? () {} : () => onCta(),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.transparent,
-                                      shadowColor: Colors.transparent,
-                                      padding: EdgeInsets.zero,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(33),
+                                  child: OverflowBox(
+                                    minWidth: ctaWidth,
+                                    maxWidth: ctaWidth,
+                                    minHeight: 62,
+                                    maxHeight: 62,
+                                    child: SizedBox(
+                                      width: ctaWidth,
+                                      height: 62,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            33,
+                                          ),
+                                          gradient: const LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Color(0xFF9F6FFF),
+                                              Color(0xFF7838FE),
+                                            ],
+                                          ),
+                                        ),
+                                        child: ElevatedButton(
+                                          onPressed:
+                                              ctaBusy ? () {} : () => onCta(),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            shadowColor: Colors.transparent,
+                                            padding: EdgeInsets.zero,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(33),
+                                            ),
+                                          ),
+                                          child:
+                                              isUpgrade && ctaBusy
+                                                  ? const SizedBox(
+                                                    width: 24,
+                                                    height: 24,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2.5,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(Colors.white),
+                                                    ),
+                                                  )
+                                                  : Text(
+                                                    ctaLabel,
+                                                    style: const TextStyle(
+                                                      fontFamily: TFonts.nunito,
+                                                      fontSize: 20,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: Color(0xFFFBFBFB),
+                                                    ),
+                                                  ),
+                                        ),
                                       ),
                                     ),
-                                    child:
-                                        isUpgrade && ctaBusy
-                                            ? const SizedBox(
-                                              width: 24,
-                                              height: 24,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2.5,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                      Color
-                                                    >(Colors.white),
-                                              ),
-                                            )
-                                            : Text(
-                                              ctaLabel,
-                                              style: const TextStyle(
-                                                fontFamily: TFonts.nunito,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w800,
-                                                color: Color(0xFFFBFBFB),
-                                              ),
-                                            ),
                                   ),
                                 ),
                                 if (errorText != null) ...[
@@ -423,72 +472,82 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
-                                const Spacer(flex: 1),
-                                Text(
-                                  billing.proProduct != null
-                                      ? 'pro renews for ${billing.proProduct!.price}/wk'
-                                      : 'pro renews for \$6.99/wk',
-                                  style: const TextStyle(
-                                    fontFamily: TFonts.nunito,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF98999A),
+                                SizedBox(height: gap(12)),
+                                SizedBox(
+                                  height: 22,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      billing.proProduct != null
+                                          ? 'pro renews for ${billing.proProduct!.price}/wk'
+                                          : 'pro renews for \$6.99/wk',
+                                      style: const TextStyle(
+                                        fontFamily: TFonts.nunito,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF98999A),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 18),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: FooterLink(
-                                          label: 'Privacy',
-                                          onTap: () async {
-                                            final url = Uri.parse(
-                                              'https://www.hamme.app/privacy-policy',
-                                            );
-                                            if (await canLaunchUrl(url)) {
-                                              await launchUrl(
-                                                url,
-                                                mode:
-                                                    LaunchMode
-                                                        .externalApplication,
+                                SizedBox(height: gap(18)),
+                                SizedBox(
+                                  height: 19,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: FooterLink(
+                                            label: 'Privacy',
+                                            onTap: () async {
+                                              final url = Uri.parse(
+                                                'https://www.hamme.app/privacy-policy',
                                               );
-                                            }
-                                          },
+                                              if (await canLaunchUrl(url)) {
+                                                await launchUrl(
+                                                  url,
+                                                  mode:
+                                                      LaunchMode
+                                                          .externalApplication,
+                                                );
+                                              }
+                                            },
+                                          ),
                                         ),
-                                      ),
-                                      FooterLink(
-                                        label: 'Restore',
-                                        onTap:
-                                            billing.busy || _isRestoringProfile
-                                                ? null
-                                                : _restoreProProfile,
-                                      ),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: FooterLink(
-                                          label: 'Terms',
-                                          onTap: () async {
-                                            final url = Uri.parse(
-                                              'https://www.hamme.app/terms-of-service',
-                                            );
-                                            if (await canLaunchUrl(url)) {
-                                              await launchUrl(
-                                                url,
-                                                mode:
-                                                    LaunchMode
-                                                        .externalApplication,
+                                        FooterLink(
+                                          label: 'Restore',
+                                          onTap:
+                                              billing.busy ||
+                                                      _isRestoringProfile
+                                                  ? null
+                                                  : _restoreProProfile,
+                                        ),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: FooterLink(
+                                            label: 'Terms',
+                                            onTap: () async {
+                                              final url = Uri.parse(
+                                                'https://www.hamme.app/terms-of-service',
                                               );
-                                            }
-                                          },
+                                              if (await canLaunchUrl(url)) {
+                                                await launchUrl(
+                                                  url,
+                                                  mode:
+                                                      LaunchMode
+                                                          .externalApplication,
+                                                );
+                                              }
+                                            },
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 SizedBox(height: footerBottomPadding),
@@ -515,49 +574,52 @@ class _UnlockTitle extends StatelessWidget {
   static const _titleStyle = TextStyle(
     fontFamily: TFonts.nunito,
     fontSize: 28,
-    height: 1.15,
     fontWeight: FontWeight.w900,
     color: Colors.white,
   );
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ShaderMask(
-          blendMode: BlendMode.srcIn,
-          shaderCallback: (bounds) {
-            return const LinearGradient(
-              colors: [Color(0xFF9000FF), Color(0xFFD200BD)],
-            ).createShader(bounds);
-          },
-          child: const Text(
-            'Unlock Unlimited',
-            textAlign: TextAlign.center,
-            style: _titleStyle,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ShaderMask(
+            blendMode: BlendMode.srcIn,
+            shaderCallback: (bounds) {
+              return const LinearGradient(
+                colors: [Color(0xFF9000FF), Color(0xFFD200BD)],
+              ).createShader(bounds);
+            },
+            child: const Text(
+              'Unlock Unlimited',
+              textAlign: TextAlign.center,
+              style: _titleStyle,
+            ),
           ),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ShaderMask(
-              blendMode: BlendMode.srcIn,
-              shaderCallback: (bounds) {
-                return const LinearGradient(
-                  colors: [Color(0xFF9000FF), Color(0xFFD200BD)],
-                ).createShader(bounds);
-              },
-              child: const Text('Access ', style: _titleStyle),
-            ),
-            Image.asset(
-              TImages.proUnlocked,
-              width: 28,
-              height: 28,
-              filterQuality: FilterQuality.high,
-            ),
-          ],
-        ),
-      ],
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ShaderMask(
+                blendMode: BlendMode.srcIn,
+                shaderCallback: (bounds) {
+                  return const LinearGradient(
+                    colors: [Color(0xFF9000FF), Color(0xFFD200BD)],
+                  ).createShader(bounds);
+                },
+                child: const Text('Access ', style: _titleStyle),
+              ),
+              Image.asset(
+                TImages.proUnlocked,
+                width: 28,
+                height: 28,
+                filterQuality: FilterQuality.high,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -567,16 +629,12 @@ class _UnlimitedPlayIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return const Image(
-        image: AssetImage('assets/icons/loop.png'),
-        width: 32,
-        height: 32,
-        filterQuality: FilterQuality.high,
-      );
-    }
-
-    return const Text('♾️', style: TextStyle(fontSize: 32));
+    return Image.asset(
+      TImages.proInfinity,
+      width: 32,
+      height: 32,
+      filterQuality: FilterQuality.high,
+    );
   }
 }
 
@@ -585,64 +643,67 @@ class _ProSocialProof extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 104,
-          height: 26,
-          child: Stack(
-            children: const [
-              Positioned(
-                left: 0,
-                child: AvatarBubble(label: 'N', color: Color(0xFFFF457E)),
-              ),
-              Positioned(
-                left: 20,
-                child: AvatarBubble(
-                  label: 'K',
-                  color: Color(0xFF30E584),
-                  showBorder: true,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 104,
+            height: 24,
+            child: Stack(
+              children: const [
+                Positioned(
+                  left: 0,
+                  child: AvatarBubble(label: 'N', color: Color(0xFFFF457E)),
                 ),
-              ),
-              Positioned(
-                left: 40,
-                child: AvatarBubble(
-                  label: 'A',
-                  color: Color(0xFF4694FF),
-                  showBorder: true,
+                Positioned(
+                  left: 20,
+                  child: AvatarBubble(
+                    label: 'K',
+                    color: Color(0xFF30E584),
+                    showBorder: true,
+                  ),
                 ),
-              ),
-              Positioned(
-                left: 60,
-                child: AvatarBubble(
-                  label: 'S',
-                  color: Color(0xFFFFDB45),
-                  showBorder: true,
+                Positioned(
+                  left: 40,
+                  child: AvatarBubble(
+                    label: 'A',
+                    color: Color(0xFF4694FF),
+                    showBorder: true,
+                  ),
                 ),
-              ),
-              Positioned(
-                left: 80,
-                child: AvatarBubble(
-                  label: 'R',
-                  color: Color(0xFFFF5353),
-                  showBorder: true,
+                Positioned(
+                  left: 60,
+                  child: AvatarBubble(
+                    label: 'S',
+                    color: Color(0xFFFFDB45),
+                    showBorder: true,
+                  ),
                 ),
-              ),
-            ],
+                Positioned(
+                  left: 80,
+                  child: AvatarBubble(
+                    label: 'R',
+                    color: Color(0xFFFF5353),
+                    showBorder: true,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        const Text(
-          '1000+ went PRO today',
-          style: TextStyle(
-            fontFamily: TFonts.nunito,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFFB2B2B2),
+          const SizedBox(width: 8),
+          const Text(
+            '1000+ went PRO today',
+            style: TextStyle(
+              fontFamily: TFonts.nunito,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFFB2B2B2),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

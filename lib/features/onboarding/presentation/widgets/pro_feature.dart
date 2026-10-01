@@ -30,43 +30,36 @@ class ProFeature extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: TFonts.nunito,
-                  fontSize: 16,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: TFonts.nunito,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final line in subtitle.split('\n'))
-                      Text(
-                        line,
-                        maxLines: 1,
-                        softWrap: false,
-                        style: const TextStyle(
-                          fontFamily: TFonts.nunito,
-                          fontSize: 14,
-                          height: 1.15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF6D6D6D),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                for (final line in subtitle.split('\n'))
+                  Text(
+                    line,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6D6D6D),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ],
