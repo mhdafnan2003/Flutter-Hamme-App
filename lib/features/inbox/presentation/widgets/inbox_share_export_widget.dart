@@ -34,85 +34,110 @@ class InboxShareExportWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : _canvasW;
-        final height =
-            constraints.maxHeight.isFinite ? constraints.maxHeight : _canvasH;
+    // Hidden story capture has no Material ancestor; supply a clean text style.
+    return DefaultTextStyle(
+      style: const TextStyle(decoration: TextDecoration.none),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width =
+              constraints.maxWidth.isFinite ? constraints.maxWidth : _canvasW;
+          final height =
+              constraints.maxHeight.isFinite ? constraints.maxHeight : _canvasH;
 
-        return Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: _backgroundColors,
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: _backgroundColors,
+              ),
             ),
-          ),
-          // Fit the 393×852 Figma composition uniformly into the 9:16 export
-          // canvas. This keeps circles and card corners undistorted.
-          child: SizedBox.expand(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: SizedBox(
-                width: _designW,
-                height: _designH,
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 220,
-                      left: 0,
-                      right: 0,
-                      height: 283,
-                      child: InboxReactionCard(
-                        variation: variation,
-                        count: count,
-                        imageUrl: profileImageUrl,
-                        showEmptyState: false,
-                      ),
-                    ),
-                    Positioned(
-                      top: 631,
-                      left: 0,
-                      right: 0,
-                      child: Text(
-                        'Hamme',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: TFonts.nunito,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          decoration: TextDecoration.none,
+            // Fit the 393×852 Figma composition uniformly into the 9:16 export
+            // canvas. This keeps circles and card corners undistorted.
+            child: SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: _designW,
+                  height: _designH,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 220,
+                        left: 0,
+                        right: 0,
+                        height: 283,
+                        child: InboxReactionCard(
+                          variation: variation,
+                          count: count,
+                          imageUrl: profileImageUrl,
+                          showEmptyState: false,
                         ),
                       ),
-                    ),
-                    Positioned(
-                      top: 675,
-                      left: 0,
-                      right: 0,
-                      child: Text(
-                        'play games  &  meet people',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: TFonts.schibstedGrotesk,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.84,
-                          color: Colors.white,
-                          decoration: TextDecoration.none,
+                      Positioned(
+                        top: 631,
+                        left: 0,
+                        right: 0,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Text(
+                              'Hamme',
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                height: 38 / 28,
+                                foreground:
+                                    Paint()
+                                      ..style = PaintingStyle.stroke
+                                      ..strokeWidth = 8
+                                      ..color = Colors.black,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                            const Text(
+                              'Hamme',
+                              style: TextStyle(
+                                fontFamily: TFonts.nunito,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                height: 38 / 28,
+                                color: Colors.white,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        top: 675,
+                        left: 0,
+                        right: 0,
+                        child: Text(
+                          'play games  &  meet people',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: TFonts.schibstedGrotesk,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            height: 17 / 14,
+                            letterSpacing: -0.84,
+                            color: Colors.white,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

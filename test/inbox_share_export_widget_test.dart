@@ -103,4 +103,25 @@ void main() {
     expect(tagline.bottom, lessThan(1600));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('gives hidden-overlay card text an undecorated base style', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox(
+          width: 393,
+          height: 852,
+          child: InboxShareExportWidget(variation: variation, count: 156),
+        ),
+      ),
+    );
+    final textContext = tester.element(find.text('156'));
+    expect(
+      DefaultTextStyle.of(textContext).style.decoration,
+      TextDecoration.none,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
