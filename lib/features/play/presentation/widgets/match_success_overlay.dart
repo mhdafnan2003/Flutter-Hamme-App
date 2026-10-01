@@ -230,112 +230,149 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
               Align(
                 alignment: Alignment.center,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.topCenter,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(top: 58),
-                            height: 225,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(48),
-                              border: Border.all(
-                                color: theme.solidBorder,
-                                width: 8,
-                              ),
+                  padding: const EdgeInsets.symmetric(horizontal: 15.5),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 329),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 42),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.topCenter,
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.only(top: 53),
+                                  height: 207,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(48),
+                                    border: Border.all(
+                                      color: theme.solidBorder,
+                                      width: 8,
+                                    ),
+                                  ),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      61,
+                                      16,
+                                      12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(40),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 8,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        const SizedBox(
+                                          height: 44,
+                                          child: Center(
+                                            child: Text(
+                                              'It’s a Match!',
+                                              style: TextStyle(
+                                                fontFamily: TFonts.nunito,
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _MatchDescription(
+                                          otherName: otherName,
+                                          choiceText: theme.choiceText,
+                                          anonymous: isAnonymous,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  child: MatchAvatarPair(
+                                    currentUserImageUrl:
+                                        widget.currentUserImageUrl,
+                                    currentUserFallbackText: 'Y',
+                                    otherImageUrl: otherImageUrl,
+                                    otherFallbackText:
+                                        otherName.characters.first,
+                                    ringColor: theme.solidBorder,
+                                    avatarSize: 106,
+                                    centerSize: 38,
+                                    centerIcon: EmojiImage(
+                                      emoji: theme.emoji,
+                                      size: 32,
+                                    ),
+                                    plainOtherAvatar: isAnonymous,
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                58,
-                                16,
-                                12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(40),
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 8,
+                            const SizedBox(height: 55),
+                            if (!isAnonymous) ...[
+                              Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 300,
+                                  ),
+                                  child: _ActionButton(
+                                    height: 52,
+                                    onPressed: _isSharing ? null : _shareMatch,
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: const Color(0xFF30415A),
+                                    child:
+                                        _isSharing
+                                            ? const SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                color: Color(0xFF30415A),
+                                              ),
+                                            )
+                                            : const Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.ios_share, size: 22),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  'Share this match with friends',
+                                                ),
+                                              ],
+                                            ),
+                                  ),
                                 ),
                               ),
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "It's a Match!",
-                                    style: TextStyle(
-                                      fontFamily: TFonts.nunito,
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _MatchDescription(
-                                    otherName: otherName,
-                                    choiceText: theme.choiceText,
-                                    anonymous: isAnonymous,
-                                  ),
-                                ],
+                              const SizedBox(height: 16),
+                            ],
+                            Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 300,
+                                ),
+                                child: _ActionButton(
+                                  onPressed: widget.onDismiss,
+                                  backgroundColor: Colors.black,
+                                  foregroundColor: Colors.white,
+                                  child: const Text('Try Another Profile'),
+                                ),
                               ),
                             ),
-                          ),
-                          Positioned(
-                            top: 0,
-                            child: MatchAvatarPair(
-                              currentUserImageUrl: widget.currentUserImageUrl,
-                              currentUserFallbackText: 'Y',
-                              otherImageUrl: otherImageUrl,
-                              otherFallbackText: otherName.characters.first,
-                              ringColor: theme.solidBorder,
-                              centerIcon: EmojiImage(
-                                emoji: theme.emoji,
-                                size: 36,
-                              ),
-                              plainOtherAvatar: isAnonymous,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 64),
-                      if (!isAnonymous) ...[
-                        _ActionButton(
-                          onPressed: _isSharing ? null : _shareMatch,
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF30415A),
-                          child:
-                              _isSharing
-                                  ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: Color(0xFF30415A),
-                                    ),
-                                  )
-                                  : const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.ios_share, size: 22),
-                                      SizedBox(width: 8),
-                                      Text('Share this match with friends'),
-                                    ],
-                                  ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                      ],
-                      _ActionButton(
-                        onPressed: widget.onDismiss,
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        child: const Text('Try Another Profile'),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -353,18 +390,20 @@ class _ActionButton extends StatelessWidget {
     required this.backgroundColor,
     required this.foregroundColor,
     required this.child,
+    this.height = 56,
   });
 
   final VoidCallback? onPressed;
   final Color backgroundColor;
   final Color foregroundColor;
   final Widget child;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: height,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -396,7 +435,7 @@ class _MatchDescription extends StatelessWidget {
 
   static const _style = TextStyle(
     fontFamily: TFonts.nunito,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: FontWeight.w800,
     color: Colors.white,
     height: 1.4,
@@ -445,6 +484,8 @@ class MatchAvatarPair extends StatefulWidget {
     required this.otherFallbackText,
     required this.ringColor,
     required this.centerIcon,
+    this.avatarSize = 116,
+    this.centerSize = 42,
     this.plainOtherAvatar = false,
   });
 
@@ -454,6 +495,8 @@ class MatchAvatarPair extends StatefulWidget {
   final String otherFallbackText;
   final Color ringColor;
   final Widget centerIcon;
+  final double avatarSize;
+  final double centerSize;
   final bool plainOtherAvatar;
 
   @override
@@ -490,8 +533,8 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
         );
 
         return SizedBox(
-          width: 225,
-          height: 116,
+          width: widget.avatarSize * 1.94,
+          height: widget.avatarSize,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -505,6 +548,7 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
                       imageUrl: widget.currentUserImageUrl,
                       fallbackText: widget.currentUserFallbackText,
                       ringColor: widget.ringColor,
+                      size: widget.avatarSize,
                     ),
                   ),
                 ),
@@ -519,6 +563,7 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
                       imageUrl: widget.otherImageUrl,
                       fallbackText: widget.otherFallbackText,
                       ringColor: widget.ringColor,
+                      size: widget.avatarSize,
                       plainCircle: widget.plainOtherAvatar,
                     ),
                   ),
@@ -527,8 +572,8 @@ class _MatchAvatarPairState extends State<MatchAvatarPair>
               Transform.scale(
                 scale: centerScale,
                 child: Container(
-                  width: 42,
-                  height: 42,
+                  width: widget.centerSize,
+                  height: widget.centerSize,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
@@ -551,19 +596,21 @@ class MatchAvatar extends StatelessWidget {
     required this.imageUrl,
     required this.fallbackText,
     required this.ringColor,
+    this.size = 116,
     this.plainCircle = false,
   });
 
   final String? imageUrl;
   final String fallbackText;
   final Color ringColor;
+  final double size;
   final bool plainCircle;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 116,
-      height: 116,
+      width: size,
+      height: size,
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(color: ringColor, shape: BoxShape.circle),
       child: Container(

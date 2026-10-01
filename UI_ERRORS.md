@@ -21,3 +21,7 @@
 - Match rows in the app include a separate report/block menu beside the close button. The populated Matches Figma frame shows only the close button. The safety control has been kept because it enables existing moderation actions.
 - The match detail/reply screen has a safety menu at the upper left. Its Figma variants show only the close button; the safety menu remains to preserve report/block access.
 - The match detail Figma pill appears to offer Instagram/Snapchat selection. The app's existing Reply action automatically prefers Instagram when present, otherwise Snapchat. The new pill reflects that choice visually but does not switch platforms; adding selection behavior is outside this UI-only pass.
+
+## Match success
+
+- The app shows a top-right close button on the match success overlay. The corresponding Figma share screen has no close control. It is retained so users can dismiss the overlay.
