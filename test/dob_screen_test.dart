@@ -53,7 +53,7 @@ void main() {
       tester.getSize(find.byType(AgePickerWheel)).height,
       AgePickerWheel.wheelHeight,
     );
-    expect(AgePickerWheel.wheelHeight, 150);
+    expect(AgePickerWheel.wheelHeight, 175);
     expect(tester.takeException(), isNull);
   });
 
@@ -76,3 +76,4 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
+

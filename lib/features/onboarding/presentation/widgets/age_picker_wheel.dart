@@ -27,14 +27,16 @@ class AgePickerWheel extends StatelessWidget {
 
   // Keep the five visible ages close enough together that the values around
   // the default selection (19) don't look artificially spaced out.
-  static const double itemExtent = 30;
+  static const double itemExtent = 35;
   static const double wheelHeight = itemExtent * 5;
 
   @override
   Widget build(BuildContext context) {
+    final rowScale = (MediaQuery.textScalerOf(context).scale(20) / 20)
+        .clamp(1.0, double.infinity);
     return SizedBox(
       // Match the five complete rows in Figma and clip the neighboring values.
-      height: wheelHeight,
+      height: wheelHeight * rowScale,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -43,7 +45,7 @@ class AgePickerWheel extends StatelessWidget {
             right: 16,
             child: IgnorePointer(
               child: Container(
-                height: 35,
+                height: 35 * rowScale,
                 decoration: BoxDecoration(
                   color: TColors.hammePickerHighlight,
                   borderRadius: BorderRadius.circular(8),
@@ -55,7 +57,7 @@ class AgePickerWheel extends StatelessWidget {
             data: const CupertinoThemeData(brightness: Brightness.light),
             child: CupertinoPicker.builder(
               scrollController: controller,
-              itemExtent: itemExtent,
+              itemExtent: itemExtent * rowScale,
               onSelectedItemChanged: onAgeIndexChanged,
               selectionOverlay: const SizedBox.shrink(),
               // A flatter wheel keeps the edge values fully readable.
@@ -133,7 +135,7 @@ class _AgePickerItem extends StatelessWidget {
         fontSize: 20,
         fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
         color: isSelected ? Colors.black : TColors.hammePickerInactive,
-        height: 1,
+        height: 27 / 20,
       ),
     );
 
