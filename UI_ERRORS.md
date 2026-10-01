@@ -1,5 +1,7 @@
 # UI review notes
 
+For the current verification pass, see [UI_REVIEW.md](UI_REVIEW.md) and its page-specific notes. These earlier notes continue to document preserved app extras and design ambiguities.
+
 ## Splash screen
 
 - Figma frames `iPhone 16 - 99` and `iPhone 16 - 127` show only the centered wordmark on the gradient. The app also displays a connection error message and Retry button when session restoration fails. This conditional UI is extra relative to those frames and has been preserved.
@@ -22,7 +24,7 @@
 
 - Match rows in the app include a separate report/block menu beside the close button. The populated Matches Figma frame shows only the close button. The safety control has been kept because it enables existing moderation actions.
 - The match detail/reply screen has a safety menu at the upper left. Its Figma variants show only the close button; the safety menu remains to preserve report/block access.
-- The match detail Figma pill appears to offer Instagram/Snapchat selection. The app's existing Reply action automatically prefers Instagram when present, otherwise Snapchat. The new pill reflects that choice visually but does not switch platforms; adding selection behavior is outside this UI-only pass.
+- The follow-up review implements Instagram/Snapchat selection for available handles. Missing platforms remain disabled, and anonymous matches keep their identity and handles hidden. Reply still opens the selected profile through the existing launcher.
 
 ## Match success
 
