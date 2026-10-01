@@ -420,7 +420,7 @@ function ShareFlowApp() {
 
   return (
     <main className="min-h-[100dvh] overflow-hidden bg-[linear-gradient(180deg,#9b63f7_0%,#8f48fa_48%,#7c35ff_100%)] text-white">
-      <section className={`mx-auto flex min-h-[100dvh] w-full max-w-[360px] flex-col items-center px-4 pb-6 text-center ${isSent || alreadyVoted ? 'pt-[clamp(24px,8vh,82px)]' : 'pt-[clamp(24px,9vh,132px)]'}`}>
+      <section className={`mx-auto flex min-h-[100dvh] w-full max-w-[360px] flex-col items-center px-4 text-center ${isSent || alreadyVoted ? 'pb-6 pt-[clamp(24px,8vh,82px)]' : 'share-question-screen'}`}>
         {isSent ? (
           <RevealScreen
             secondsLeft={secondsLeft}
@@ -447,12 +447,12 @@ function ShareFlowApp() {
         )}
 
         <footer className="mt-auto flex flex-col items-center">
-          {/* <FriendsPlaying /> */}
+          {!isSent && !alreadyVoted && <FriendsPlaying />}
           <h1 className="m-0 leading-none">
-            <img src="/weblogohome.png" alt="Hamme" width={68} height={33} className="h-[33px] w-[68px] object-contain" />
+            <img src="/weblogohome.png" alt="Hamme" width={88} height={33} className="h-[33px] w-[88px] object-contain" />
           </h1>
-          <p className="mt-2 text-[12px] font-extrabold">play games &amp; meet people</p>
-          <SiteLinks className="mt-4" />
+          <p className="text-[12px] font-extrabold leading-[15px]">play games &amp; meet people</p>
+          <SiteLinks className="mt-6" />
           <a
             href={`mailto:${legal.supportEmail}?subject=${encodeURIComponent(`Report profile: ${shareCode}`)}`}
             className="mt-3 text-[11px] font-semibold text-white/55 underline underline-offset-2 transition hover:text-white"
@@ -482,7 +482,7 @@ const avatarCutout = {
 
 function FriendsPlaying() {
   return (
-    <div className="mb-[clamp(20px,5vh,72px)] flex flex-col items-center gap-3" role="status" aria-label="6 friends playing now">
+    <div className="friends-playing mb-[clamp(24px,12.75vh,102px)] flex flex-col items-center gap-2" role="status" aria-label="6 friends playing now">
       <div className="flex h-6 w-[118px] items-center gap-1.5" aria-hidden="true">
         <span className="relative flex h-2 w-2 shrink-0">
           <span className="absolute inline-flex h-full w-full rounded-full bg-[#22ff44] opacity-70 motion-safe:animate-ping" />
@@ -1493,7 +1493,7 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
     <>
       <div className="flex w-full flex-col items-center px-6">
         <div className="flex w-full flex-col items-center drop-shadow-[0_7px_10px_rgba(0,0,0,0.2)]">
-          <div className="relative z-10 h-[98px] w-[98px] overflow-hidden rounded-full border-[5px] border-white bg-[#d8b09f]">
+          <div className="relative z-10 h-[100px] w-[100px] overflow-hidden rounded-full border-[5px] border-white bg-[#d8b09f]">
             <img
               src={profileImage}
               alt="Profile"
@@ -1502,7 +1502,7 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
           </div>
 
           {/* Overlaps the avatar's white border so the two whites merge into one shape */}
-          <div className="relative -mt-[6px] flex h-[30px] w-full items-center justify-center rounded-xl bg-white px-4 text-[18px] font-black leading-none tracking-[0.01em] text-black">
+          <div className="relative -mt-[5px] flex h-[36px] w-full items-center justify-center rounded-xl bg-white px-4 text-[18px] font-black leading-none tracking-[0.01em] text-black">
             {/* Concave fillets where the avatar meets the bar */}
             <span
               aria-hidden="true"
@@ -1518,16 +1518,16 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
           </div>
         </div>
 
-        <p className="mt-4 text-[14px] font-medium text-white/95">🙈 Send anonymously</p>
+        <p className="mt-3 text-[14px] font-medium text-white/95">🙈 send anonymously</p>
 
-        <div className="mt-[10px] flex w-full flex-col gap-[10px]">
-          <button onClick={() => onAnswer('friend')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#16c9e9,#0569f9)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
+        <div className="mt-[3px] flex w-[260px] max-w-full flex-col gap-[8px]">
+          <button onClick={() => onAnswer('friend')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#00ccfe,#005efa)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
             🤝 Friend
           </button>
-          <button onClick={() => onAnswer('crush')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#d14ce6,#ff3c98)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
+          <button onClick={() => onAnswer('crush')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#cf59e7,#ff3c9e)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
            😍 Crush
           </button>
-          <button onClick={() => onAnswer('frenemy')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#b7a7ee,#58598f)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
+          <button onClick={() => onAnswer('frenemy')} disabled={votingDisabled} className="h-[48px] rounded-2xl bg-[linear-gradient(90deg,#bbaeed,#50528d)] text-[17px] font-extrabold shadow-[0_7px_0_rgba(0,0,0,0.18)] transition active:translate-y-1 active:shadow-[0_3px_0_rgba(0,0,0,0.18)] disabled:opacity-60">
             😈 Frenemy 
           </button>
           {submitError ? (
@@ -1544,15 +1544,15 @@ function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, s
           ) : null}
         </div>
 
-        <p className="mt-4 max-w-[290px] text-[11px] font-medium leading-[1.5] text-white/75">
-          By voting, you agree to our{' '}
-          <a href="/terms-of-service" className="font-bold text-white underline underline-offset-2">Terms</a> and{' '}
-          <a href="/community-guidelines" className="font-bold text-white underline underline-offset-2">
-            Community Guidelines
-          </a>
-          . Bullying and harassment aren't allowed.
-        </p>
       </div>
+      <p className="mt-1 max-w-[320px] text-[11px] font-medium leading-[14px] text-white/75">
+        By voting, you agree to our{' '}
+        <a href="/terms-of-service" className="font-bold text-white underline underline-offset-2">Terms</a> and{' '}
+        <a href="/community-guidelines" className="font-bold text-white underline underline-offset-2">
+          Community Guidelines
+        </a>
+        . Bullying and harassment aren't allowed.
+      </p>
     </>
   );
 }

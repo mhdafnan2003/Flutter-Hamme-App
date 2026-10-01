@@ -23,6 +23,15 @@ body {
   background: transparent;
 }
 
+.share-question-screen {
+  padding-top: clamp(24px, calc(81.2dvh - 517px), 132px);
+  padding-bottom: 32px;
+}
+
+.share-question-screen .friends-playing {
+  margin-bottom: clamp(24px, calc(58.65dvh - 367px), 102px);
+}
+
 .landing-page {
   display: flex;
   min-height: 100dvh;
