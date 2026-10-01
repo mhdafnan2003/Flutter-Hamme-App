@@ -771,7 +771,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: TColors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -2236,10 +2236,7 @@ class _CompletedQueueView extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [PlayEmptyState()],
-      ),
+      child: Align(alignment: Alignment(0, -0.33), child: PlayEmptyState()),
     );
   }
 }
