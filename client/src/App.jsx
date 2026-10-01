@@ -1689,23 +1689,24 @@ function RevealScreen({
       <div className="mt-[18px] text-[11px] font-medium leading-[15px] text-white/70">
         {isMatch ? "It's a match!" : 'Your response was sent anonymously'}
       </div>
-      <div className="mt-[38px] flex h-[40px] items-center justify-center text-[14px] font-medium leading-[40px] text-white/70">Now the question is -</div>
-      <h1 className="mx-auto mt-[-6px] max-w-[196px] text-[32px] font-black leading-[1.375] tracking-[-0.02em]">
-        What does
-        <span className="mx-[8px] inline-flex h-[40px] w-[40px] translate-y-[7px] overflow-hidden rounded-full border-2 border-white bg-[#d8b09f] align-baseline">
-          <img src={profileImage} alt={profileName} className="h-full w-full object-cover" />
+      <div className="mt-[38px] flex h-[40px] items-center justify-center text-[14px] font-semibold leading-[40px] text-[#d7d7d7]">Now the question is -</div>
+      <h1 className="mx-auto mt-[-6px] max-w-[296px] text-[32px] font-extrabold leading-[44px]">
+        <span className="block">What does</span>
+        <span className="flex min-h-[44px] items-center justify-center gap-2">
+          <span className="inline-flex h-[40px] w-[40px] shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#d8b09f]">
+            <img src={profileImage} alt={profileName} className="h-full w-full object-cover" />
+          </span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">{profileName}</span>
         </span>
-        {profileName}
-        <br />
-        think of you?
+        <span className="block">think of you?</span>
       </h1>
 
-      <div className="mt-[49px] px-4">
-        <div className="mb-[6px] flex items-center justify-between text-[11px] font-black text-white/65">
-          <span>{isExpired ? 'LINK EXPIRED' : 'LINK EXPIRES IN'}</span>
-          <span className={displaySeconds <= 20 ? 'text-[#ff4545]' : 'text-white'}>{String(displaySeconds).padStart(2, '0')}s</span>
+      <div className="mt-[16px] px-4">
+        <div className="flex h-[44px] items-center justify-between font-extrabold leading-[44px] text-white/60">
+          <span className="text-[10px]">{isExpired ? 'LINK EXPIRED' : 'LINK EXPIRES IN'}</span>
+          <span className={`text-[12px] ${displaySeconds <= 20 ? 'text-[#ff4545]' : 'text-white'}`}>{String(displaySeconds).padStart(2, '0')}s</span>
         </div>
-        <div className="h-[3px] overflow-hidden rounded-full bg-white/35">
+        <div className="mt-[-10px] h-[3px] overflow-hidden rounded-full bg-white/35">
           <div
             className={`h-full rounded-full ${displaySeconds <= 20 ? 'bg-[#ff4545]' : 'bg-white'}`}
             style={{ width: `${(displaySeconds / displayTtlSeconds) * 100}%` }}

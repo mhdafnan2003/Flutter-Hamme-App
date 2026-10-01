@@ -45,8 +45,13 @@ body {
 }
 
 .share-reveal-screen {
-  padding-top: clamp(80px, 10vh, 82px);
+  padding-top: clamp(24px, calc(25dvh - 110px), 90px);
   padding-bottom: 35px;
+}
+
+.share-reveal-screen > footer {
+  /* Preserve the extra footer without overlapping the raised CTA on short screens. */
+  padding-top: 30px;
 }
 
 .share-question-screen .friends-playing {

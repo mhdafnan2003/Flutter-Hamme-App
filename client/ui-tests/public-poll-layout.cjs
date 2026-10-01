@@ -9,15 +9,16 @@ const screenshotDir = process.env.UI_SCREENSHOT_DIR;
 (async () => {
   const browser = await chromium.launch({ headless: true, channel: 'chrome' });
   try {
-    for (const [width, height] of [[360, 800], [320, 568], [390, 844], [844, 390]]) {
+    for (const [width, height, profileName = 'Sneha'] of [[360, 800], [320, 568], [390, 844], [844, 390], [320, 568, 'AveryVeryLongUnbrokenDisplayName']]) {
       const page = await browser.newPage({ viewport: { width, height } });
       await page.route('**/public-profile/**', route => route.fulfill({
-        json: { user: { name: 'Sneha', profileImageUrl: `${origin}/tic.png` } },
+        json: { user: { name: profileName, profileImageUrl: `${origin}/tic.png` } },
       }));
       await page.route('**/anonymous-response', route => route.fulfill({ json: {} }));
       await page.goto(`${origin}/poll/layout-review`);
       await page.getByRole('button', { name: /Friend$/ }).waitFor();
       await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => document.fonts.load('800 18px Nunito'));
       await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       const reactions = page.getByRole('button').filter({ hasText: /Friend|Crush|Frenemy/ });
@@ -33,7 +34,8 @@ const screenshotDir = process.env.UI_SCREENSHOT_DIR;
         assert.equal(friend.width, 260);
         assert.equal(await page.getByRole('button', { name: /Friend$/ }).evaluate(n => getComputedStyle(n).fontSize), '18px');
       }
-      if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/question-${width}x${height}.png`, fullPage: true });
+      const screenshotName = `${width}x${height}${profileName === 'Sneha' ? '' : '-long-name'}`;
+      if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/question-${screenshotName}.png`, fullPage: true });
       await page.getByRole('button', { name: /Friend$/ }).click();
       const reveal = page.getByRole('button', { name: 'Reveal' });
       await reveal.waitFor();
@@ -56,8 +58,15 @@ const screenshotDir = process.env.UI_SCREENSHOT_DIR;
       assert(Math.abs(geometry.labelCenter - (geometry.button.x + geometry.button.width / 2 - 10)) < 1);
       assert(Math.abs(geometry.arrowRight - (geometry.button.x + geometry.button.width - 24)) < 1);
       assert(geometry.shadow.includes('6px'), 'Raised base remains outside the glaze clipping box');
+      const friends = await page.locator('.friends-playing').boundingBox();
+      assert(friends.y >= geometry.button.y + geometry.button.height + 20, 'Extra footer clears the raised CTA');
+      if (width === 360 && height === 800) {
+        assert.equal(geometry.button.y, 416);
+        assert.equal(geometry.button.width, 328);
+        assert.equal(geometry.button.height, 56);
+      }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-      if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/reveal-${width}x${height}.png`, fullPage: true });
+      if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/reveal-${screenshotName}.png`, fullPage: true });
       await reveal.scrollIntoViewIfNeeded();
       assert(await reveal.isVisible());
       await page.close();
