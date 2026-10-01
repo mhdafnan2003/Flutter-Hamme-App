@@ -1,19 +1,29 @@
 # Onboarding UI review
 
-Reference: HAMME Figma m2H92wOLmAMzXX7z0DfXGb, DESIGN; live geometry cached 2026-10-01 by parent reviewer in figma-client-onboarding.json. These are progress notes, not a claim of full screen perfection.
+Reviewed 2026-10-01 against HAMME file `m2H92wOLmAMzXX7z0DfXGb`, DESIGN page. Live geometry and typography were read through Figma Console MCP. Actual Flutter renders use the application theme, bundled Nunito and Schibsted Grotesk, loaded raster assets, 393x852 reference viewport, top inset 59, bottom inset 34, and keyboard inset 343 for name/social. Native status bars and native keyboard appearance are supplied by the OS rather than app widgets.
 
-## Implemented
-- DOB: title 24px Nunito Black with 33px linebox; age 48px ExtraBold/65px linebox; years 20px ExtraBold/27px linebox. Fixed card now grows with text scaling rather than overflowing. Real Nunito test covers 320x480 at 2x scaling; prior version failed with 221px overflow.
-- Name: matching title and input 33px lineboxes, helper 19px linebox; compensated default gaps to preserve vertical anchors. Content filter and validation unchanged.
-- Profile upload: matching title 33px linebox and adjusted following gap. Photo picker/upload validation unchanged.
+| Screen | Actual Figma reference | Verification and result |
+| --- | --- | --- |
+| Splash | 4424:2844 | Rendered and compared outlined wordmark and purple gradient. Corrected unwanted FittedBox shrink by using the 65px linebox. Centering tests pass at 393 and 320 widths. Offline restore/retry extra preserved. |
+| Age / DOB | 4593:478, 4673:1534 | Rendered comparison, 24px Nunito Black/33px title, 48px ExtraBold/65px age, 20px ExtraBold/27px years, 35px wheel pitch, 130x112 default card. Reference anchors title130/years348/CTA735 verified with actual font. Compact 320x480 and 2x-font tests pass; card/wheel grow and page scrolls. Sample `00` remains actual selected age instead of fake design data. |
+| Name | 4373:697, 4482:410 | Rendered reference keyboard layout. Title130/input285/helper398 verified using bundled fonts. Existing compact and content validation tests preserved. |
+| Photo | 4373:698, 4473:1135 | Rendered reference title, camera, 192px first chip, tilted second chip, 158px avatar at365, and CTA735. Corrected cropped silhouette and clock assets; exact live exports preserved locally. Compact tests pass. Dynamic selected profile photo remains dynamic. |
+| Social | 4408:1753, 4482:427 | Rendered reference keyboard layout with actual fonts. Existing coordinate tests verify title130/selectors204/input287/CTA429. Three tests pass, including compact platform switching. Skip, validation and registration logic preserved. |
+| Pro | 4744:4263, 5064:1085 | Rendered with actual fonts and assets. Use older 4744:4263 composition to preserve existing social-proof UI. Geometry test verifies title196/features328,428,526/CTA690/footer804. Fixed duplicate bottom inset and compressed feature typography. Three existing tests pass at reference, shorter and very short sizes. Billing, restore, legal links, submission and error handling unchanged. |
+| Community rules | No matching frame found | Live DESIGN text query for community/good vibes/terms acceptance found no reference. Rendered existing consent screen without overflow at reference size. Preserve consent/version/legal links and scrollable rules. Exact redesign deferred pending a reference. |
 
-## Still requiring verification and decisions
-- DOB: matched wheel pitch to 35px and text linebox to 27px from reference 4673:1534 (five age rows at y506/537/572/607/638), scaling row height with system font size. Actual-font rendered overlay and exact wheel row geometry remain outstanding; do not claim the full page verified.
-- All screens: compare rendered actual-font 393x852 with platform safe areas to reference, including CTA bottom inset. Initial existing tests omit real device insets and are insufficient to prove fidelity.
-- Name frames 4373:697/4482:410 include native iOS keyboard; app preserves platform keyboard and validation errors. Test keyboard-open geometry with actual fonts.
-- Photo frames 4373:698/4473:1135: current profile prompt chips and photo callsites/assets need actual rendered overlay.
-- Social frames 4408:1753/4482:427: matched 33px title/input and 22px selector lineboxes, retained y130 title/y204 selectors/y287 input/y429 CTA with real Nunito and keyboard insets in three passing tests. Preserve Skip and registration validation. Large font variants and final rendered overlay remain outstanding.
-- Pro: latest 5064:1085 omits social proof; older 4744:4263 includes social proof currently in app. Preserve that extra pending client decision; billing, restore, terms and platform interactions must remain.
-- Community rules page is an additional app flow with consent, terms and legal links. No mapped Figma frame supplied; preserve it and obtain intended reference rather than removing consent.
-- Splash 4424:2844 shows the centered outlined wordmark. Preserve added offline retry/session restore state; default wordmark and error state rendered verification outstanding.
+## Asset verification
 
+- `assets/icons/onboarding_profile_user.svg`: direct SVG export of Figma 4373:802, intrinsic 60x60, rendered in the 60x60 avatar icon slot. Replaces a cropped 146x181 source that made the head and torso too large.
+- `assets/icons/onboarding_profile_clock.svg`: direct SVG export of 4373:796, intrinsic 20x20, rendered in the 20x20 chip slot.
+- Profile rectangle icon uses the existing 16px asset in its 16px slot; plus uses existing 24px asset in its 24px slot; their local files are non-empty. The existing speech-tail slot and tilt were retained and compared visually.
+- Cake, speaking head and camera PNGs are non-empty, explicitly preloaded in render verification and shown at the 24px reference slots.
+- Pro header curve 393x156, logo143x38, close17x17, and unlocked/infinity/rewind/lightning assets were explicitly loaded and visually inspected. Header wordmark remains centered across phone widths.
+
+## Decisions still required
+
+1. Latest Pro frame 5064:1085 omits social proof and moves the CTA; older 4744:4263 includes the existing row. User requested preserving extras, so retain the older composition until the client chooses. Do not silently delete the row.
+2. Community rules, offline retry, form validation errors and dynamic loading/submission states are additional product states with no supplied Figma counterparts. Preserve them; obtain references if the client wants their exact styling changed.
+3. OS keyboard/status-bar appearance differs by platform; these are not replaced with Figma screenshot imagery.
+
+`test/onboarding_render_review_test.dart` verifies seven actual-font screens and the listed reference anchors. Set `RENDER_UI=1` when running it to write PNGs to the system temporary `hamme-ui-review` directory. Pro no-scroll assertions allow only 0.001 logical pixels of floating-point rounding, rather than introducing a whole-pixel gap to satisfy an exact zero comparison.
