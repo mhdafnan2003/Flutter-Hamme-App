@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
@@ -147,6 +149,29 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                 ),
                 child: Stack(
                   children: [
+                    Positioned(
+                      top: 8,
+                      right: 12,
+                      child: Semantics(
+                        button: true,
+                        label: 'Edit profile',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => context.push('/profile'),
+                          child: SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: Center(
+                              child: SvgPicture.asset(
+                                'assets/icons/home_edit.svg',
+                                width: 24,
+                                height: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: Padding(
@@ -155,7 +180,7 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                           profileName,
                           style: const TextStyle(
                             fontFamily: TFonts.nunito,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             fontSize: 20,
                             color: TColors.white,
                           ),
@@ -171,7 +196,7 @@ class _HomeProfileCardState extends ConsumerState<HomeProfileCard> {
                   TTexts.homePrompt,
                   style: TextStyle(
                     fontFamily: TFonts.nunito,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     fontSize: 18,
                     color: Colors.black,
                   ),

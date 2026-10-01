@@ -37,7 +37,7 @@ class HomeStepCard extends StatelessWidget {
               maxLines: 1,
               style: const TextStyle(
                 fontFamily: TFonts.nunito,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 fontSize: 18,
                 color: Colors.black,
               ),

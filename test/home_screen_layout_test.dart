@@ -1,0 +1,83 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hamme_app/features/home/presentation/screens/home_screen.dart';
+import 'package:hamme_app/features/shared/presentation/widgets/hamme_bottom_nav_bar.dart';
+import 'package:hamme_app/models/auth_session.dart';
+import 'package:hamme_app/providers/auth_providers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class _SignedOutAuthController extends AuthController {
+  @override
+  Future<AuthSession?> build() async => null;
+}
+
+void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    dotenv.loadFromString(
+      envString: 'SHARE_LINK_BASE=https://example.test/poll',
+    );
+  });
+
+  Future<void> pumpHome(WidgetTester tester, Size size) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = size;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_SignedOutAuthController.new),
+        ],
+        child: MaterialApp(
+          builder:
+              (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  padding: const EdgeInsets.only(top: 59, bottom: 34),
+                  viewPadding: const EdgeInsets.only(top: 59, bottom: 34),
+                ),
+                child: child!,
+              ),
+          home: Scaffold(
+            body: const HomeScreen(),
+            bottomNavigationBar: HammeBottomNavBar(
+              currentIndex: 0,
+              onTap: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('shows the Figma home sections and all three tabs', (
+    tester,
+  ) async {
+    await pumpHome(tester, const Size(393, 852));
+
+    expect(find.text('Step 1: Copy your link'), findsOneWidget);
+    expect(find.text('Step 2: Share link to your story'), findsOneWidget);
+    expect(find.text('Share'), findsOneWidget);
+    expect(find.text('Play'), findsOneWidget);
+    expect(find.text('Inbox'), findsOneWidget);
+    expect(find.bySemanticsLabel('Edit profile'), findsOneWidget);
+    expect(find.text('Share!').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps the Share action above navigation on a shorter phone', (
+    tester,
+  ) async {
+    await pumpHome(tester, const Size(393, 740));
+
+    final shareBottom = tester.getRect(find.text('Share!')).bottom;
+    final navTop = tester.getRect(find.byType(HammeBottomNavBar)).top;
+    expect(shareBottom, lessThan(navTop));
+    expect(find.text('Share!').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
