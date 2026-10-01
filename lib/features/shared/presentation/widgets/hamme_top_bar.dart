@@ -48,34 +48,38 @@ class HammeTopBar extends StatelessWidget {
 class HammeWordmark extends StatelessWidget {
   const HammeWordmark({super.key});
   @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      Text(
-        'Hamme',
-        textScaler: TextScaler.noScaling,
-        style: TextStyle(
-          fontFamily: TFonts.nunito,
-          fontSize: 24,
-          height: 1.375,
-          fontWeight: FontWeight.w800,
-          foreground:
-              Paint()
-                ..style = PaintingStyle.stroke
-                ..strokeWidth = 8
-                ..color = const Color(0xFFA678FF),
+  Widget build(BuildContext context) => Semantics(
+    label: 'Hamme',
+    excludeSemantics: true,
+    child: Stack(
+      children: [
+        Text(
+          'Hamme',
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            fontFamily: TFonts.nunito,
+            fontSize: 24,
+            height: 1.375,
+            fontWeight: FontWeight.w800,
+            foreground:
+                Paint()
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 8
+                  ..color = const Color(0xFFA678FF),
+          ),
         ),
-      ),
-      const Text(
-        'Hamme',
-        textScaler: TextScaler.noScaling,
-        style: TextStyle(
-          fontFamily: TFonts.nunito,
-          fontSize: 24,
-          height: 1.375,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
+        const Text(
+          'Hamme',
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            fontFamily: TFonts.nunito,
+            fontSize: 24,
+            height: 1.375,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 }
