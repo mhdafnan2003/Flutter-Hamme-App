@@ -11,3 +11,7 @@
 ## Share/Home profile card
 
 - `HomeProfileCard._changeProfileImage` is currently unused. It uploads a photo and writes the URL to the onboarding draft, but does not update the server profile. If that method were connected to the edit icon, the photo might not persist. The icon now opens the existing Profile screen, whose photo edit flow updates the server profile.
+
+## Inbox
+
+- The app can show a vote-management section below the reaction cards for hiding, reporting, and blocking votes. The visible Inbox Figma frames do not depict this section. It has been preserved because it supports existing moderation actions.

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamme_app/core/widgets/emoji_image.dart';
 import 'package:hamme_app/features/inbox/domain/models/inbox_variation.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -26,14 +27,13 @@ class InboxReactionCard extends StatelessWidget {
   }
 
   String get _message {
-    if (count == 0) {
-      return 'Numbers fill up the moment someone\n'
-          'taps on your story link. Go share \u{1F446}';
-    }
-    if (count == 1) {
-      return '1 person has ${variation.typeKey} on you';
-    }
-    return '$count people have ${variation.typeKey} on you';
+    final plural = count != 1;
+    return switch (variation.typeKey) {
+      'friend' =>
+        '$count ${plural ? 'people want' : 'person wants'} to be your Friend',
+      'frenemy' => '$count ${plural ? 'people are' : 'person is'} your Frenemy',
+      _ => '$count ${plural ? 'people have' : 'person has'} crush on you',
+    };
   }
 
   @override
@@ -45,7 +45,7 @@ class InboxReactionCard extends StatelessWidget {
     return Align(
       alignment: Alignment.topCenter,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 361),
           child: SizedBox(
@@ -61,6 +61,7 @@ class InboxReactionCard extends StatelessWidget {
                   right: 0,
                   height: outerCardHeight,
                   child: DecoratedBox(
+                    key: const Key('inbox-reaction-outer-card'),
                     decoration: BoxDecoration(
                       border: Border.all(
                         color: variation.borderColor,
@@ -163,76 +164,98 @@ class InboxReactionCard extends StatelessWidget {
                   top: 138,
                   left: 24,
                   right: 24,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        count.toString(),
-                        style: const TextStyle(
-                          fontFamily: TFonts.nunito,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 36,
-                          height: 1.35,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Color(0x40000000),
-                              blurRadius: 4,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
+                  child: Text(
+                    count.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: TFonts.nunito,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 36,
+                      height: 1.35,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Color(0x40000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 4),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FittedBox(
+                      ],
+                    ),
+                  ),
+                ),
+                if (count == 0)
+                  Positioned(
+                    top: 199,
+                    left: 35,
+                    right: 35,
+                    child: Column(
+                      children: [
+                        FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            _message,
-                            maxLines: 2,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontFamily: TFonts.nunito,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              height: 1.35,
-                              color: Colors.white,
-                            ),
+                            'Numbers fill up the moment someone',
+                            maxLines: 1,
+                            style: _hintStyle,
                           ),
                         ),
-                      ),
-                      if (count > 0) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(32),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            variation.tagline,
-                            maxLines: 1,
-                            style: const TextStyle(
-                              fontFamily: TFonts.nunito,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                              height: 1,
-                              color: Colors.white,
-                            ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'taps on your story link. Go share',
+                                maxLines: 1,
+                                style: _hintStyle,
+                              ),
+                              const SizedBox(width: 4),
+                              SvgPicture.asset(
+                                'assets/icons/inbox_pointing_up.svg',
+                                width: 16,
+                                height: 16,
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ],
+                    ),
+                  )
+                else ...[
+                  Positioned(
+                    top: 187,
+                    left: 24,
+                    right: 24,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(_message, maxLines: 1, style: _hintStyle),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    top: 221,
+                    child: Container(
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        variation.tagline,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontFamily: TFonts.nunito,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -240,4 +263,11 @@ class InboxReactionCard extends StatelessWidget {
       ),
     );
   }
+
+  static const _hintStyle = TextStyle(
+    fontFamily: TFonts.nunito,
+    fontWeight: FontWeight.w800,
+    fontSize: 16,
+    color: Colors.white,
+  );
 }
