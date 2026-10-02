@@ -9,7 +9,6 @@ import revealArrowRight from '../../assets/icons/icon_line/reveal_arrow_right.sv
 
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';
-const flutterWebBaseUrl = import.meta.env.VITE_FLUTTER_WEB_URL ?? '';
 const sessionStorageKey = 'hamme_web_session_id';
 const votedCodesKey = 'hamme_voted_codes';
 const voteCooldownMs = 24 * 60 * 60 * 1000;
@@ -55,7 +54,9 @@ function markAsVoted(code) {
     const voted = JSON.parse(window.localStorage.getItem(votedCodesKey) || '{}');
     voted[code] = Date.now();
     window.localStorage.setItem(votedCodesKey, JSON.stringify(voted));
-  } catch {}
+  } catch {
+    // Voting still succeeds when browser storage is unavailable.
+  }
 }
 
 function readShareCodeFromPath() {
@@ -444,7 +445,6 @@ function ShareFlowApp() {
           <QuestionScreen
             onAnswer={handleAnswer}
             profileImage={profileImage}
-            profileName={profileName}
             submittingType={submittingType}
             submitError={submitError}
             voteBlocked={voteBlocked}
@@ -1495,7 +1495,7 @@ function CommunityGuidelinesPage() {
   );
 }
 
-function QuestionScreen({ onAnswer, profileImage, profileName, submittingType, submitError, voteBlocked, votingPaused }) {
+function QuestionScreen({ onAnswer, profileImage, submittingType, submitError, voteBlocked, votingPaused }) {
   const votingDisabled = !!submittingType || voteBlocked || votingPaused;
   return (
     <>
@@ -1577,7 +1577,6 @@ function RevealScreen({
   shareCode,
   selectedType,
 }) {
-  const [copyStatus, setCopyStatus] = useState('');
   const storeRedirectTimer = useRef(null);
   // The pending token the Reveal "touch" was already sent for (see handleReveal).
   const touchedToken = useRef(null);
@@ -1589,33 +1588,6 @@ function RevealScreen({
   // is longer. When the displayed countdown hits 0 the screen behaves as expired.
   const displaySeconds = Math.max(secondsLeft - (pendingTtlSeconds - displayTtlSeconds), 0);
   const isExpired = isLinkExpired || displaySeconds === 0;
-
-  const buildFlutterWebFallbackUrl = () => {
-    if (!flutterWebBaseUrl) {
-      return '';
-    }
-
-    const base = flutterWebBaseUrl.replace(/\/+$/, '');
-    return `${base}/#/home`;
-  };
-
-  const handleCopyDeepLink = async () => {
-    const deepLink = buildDeepLink({ shareCode, type: selectedType, token: pendingToken });
-    try {
-      await navigator.clipboard.writeText(deepLink);
-    } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = deepLink;
-      textarea.setAttribute('readonly', '');
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
-    setCopyStatus('Copied deeplink');
-  };
 
   const handleReveal = async () => {
     if (!pendingToken && !shareCode) return;
@@ -1734,16 +1706,6 @@ function RevealScreen({
         />
       </button>
 
-      {/* <button
-        onClick={handleCopyDeepLink}
-        disabled={isExpired || !pendingToken}
-        className="mt-[12px] flex h-[50px] w-full items-center justify-center rounded-[22px] bg-white/15 text-[16px] font-extrabold text-white disabled:opacity-45"
-      >
-        Copy Deeplink
-      </button> */}
-      {copyStatus ? (
-        <p className="mt-2 text-[12px] font-bold text-white/75">{copyStatus}</p>
-      ) : null}
     </div>
   );
 }
