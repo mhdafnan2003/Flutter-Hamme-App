@@ -3,15 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hamme_app/features/profile/data/datasources/profile_remote_data_source.dart';
-import 'package:hamme_app/features/profile/data/datasources/upload_remote_data_source.dart';
 import 'package:hamme_app/core/utils/app_exception.dart';
 import 'package:hamme_app/core/constants/app_constants.dart';
 import 'package:hamme_app/core/utils/link_launcher.dart';
-import 'package:hamme_app/providers/api_providers.dart';
 import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/billing_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/providers/onboarding_photo_provider.dart';
+import 'package:hamme_app/providers/onboarding_registration_provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -36,14 +35,28 @@ class ProScreen extends ConsumerStatefulWidget {
 
 class _ProScreenState extends ConsumerState<ProScreen> {
   bool _isSubmitting = false;
+  bool _isStartingPurchase = false;
   bool _isRestoringProfile = false;
   String? _errorText;
+  bool _leavingForPro = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _handleRegistrationError(ref.read(onboardingRegistrationProvider));
+      if (ref.read(isProProvider)) unawaited(_dismiss());
+    });
+  }
 
   /// The top-right close button. In the upgrade flow it simply dismisses the
   /// paywall; during onboarding it proceeds (skips Pro) to the home screen.
   Future<void> _dismiss() async {
     if (!widget.isOnboarding) {
       if (!mounted) return;
+      if (_leavingForPro) return;
+      _leavingForPro = true;
       if (context.canPop()) {
         context.pop();
       } else {
@@ -56,54 +69,19 @@ class _ProScreenState extends ConsumerState<ProScreen> {
 
   /// Starts a real in-app purchase for the Pro subscription.
   Future<void> _buyPro() async {
+    if (widget.isOnboarding && !await _awaitRegistration()) return;
+    if (!mounted) return;
     await ref.read(billingControllerProvider.notifier).buyPro();
   }
 
-  /// Onboarding Continue: starts the real purchase (it resolves later via
-  /// the billing stream, independently of this screen) and finishes
-  /// onboarding regardless of the purchase outcome. Buying Pro and
-  /// finishing signup are separate concerns — same as the X (skip) button
-  /// already treats them.
+  /// A verified purchase completes onboarding. Close continues on the free plan.
   Future<void> _continueOnboardingWithPurchase() async {
-    await _buyPro();
-  }
-
-  Future<void> _uploadSelectedProfileImageInBackground() async {
-    final selectedImage = ref.read(onboardingProfileImageProvider);
-    if (selectedImage == null) {
-      debugPrint(
-        '[Onboarding] profile image upload skipped: no image selected',
-      );
-      return;
-    }
-
-    debugPrint(
-      '[Onboarding] profile image upload begin: ${selectedImage.filename} '
-      '(${selectedImage.bytes.length} bytes)',
-    );
-
-    final apiService = ref.read(apiServiceProvider);
-    final draftNotifier = ref.read(onboardingDraftProvider.notifier);
-    final imageNotifier = ref.read(onboardingProfileImageProvider.notifier);
-    final authController = ref.read(authControllerProvider.notifier);
+    if (_isStartingPurchase) return;
+    setState(() => _isStartingPurchase = true);
     try {
-      final imageUrl = await UploadRemoteDataSource(
-        apiService,
-      ).uploadProfileImageBytes(
-        bytes: selectedImage.bytes,
-        filename: selectedImage.filename,
-      );
-      // PATCH /profiles/me returns the updated user, so no refetch is needed.
-      final updatedUser = await ProfileRemoteDataSource(
-        apiService,
-      ).updateMe(avatarUrl: imageUrl);
-      await draftNotifier.setProfileImageUrl(imageUrl);
-      imageNotifier.state = null;
-      authController.setUser(updatedUser);
-      debugPrint('[Onboarding] profile image upload success');
-    } catch (error) {
-      // Home keeps the local preview. A later profile-page edit can retry.
-      debugPrint('[Onboarding] background profile image upload failed: $error');
+      await _buyPro();
+    } finally {
+      if (mounted) setState(() => _isStartingPurchase = false);
     }
   }
 
@@ -115,6 +93,8 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     });
 
     try {
+      if (widget.isOnboarding && !await _awaitRegistration()) return;
+      if (!mounted) return;
       final purchaseRestored =
           await ref.read(billingControllerProvider.notifier).restorePurchases();
       if (!purchaseRestored || !mounted) return;
@@ -210,13 +190,10 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     }
 
     try {
-      if (ref.read(authControllerProvider).value == null) {
-        throw const AppException('Your account is still being created.');
-      }
+      if (!await _awaitRegistration() || !mounted) return;
 
-      // The photo is optional and can finish after Home has opened. Account
-      // creation is still awaited because the protected upload needs its token.
-      unawaited(_uploadSelectedProfileImageInBackground());
+      // Retry a failed photo upload without holding up navigation to Home.
+      unawaited(ref.read(onboardingPhotoUploadProvider.notifier).syncProfile());
 
       await ref.read(onboardingCompletionProvider.notifier).markComplete();
       debugPrint('[Onboarding] onboarding marked complete');
@@ -240,8 +217,37 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     }
   }
 
+  bool _returningToUsername = false;
+
+  void _handleRegistrationError(AsyncValue<bool> registration) {
+    if (!widget.isOnboarding ||
+        !registration.hasError ||
+        _returningToUsername ||
+        !mounted) {
+      return;
+    }
+    final error = registration.error;
+    if (error is AppException && error.isAccountBanned) return;
+    _returningToUsername = true;
+    context.go('/onboarding/social_media');
+  }
+
+  Future<bool> _awaitRegistration() async {
+    if (ref.read(authControllerProvider).valueOrNull != null) return true;
+    final success =
+        await ref.read(onboardingRegistrationProvider.notifier).start();
+    if (!mounted) return false;
+    if (!success) {
+      _handleRegistrationError(ref.read(onboardingRegistrationProvider));
+    }
+    return success;
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<bool>>(onboardingRegistrationProvider, (_, next) {
+      _handleRegistrationError(next);
+    });
     final billing = ref.watch(billingControllerProvider);
     final isUpgrade = !widget.isOnboarding;
     final headerHeight = 156.0;
@@ -273,21 +279,35 @@ class _ProScreenState extends ConsumerState<ProScreen> {
         );
         if (widget.isOnboarding) {
           unawaited(_completeOnboarding());
-        } else if (context.canPop()) {
-          context.pop();
         } else {
-          context.go('/home');
+          unawaited(_dismiss());
         }
       }
     });
 
     // The big CTA performs a real purchase in the upgrade flow and just
     // continues onboarding otherwise.
-    final bool ctaBusy = billing.busy || _isSubmitting || _isRestoringProfile;
-    final String ctaLabel = 'Continue';
+    final bool ctaBusy =
+        billing.busy ||
+        _isSubmitting ||
+        _isStartingPurchase ||
+        _isRestoringProfile;
+    final String ctaLabel =
+        billing.paymentAwaitingApproval
+            ? 'Payment pending'
+            : billing.verificationRequired
+            ? 'Restore purchase'
+            : billing.error != null
+            ? 'Try again'
+            : 'Continue';
     final Future<void> Function() onCta =
         isUpgrade ? _buyPro : _continueOnboardingWithPurchase;
-    final String? errorText = _errorText ?? billing.error;
+    final String? errorText =
+        _errorText ??
+        billing.error ??
+        (billing.paymentAwaitingApproval
+            ? 'Your payment is pending with the store. Pro unlocks after approval. You can close this page; do not purchase again.'
+            : null);
 
     return Scaffold(
       backgroundColor: TColors.white,
@@ -320,6 +340,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                       top: 72,
                       right: 24,
                       child: GestureDetector(
+                        key: const Key('pro-close'),
                         onTap: _dismiss,
                         behavior: HitTestBehavior.opaque,
                         child: SizedBox(
@@ -518,7 +539,9 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                                   ),
                                                 ),
                                                 child:
-                                                    isUpgrade && ctaBusy
+                                                    ctaBusy &&
+                                                            !billing
+                                                                .paymentAwaitingApproval
                                                         ? const SizedBox(
                                                           width: 24,
                                                           height: 24,
@@ -556,8 +579,12 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                         const SizedBox(height: 6),
                                         Text(
                                           errorText,
-                                          style: const TextStyle(
-                                            color: Colors.redAccent,
+                                          style: TextStyle(
+                                            color:
+                                                billing.paymentAwaitingApproval &&
+                                                        billing.error == null
+                                                    ? TColors.hammePrimary
+                                                    : Colors.redAccent,
                                             fontFamily: TFonts.nunito,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 12,
@@ -573,7 +600,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                           child: Text(
                                             billing.proProduct != null
                                                 ? 'pro renews for ${billing.proProduct!.price}/wk'
-                                                : 'pro renews for \$6.99/wk',
+                                                : 'Price available at checkout',
                                             style: const TextStyle(
                                               fontFamily: TFonts.nunito,
                                               fontSize: 16,

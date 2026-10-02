@@ -413,8 +413,8 @@ class AuthController extends AsyncNotifier<AuthSession?> {
                 created,
                 acceptedTermsVersion,
               );
-      await _registerPushToken();
       state = AsyncData(session);
+      unawaited(_registerPushToken());
     } catch (e, st) {
       debugPrint('[Auth] guestRegister failed: $e');
       debugPrint('[Auth] guestRegister stacktrace: $st');

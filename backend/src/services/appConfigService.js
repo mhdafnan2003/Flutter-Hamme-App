@@ -1,6 +1,7 @@
 const AppConfig = require('../models/AppConfig');
 const CardSession = require('../models/CardSession');
 const User = require('../models/User');
+const { hasProAccess } = require('../utils/proEntitlement');
 
 const DEFAULTS = { freeUserCardLimit: 10, cardCooldownMinutes: 5 };
 // The config changes only from the admin panel, but was read on every card
@@ -87,14 +88,12 @@ async function getCardLimitStatus(userId) {
       'isPro adminPro storeProActive proPlatform proExpiryAt proSubscriptionState proAutoRenewing'
     )
     .lean();
-  const adminEntitled =
-    user?.adminPro || (user?.proPlatform === 'admin' && user?.isPro);
   const storeEntitled = Boolean(
     user?.storeProActive &&
       user?.proExpiryAt &&
       user.proExpiryAt.getTime() > Date.now()
   );
-  const effectivePro = Boolean(adminEntitled || storeEntitled);
+  const effectivePro = hasProAccess(user);
 
   // Enforce the stored paid expiry even if an RTDN is delayed. Keep the
   // denormalized compatibility flag consistent for subsequent reads.

@@ -10,6 +10,7 @@ import 'utils/theme/theme.dart';
 import 'providers/deferred_interaction_provider.dart';
 import 'models/interaction_type.dart';
 import 'providers/interaction_providers.dart';
+import 'providers/billing_providers.dart';
 import 'providers/settings_providers.dart';
 import 'providers/push_notification_providers.dart';
 import 'core/constants/app_constants.dart';
@@ -192,6 +193,7 @@ class _HammeAppState extends ConsumerState<HammeApp> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(billingControllerProvider);
     // Initialize the deferred interaction finalizer to listen for tokens
     ref.watch(deferredInteractionFinalizerProvider);
     ref.listen<String?>(deferredInteractionErrorProvider, (_, message) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,8 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:hamme_app/core/constants/app_constants.dart';
 import 'package:hamme_app/core/utils/app_exception.dart';
 import 'package:hamme_app/core/utils/content_filter.dart';
-import 'package:hamme_app/providers/auth_providers.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/providers/onboarding_registration_provider.dart';
 import 'package:hamme_app/routes/route_paths.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -57,6 +59,26 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
       }
     }
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_registrationErrorHandled) return;
+    _registrationErrorHandled = true;
+    final error = ref.read(onboardingRegistrationProvider).error;
+    if (error == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (error is AppException && error.isAccountBanned) return;
+      if (error is AppException && error.isObjectionableContent) {
+        await _showRejectedContent(error);
+      } else {
+        await _showUsernameError('Could not create your account. Try again.');
+      }
+    });
+  }
+
+  bool _registrationErrorHandled = false;
 
   @override
   void dispose() {
@@ -367,26 +389,7 @@ class _SocialMediaScreenState extends ConsumerState<SocialMediaScreen> {
         return;
       }
 
-      final age =
-          draft.birthday == null
-              ? 18
-              : (DateTime.now().difference(draft.birthday!).inDays / 365.25)
-                  .floor();
-      await ref
-          .read(authControllerProvider.notifier)
-          .guestRegister(
-            age: age.clamp(13, 100),
-            displayName: (draft.name ?? 'Guest').trim(),
-            username: username,
-            instagramId: platform == TTexts.socialInstagram ? username : null,
-            snapchatId: platform == TTexts.socialSnapchat ? username : null,
-            acceptedTermsVersion: acceptedTerms,
-          );
-
-      final auth = ref.read(authControllerProvider);
-      if (auth.hasError || auth.valueOrNull == null) {
-        throw auth.error ?? Exception('Could not create account.');
-      }
+      unawaited(ref.read(onboardingRegistrationProvider.notifier).start());
       if (mounted) context.go('/onboarding/pro');
     } catch (error) {
       if (!mounted) return;

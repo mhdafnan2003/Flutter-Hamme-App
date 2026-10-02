@@ -13,6 +13,7 @@ class UploadRemoteDataSource {
   Future<String> uploadProfileImageBytes({
     required Uint8List bytes,
     required String filename,
+    bool onboarding = false,
   }) async {
     debugPrint(
       '[UploadDS] uploadProfileImageBytes start name=$filename bytes=${bytes.length}',
@@ -25,7 +26,7 @@ class UploadRemoteDataSource {
       // rejects that generic type, so preserve the selected image's MIME type.
       contentType: _imageMediaType(filename),
     );
-    return _upload(file);
+    return _upload(file, onboarding: onboarding);
   }
 
   MediaType _imageMediaType(String filename) {
@@ -50,12 +51,17 @@ class UploadRemoteDataSource {
     return _upload(multipart);
   }
 
-  Future<String> _upload(http.MultipartFile file) async {
+  Future<String> _upload(
+    http.MultipartFile file, {
+    bool onboarding = false,
+  }) async {
     final response =
         await _apiService.postMultipart(
-              '/upload/profile-image',
+              onboarding
+                  ? '/upload/onboarding-profile-image'
+                  : '/upload/profile-image',
               files: [file],
-              authenticated: true,
+              authenticated: !onboarding,
             )
             as Map<String, dynamic>;
 

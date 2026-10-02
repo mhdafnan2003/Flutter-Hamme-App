@@ -12,6 +12,7 @@ class SafetyMenuButton extends StatelessWidget {
     required this.onPressed,
     this.label = 'Hide, report or block',
     this.icon = CupertinoIcons.ellipsis,
+    this.iconAsset,
     this.iconColor = Colors.black87,
     this.backgroundColor = TColors.hammeSurface,
     this.diameter = 36,
@@ -24,6 +25,7 @@ class SafetyMenuButton extends StatelessWidget {
   /// Tooltip and screen-reader label.
   final String label;
   final IconData icon;
+  final String? iconAsset;
   final Color iconColor;
   final Color backgroundColor;
   final double diameter;
@@ -49,12 +51,22 @@ class SafetyMenuButton extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
-          child: Icon(
-            icon,
-            size: iconSize,
-            color: iconColor,
-            semanticLabel: label,
-          ),
+          child:
+              iconAsset != null
+                  ? Image.asset(
+                    iconAsset!,
+                    width: iconSize,
+                    height: iconSize,
+                    fit: BoxFit.contain,
+                    color: iconColor,
+                    semanticLabel: label,
+                  )
+                  : Icon(
+                    icon,
+                    size: iconSize,
+                    color: iconColor,
+                    semanticLabel: label,
+                  ),
         ),
       ),
     );

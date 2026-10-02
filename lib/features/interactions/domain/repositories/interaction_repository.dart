@@ -17,6 +17,7 @@ abstract interface class InteractionRepository {
     String? targetUserId,
     String? interactionId,
     required InteractionType type,
+    bool rewind = false,
   });
 
   Future<List<MatchRecord>> getMatches();

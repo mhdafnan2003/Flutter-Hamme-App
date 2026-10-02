@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
@@ -33,6 +34,8 @@ class BillingState {
     this.storeAvailable = false,
     this.products = const <ProductDetails>[],
     this.purchasePending = false,
+    this.paymentAwaitingApproval = false,
+    this.verificationRequired = false,
     this.restoring = false,
     this.error,
     this.restoreRequired = false,
@@ -51,6 +54,8 @@ class BillingState {
 
   /// A purchase is currently being processed.
   final bool purchasePending;
+  final bool paymentAwaitingApproval;
+  final bool verificationRequired;
 
   /// A restore-purchases call is in flight.
   final bool restoring;
@@ -73,6 +78,8 @@ class BillingState {
     bool? storeAvailable,
     List<ProductDetails>? products,
     bool? purchasePending,
+    bool? paymentAwaitingApproval,
+    bool? verificationRequired,
     bool? restoring,
     Object? error = _sentinel,
   }) {
@@ -82,6 +89,9 @@ class BillingState {
       storeAvailable: storeAvailable ?? this.storeAvailable,
       products: products ?? this.products,
       purchasePending: purchasePending ?? this.purchasePending,
+      paymentAwaitingApproval:
+          paymentAwaitingApproval ?? this.paymentAwaitingApproval,
+      verificationRequired: verificationRequired ?? this.verificationRequired,
       restoring: restoring ?? this.restoring,
       error: error == _sentinel ? this.error : error as String?,
     );
@@ -98,7 +108,8 @@ final isProProvider = Provider<bool>(
   (ref) => ref.watch(billingControllerProvider.select((s) => s.isPro)),
 );
 
-class BillingController extends Notifier<BillingState> {
+class BillingController extends Notifier<BillingState>
+    with WidgetsBindingObserver {
   static const String _entitlementKey = 'pro_entitlement';
 
   InAppPurchase? _iap;
@@ -109,26 +120,34 @@ class BillingController extends Notifier<BillingState> {
   String? _restoreUserId;
   bool _restoreSawPurchase = false;
   bool _disposed = false;
+  int _entitlementRevision = 0;
+  bool _verificationCanRetry = false;
   Future<void> _purchaseQueue = Future<void>.value();
 
   @override
   BillingState build() {
+    ref.onDispose(() => _disposed = true);
     // Only initialize IAP on supported platforms (iOS, Android)
-    if (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android)) {
       _iap = InAppPurchase.instance;
+      WidgetsBinding.instance.addObserver(this);
       _subscription = _iap!.purchaseStream.listen(
         _enqueuePurchases,
         onError: (Object error) {
           state = state.copyWith(
             purchasePending: false,
             restoring: false,
-            error: 'Purchase stream error: $error',
+            error:
+                'Could not connect to the store. Check your connection and try again.',
           );
+          _completeRestore(false);
         },
       );
       ref.onDispose(() {
         _disposed = true;
+        WidgetsBinding.instance.removeObserver(this);
         _subscription?.cancel();
         _completeRestore(false);
       });
@@ -143,6 +162,23 @@ class BillingController extends Notifier<BillingState> {
       // entitlement of a user who is leaving.
       if (next.isLoading) return;
       final user = next.valueOrNull?.user;
+      if (user?.id != previous?.valueOrNull?.user.id ||
+          user?.isPro != previous?.valueOrNull?.user.isPro) {
+        _entitlementRevision++;
+      }
+      if (user?.id != previous?.valueOrNull?.user.id) {
+        _purchaseToRestore = null;
+        _restoreUserId = null;
+        _completeRestore(false);
+        state = state.copyWith(
+          restoreRequired: false,
+          verificationRequired: false,
+          purchasePending: false,
+          paymentAwaitingApproval: false,
+          restoring: false,
+          error: null,
+        );
+      }
       final serverPro = user?.isPro ?? false;
       if (serverPro && !state.isPro) {
         state = state.copyWith(isPro: true);
@@ -171,14 +207,32 @@ class BillingController extends Notifier<BillingState> {
     return BillingState(isPro: initialUser?.isPro ?? false);
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_disposed ||
+        state != AppLifecycleState.resumed ||
+        ref.read(authControllerProvider).valueOrNull == null) {
+      return;
+    }
+    unawaited(_refreshServerEntitlement());
+    if (this.state.storeAvailable &&
+        !this.state.restoring &&
+        (this.state.paymentAwaitingApproval ||
+            this.state.verificationRequired)) {
+      unawaited(
+        _restoreOwnedPurchases(showProgress: false, showNotFoundError: false),
+      );
+    }
+  }
+
   /// Loads the persisted entitlement and queries the store for products.
   Future<void> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
+    if (_disposed) return;
     final savedEntitlement = prefs.getBool(_entitlementKey) ?? false;
 
     // Server is the source of truth when a session is available.
     final sessionPro = ref.read(authControllerProvider).value?.user.isPro;
-    final entitlement = sessionPro ?? false;
     if (sessionPro == true && !savedEntitlement) {
       await prefs.setBool(_entitlementKey, true);
     } else if (sessionPro == false && savedEntitlement) {
@@ -195,7 +249,13 @@ class BillingController extends Notifier<BillingState> {
       }
     }
 
-    state = state.copyWith(isPro: entitlement, storeAvailable: available);
+    if (_disposed) return;
+    // Store discovery may finish after sign-in, purchase verification or an
+    // account switch. Read the current session rather than the old snapshot.
+    state = state.copyWith(
+      isPro: ref.read(authControllerProvider).valueOrNull?.user.isPro ?? false,
+      storeAvailable: available,
+    );
     // Free users' isPro already comes from the session; only a subscriber's
     // entitlement needs reconciling with the store.
     if (sessionPro == true) {
@@ -209,6 +269,7 @@ class BillingController extends Notifier<BillingState> {
 
     try {
       final response = await _iap!.queryProductDetails(ProProducts.ids);
+      if (_disposed) return;
       if (response.error != null) {
         debugPrint('[Billing] queryProductDetails error: ${response.error}');
       }
@@ -218,6 +279,7 @@ class BillingController extends Notifier<BillingState> {
       state = state.copyWith(products: response.productDetails);
     } catch (error) {
       debugPrint('[Billing] queryProductDetails failed: $error');
+      if (_disposed) return;
       state = state.copyWith(error: 'Could not load products.');
     }
   }
@@ -225,7 +287,33 @@ class BillingController extends Notifier<BillingState> {
   /// Starts the purchase flow for the Pro subscription.
   Future<void> buyPro() async {
     if (state.busy || state.restoreRequired || state.isPro) return;
+    if (state.verificationRequired) {
+      await restorePurchases();
+      return;
+    }
+    state = state.copyWith(error: null);
 
+    if (_iap != null && (!state.storeAvailable || state.proProduct == null)) {
+      state = state.copyWith(purchasePending: true);
+      try {
+        final available = await _iap!.isAvailable();
+        final products =
+            available
+                ? (await _iap!.queryProductDetails(
+                  ProProducts.ids,
+                )).productDetails
+                : <ProductDetails>[];
+        if (_disposed) return;
+        state = state.copyWith(storeAvailable: available, products: products);
+      } catch (error) {
+        if (!_disposed) {
+          state = state.copyWith(error: _storeErrorMessage(error));
+        }
+        return;
+      } finally {
+        if (!_disposed) state = state.copyWith(purchasePending: false);
+      }
+    }
     if (_iap == null || !state.storeAvailable) {
       state = state.copyWith(
         error: 'In-app purchases are not available on this platform.',
@@ -238,7 +326,13 @@ class BillingController extends Notifier<BillingState> {
         showProgress: false,
         showNotFoundError: false,
       );
-      if (restored || state.restoreRequired || state.error != null) return;
+      if (restored ||
+          state.busy ||
+          state.isPro ||
+          state.restoreRequired ||
+          state.error != null) {
+        return;
+      }
     }
     final product = state.proProduct;
     if (product == null) {
@@ -248,7 +342,11 @@ class BillingController extends Notifier<BillingState> {
       return;
     }
 
-    state = state.copyWith(purchasePending: true, error: null);
+    state = state.copyWith(
+      purchasePending: true,
+      paymentAwaitingApproval: false,
+      error: null,
+    );
     try {
       final user = ref.read(authControllerProvider).value?.user;
       if (user == null) {
@@ -280,7 +378,8 @@ class BillingController extends Notifier<BillingState> {
         if (!restored && !state.restoreRequired) {
           state = state.copyWith(
             purchasePending: false,
-            error: 'Could not start the purchase.',
+            error:
+                'Could not open checkout. Check your connection and try again.',
           );
         }
       }
@@ -298,9 +397,25 @@ class BillingController extends Notifier<BillingState> {
       }
       state = state.copyWith(
         purchasePending: false,
-        error: 'Purchase failed. Please try again.',
+        error: _storeErrorMessage(error),
       );
     }
+  }
+
+  String _storeErrorMessage(Object? error) {
+    final text = error.toString().toLowerCase();
+    if (text.contains('declin') ||
+        text.contains('payment') ||
+        text.contains('insufficient')) {
+      return 'Payment could not be completed. Check your payment method in the store or choose another method, then try again.';
+    }
+    if (text.contains('network') ||
+        text.contains('disconnect') ||
+        text.contains('timeout') ||
+        text.contains('service_unavailable')) {
+      return 'The store could not connect. Check your internet connection and try again.';
+    }
+    return 'Purchase could not be completed. Check your payment method in the store and try again. If you were charged, use Restore instead of purchasing again.';
   }
 
   /// Restores previously purchased entitlements.
@@ -437,9 +552,16 @@ class BillingController extends Notifier<BillingState> {
       }
       switch (purchase.status) {
         case PurchaseStatus.pending:
-          state = state.copyWith(purchasePending: true, error: null);
+          state = state.copyWith(
+            purchasePending: true,
+            paymentAwaitingApproval: true,
+            restoring: false,
+            error: null,
+          );
+          _completeRestore(false);
           break;
         case PurchaseStatus.error:
+          state = state.copyWith(paymentAwaitingApproval: false);
           final errorText =
               '${purchase.error?.message ?? ''} ${purchase.error?.details ?? ''}'
                   .toLowerCase();
@@ -459,11 +581,12 @@ class BillingController extends Notifier<BillingState> {
           state = state.copyWith(
             purchasePending: false,
             restoring: false,
-            error: purchase.error?.message ?? 'Purchase failed.',
+            error: _storeErrorMessage(purchase.error),
           );
           _completeRestore(false);
           break;
         case PurchaseStatus.canceled:
+          state = state.copyWith(paymentAwaitingApproval: false);
           state = state.copyWith(
             purchasePending: false,
             restoring: false,
@@ -473,13 +596,26 @@ class BillingController extends Notifier<BillingState> {
           break;
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
+          state = state.copyWith(
+            purchasePending: true,
+            paymentAwaitingApproval: false,
+            error: null,
+          );
           _restoreSawPurchase = true;
+          final purchasingUserId =
+              ref.read(authControllerProvider).valueOrNull?.user.id;
           final verificationError = await _verifyPurchase(purchase);
+          if (_disposed) return;
+          if (ref.read(authControllerProvider).valueOrNull?.user.id !=
+              purchasingUserId) {
+            continue;
+          }
           if (verificationError == null) {
             verified = true;
             await _grantEntitlement();
             state = state.copyWith(
               isPro: true,
+              verificationRequired: false,
               purchasePending: false,
               restoring: false,
               error: null,
@@ -490,6 +626,8 @@ class BillingController extends Notifier<BillingState> {
               purchasePending: false,
               restoring: false,
               error: verificationError,
+              verificationRequired:
+                  _verificationCanRetry && !state.restoreRequired,
             );
             _completeRestore(false);
           }
@@ -513,8 +651,12 @@ class BillingController extends Notifier<BillingState> {
   /// Google Play and grants the Pro entitlement on the user account.
   /// Returns null on success or an error message on failure.
   Future<String?> _verifyPurchase(PurchaseDetails purchase) async {
+    _verificationCanRetry = false;
     final token = purchase.verificationData.serverVerificationData;
-    if (token.isEmpty) return 'Missing purchase verification data.';
+    if (token.isEmpty) {
+      _verificationCanRetry = true;
+      return 'Could not read your store purchase. Tap Restore to try again. Do not purchase again.';
+    }
 
     final verifyingUserId = ref.read(authControllerProvider).value?.user.id;
     try {
@@ -544,6 +686,7 @@ class BillingController extends Notifier<BillingState> {
       if (response is! Map<String, dynamic> ||
           response['isPro'] != true ||
           response['user'] is! Map<String, dynamic>) {
+        _verificationCanRetry = true;
         return 'Could not verify your Pro subscription.';
       }
       ref
@@ -564,9 +707,16 @@ class BillingController extends Notifier<BillingState> {
           state = state.copyWith(restoreRequired: true);
           return 'An existing Pro subscription was found. Restore it to this profile.';
         }
+        if (error.statusCode == null ||
+            error.statusCode! >= 500 ||
+            error.statusCode == 429) {
+          _verificationCanRetry = true;
+          return 'Your store purchase could not be verified yet. Check your connection and tap Restore to activate Pro. Do not purchase again.';
+        }
         return error.message;
       }
-      return 'Could not verify purchase.';
+      _verificationCanRetry = true;
+      return 'Your store purchase could not be verified yet. Tap Restore to try again. Do not purchase again.';
     }
   }
 
@@ -656,10 +806,12 @@ class BillingController extends Notifier<BillingState> {
 
   Future<void> _doRefreshServerEntitlement() async {
     try {
+      final revision = _entitlementRevision;
       final userId = ref.read(authControllerProvider).value?.user.id;
       if (userId == null) return;
       final api = ref.read(apiServiceProvider);
       final response = await api.get('/billing/status', authenticated: true);
+      if (_disposed || revision != _entitlementRevision) return;
       if (ref.read(authControllerProvider).value?.user.id != userId) return;
       if (response is! Map<String, dynamic>) return;
       final entitlement = response['isPro'];

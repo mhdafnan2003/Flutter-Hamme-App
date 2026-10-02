@@ -36,6 +36,11 @@ class MatchThemeConfig {
     _ => 'assets/icons/emoji_crush.png',
   };
 
+  // Frenemy's horns fill the image corners. Give them extra room inside
+  // the circular badge so the white rim stays visible.
+  double emojiSizeInCircle(double circleSize) =>
+      choiceText == 'Frenemy' ? circleSize * 2 / 3 : circleSize - 6;
+
   static MatchThemeConfig fromType(InteractionType type) {
     switch (type) {
       case InteractionType.crush:
@@ -300,8 +305,8 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                     centerSize: 38,
                                     centerIcon: Image.asset(
                                       theme.emojiAsset,
-                                      width: 32,
-                                      height: 32,
+                                      width: theme.emojiSizeInCircle(38),
+                                      height: theme.emojiSizeInCircle(38),
                                     ),
                                     plainOtherAvatar: isAnonymous,
                                   ),

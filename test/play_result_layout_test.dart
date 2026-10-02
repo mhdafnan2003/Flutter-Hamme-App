@@ -20,6 +20,7 @@ import 'package:hamme_app/models/interaction_type.dart';
 import 'package:hamme_app/models/play_limit_status.dart';
 import 'package:hamme_app/models/vote_response.dart';
 import 'package:hamme_app/providers/interaction_providers.dart';
+import 'package:hamme_app/providers/billing_providers.dart';
 import 'package:hamme_app/providers/play_limit_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -44,12 +45,18 @@ class _CooldownLimit extends PlayLimitStatusNotifier {
 
 class _PendingRepository implements InteractionRepository {
   final pending = Completer<VoteResponse>();
+  final calls = <String>[];
   @override
   Future<VoteResponse> respondToInteraction({
     String? targetUserId,
     String? interactionId,
     required InteractionType type,
-  }) => pending.future;
+    bool rewind = false,
+  }) {
+    calls.add('${interactionId ?? targetUserId}:$rewind');
+    return pending.future;
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -64,6 +71,8 @@ void main() {
     double scale = 1,
     bool queue = false,
     bool cooldown = false,
+    bool pro = false,
+    _PendingRepository? repository,
     List<MatchRecord> matches = const [],
   }) async {
     tester.view.physicalSize = size;
@@ -98,7 +107,10 @@ void main() {
           playLimitStatusProvider.overrideWith(
             cooldown ? _CooldownLimit.new : _UnrestrictedLimit.new,
           ),
-          interactionRepositoryProvider.overrideWithValue(_PendingRepository()),
+          if (pro) isProProvider.overrideWithValue(true),
+          interactionRepositoryProvider.overrideWithValue(
+            repository ?? _PendingRepository(),
+          ),
         ],
         child: MaterialApp(
           theme: ThemeData(fontFamily: 'Nunito'),
@@ -158,6 +170,46 @@ void main() {
     });
     debugDisableShadows = true;
   }
+
+  testWidgets(
+    'Pro bypasses stale cooldown and rewind opens the poll directly',
+    (tester) async {
+      final repository = _PendingRepository();
+      await pumpScreen(
+        tester,
+        const PlayScreen(),
+        const Size(393, 852),
+        queue: true,
+        cooldown: true,
+        pro: true,
+        repository: repository,
+      );
+      expect(find.text('Play Now'), findsNothing);
+      expect(find.text('Friend'), findsOneWidget);
+      await tester.tap(find.text('Friend'));
+      await tester.pump();
+      expect(find.text('Not a Match!'), findsOneWidget);
+      await tester.tap(find.text('Rewind'));
+      await tester.pump();
+      expect(find.text('Not a Match!'), findsNothing);
+      expect(find.text('Friend'), findsOneWidget);
+      await tester.tap(find.text('Frenemy'));
+      await tester.pump();
+      expect(repository.calls, ['u1:false']);
+      repository.pending.complete((
+        result: InteractionResult(
+          interaction: testVote('v1', from: 'u1'),
+          matched: false,
+        ),
+        cardLimitStatus: PlayLimitStatus.unrestricted,
+      ));
+      await tester.pump();
+      expect(repository.calls, ['u1:false', 'v1:true']);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 3));
+    },
+  );
 
   for (final size in [
     const Size(393, 852),

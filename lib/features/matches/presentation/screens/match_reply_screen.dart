@@ -228,8 +228,8 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
                                   ringColor: theme.solidBorder,
                                   centerIcon: Image.asset(
                                     theme.emojiAsset,
-                                    width: 36,
-                                    height: 36,
+                                    width: theme.emojiSizeInCircle(42),
+                                    height: theme.emojiSizeInCircle(42),
                                   ),
                                   plainOtherAvatar: _isAnonymous,
                                 ),

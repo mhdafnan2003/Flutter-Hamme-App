@@ -94,6 +94,7 @@ dependency_overrides:
   in_app_purchase_android: ^0.5.1
 
 dev_dependencies:
+  in_app_purchase_platform_interface: ^1.4.1
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4

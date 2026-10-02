@@ -9,6 +9,7 @@ const appConfigService = require('./appConfigService');
 const blockService = require('./blockService');
 const pushService = require('./pushService');
 const env = require('../config/env');
+const { hasProAccess, comparePriorityVotes } = require('../utils/proEntitlement');
 
 const allowedTypes = new Set(['friend', 'crush', 'frenemy']);
 const pendingTtlSecondsRaw = Number(process.env.PENDING_TTL_SECONDS || 180);
@@ -552,6 +553,7 @@ async function createInteractionByTargetId({
   targetUserId,
   type,
   enforceCardLimit = true,
+  rewindInteraction = null,
 }) {
   let limitStatus = null;
   if (enforceCardLimit) {
@@ -574,16 +576,25 @@ async function createInteractionByTargetId({
     throw new ApiError(400, 'You cannot interact with your own profile.');
   }
   await assertUsersCanInteract(fromUserId, targetUser);
-  await assertInteractionCooldownElapsed(fromUserId, targetUser.id);
+  if (!rewindInteraction) {
+    await assertInteractionCooldownElapsed(fromUserId, targetUser.id);
+  }
 
-  const interaction = await Interaction.create({
-    fromUser: fromUserId,
-    toUser: targetUser.id,
-    type: normalizedType,
-  });
+  const interaction = rewindInteraction
+    ? await Interaction.findOneAndUpdate(
+      { _id: rewindInteraction.id, fromUser: fromUserId, type: rewindInteraction.type },
+      { $set: { type: normalizedType } },
+      { new: true }
+    )
+    : await Interaction.create({
+      fromUser: fromUserId,
+      toUser: targetUser.id,
+      type: normalizedType,
+    });
+  if (!interaction) throw new ApiError(409, 'This answer changed. Reload the poll and try again.');
 
   const fromUser = await User.findById(fromUserId).select('username name profileImageUrl');
-  await notifyVote({ toUserId: targetUser.id, fromUser });
+  if (!rewindInteraction) await notifyVote({ toUserId: targetUser.id, fromUser });
 
   const reciprocal = await Interaction.findOne({
     fromUser: targetUser.id,
@@ -635,12 +646,41 @@ async function createInteractionByTargetId({
   };
 }
 
-async function respondToAnonymousInteraction({ currentUserId, interactionId, type }) {
+async function rewindInteraction({ currentUserId, interactionId, type }) {
+  const status = await appConfigService.getCardLimitStatus(currentUserId);
+  if (!status.isPro) throw new ApiError(403, 'Rewind requires an active Pro plan.');
+  if (!interactionId) throw new ApiError(400, 'The poll to rewind is required.');
+  const candidate = await Interaction.findOne({
+    _id: interactionId, toUser: currentUserId, hiddenByRecipientAt: null,
+  });
+  if (!candidate) throw new ApiError(404, 'This poll is no longer available.');
+  if (candidate.metadata?.anonymous === true) {
+    return respondToAnonymousInteraction({ currentUserId, interactionId, type, rewind: true });
+  }
+  const response = await Interaction.findOne({
+    fromUser: currentUserId, toUser: candidate.fromUser,
+    createdAt: { $gte: candidate.createdAt },
+  }).sort({ createdAt: -1 });
+  if (!response || response.type === candidate.type) {
+    throw new ApiError(409, 'Only an answered poll without a match can be rewound.');
+  }
+  const pair = buildCanonicalPair(currentUserId, candidate.fromUser);
+  if (await Match.exists({ userA: pair.userA, userB: pair.userB })) {
+    throw new ApiError(409, 'This poll already has a match.');
+  }
+  return createInteractionByTargetId({
+    fromUserId: currentUserId, targetUserId: candidate.fromUser,
+    type, rewindInteraction: response,
+  });
+}
+
+async function respondToAnonymousInteraction({ currentUserId, interactionId, type, rewind = false }) {
   if (!env.anonymousVoteBackEnabled) {
     throw new ApiError(403, 'Anonymous vote-back is currently disabled.');
   }
 
   const limitStatus = await appConfigService.getCardLimitStatus(currentUserId);
+  if (rewind && !limitStatus.isPro) throw new ApiError(403, 'Rewind requires an active Pro plan.');
   if (limitStatus.limited) {
     throw new ApiError(
       429,
@@ -661,7 +701,10 @@ async function respondToAnonymousInteraction({ currentUserId, interactionId, typ
   if (!candidate) {
     throw new ApiError(404, 'Anonymous interaction not found.');
   }
-  if (candidate.metadata?.creatorResponseType) {
+  if (rewind && (!candidate.metadata?.creatorResponseType || candidate.metadata?.anonymousMatched)) {
+    throw new ApiError(409, 'Only an answered poll without a match can be rewound.');
+  }
+  if (!rewind && candidate.metadata?.creatorResponseType) {
     throw new ApiError(409, 'You already responded to this interaction.');
   }
 
@@ -673,7 +716,7 @@ async function respondToAnonymousInteraction({ currentUserId, interactionId, typ
       toUser: currentUserId,
       fromUser: null,
       'metadata.anonymous': true,
-      'metadata.creatorResponseType': { $exists: false },
+      'metadata.creatorResponseType': rewind ? candidate.metadata.creatorResponseType : { $exists: false },
       hiddenByRecipientAt: null,
     },
     {
@@ -843,12 +886,18 @@ async function getPlayQueue(userId, visibleVotes, blockedUserIds) {
   ]);
 
   const voterIds = [...new Set(namedVotes.map((vote) => vote.fromUser.toString()))];
-  const latestByUserId = await latestVoteTimes(userId, voterIds);
+  const [latestByUserId, voters] = await Promise.all([
+    latestVoteTimes(userId, voterIds),
+    voterIds.length ? User.find({ _id: { $in: voterIds } })
+      .select('isPro adminPro storeProActive proPlatform proExpiryAt').lean() : [],
+  ]);
+  const proVoterIds = new Set(voters.filter(user => hasProAccess(user)).map(user => user._id.toString()));
   const unansweredIds = namedVotes
     .filter(
       (vote) =>
         !isAnswered(latestByUserId, vote.fromUser.toString(), vote.createdAt.getTime())
     )
+    .sort((a, b) => comparePriorityVotes(a, b, proVoterIds))
     .slice(0, PLAY_QUEUE_LIMIT)
     .map((vote) => vote._id);
   const unanswered = unansweredIds.length
@@ -867,7 +916,7 @@ async function getPlayQueue(userId, visibleVotes, blockedUserIds) {
       ),
     ...anonymousVotes.map(serializeAnonymousInteraction),
   ]
-    .sort((a, b) => b.createdAt - a.createdAt)
+    .sort((a, b) => comparePriorityVotes(a, b, proVoterIds))
     .slice(0, PLAY_QUEUE_LIMIT);
 }
 
@@ -1219,6 +1268,7 @@ module.exports = {
   createAnonymousResponse,
   createInteractionByTargetId,
   respondToAnonymousInteraction,
+  rewindInteraction,
   createAnonymousInteraction,
   getMatchesForUser,
   getReceivedInteractions,

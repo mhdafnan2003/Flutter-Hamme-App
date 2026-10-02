@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hamme_app/providers/onboarding_providers.dart';
+import 'package:hamme_app/providers/onboarding_photo_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
@@ -38,7 +41,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
 
     try {
       // The server stores at most 1024 px (JPEG, quality 80), so a larger
-      // pick only makes the upload after sign-up slower.
+      // pick only makes the background upload slower.
       final XFile? pickedFile = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 80,
@@ -73,6 +76,7 @@ class _ProfileUploadScreenState extends ConsumerState<ProfileUploadScreen> {
         bytes: bytes,
         filename: fileName.isNotEmpty ? fileName : 'profile.jpg',
       );
+      unawaited(ref.read(onboardingPhotoUploadProvider.notifier).start());
     } finally {
       _isPickingImage = false;
     }

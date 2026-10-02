@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const ApiError = require('../utils/ApiError');
 const uploadController = require('../controllers/uploadController');
@@ -43,7 +44,7 @@ const upload = multer({
   },
 });
 
-router.post('/profile-image', authMiddleware, (req, res, next) => {
+function receiveProfileImage(req, res, next) {
   upload.single('image')(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -53,6 +54,18 @@ router.post('/profile-image', authMiddleware, (req, res, next) => {
     }
     return next();
   });
-}, uploadController.uploadProfileImage);
+}
+
+router.post('/profile-image', authMiddleware, receiveProfileImage, uploadController.uploadProfileImage);
+
+// A photo can be selected before an account exists. Limit these unauthenticated
+// uploads separately, before buffering or processing the image.
+router.post('/onboarding-profile-image', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many photo uploads. Please try again shortly.' },
+}), receiveProfileImage, uploadController.uploadProfileImage);
 
 module.exports = router;

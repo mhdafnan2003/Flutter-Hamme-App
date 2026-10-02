@@ -86,6 +86,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   final Set<String> _locallyShownMatchKeys = {};
 
   int _votesInFlight = 0;
+  final Map<String, Future<void>> _voteWrites = {};
   // Votes cast since the last limit status that already counts them.
   int _votesSinceLimitStatus = 0;
   // The limit status the server returned with the votes of the current burst
@@ -440,8 +441,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
   // so without this the next card stays votable after the last free vote and
   // that vote gets rejected. Count local votes against viewsLeft instead.
   bool _isLimitReached(PlayLimitStatus status) {
+    if (ref.read(isProProvider) || status.isPro) return false;
     if (status.limited) return true;
-    if (status.isPro) return false;
     final viewsLeft = status.viewsLeft;
     return viewsLeft != null && viewsLeft - _votesSinceLimitStatus <= 0;
   }
@@ -522,18 +523,28 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     required bool isAnonymous,
     required InteractionResult localResult,
     required ScaffoldMessengerState messenger,
+    required bool rewind,
   }) {
     final repository = ref.read(interactionRepositoryProvider);
-    final request =
-        isAnonymous
-            ? repository.respondToInteraction(
-              interactionId: effectiveItem.id,
-              type: type,
-            )
-            : repository.respondToInteraction(
-              targetUserId: effectiveItem.fromUser,
-              type: type,
-            );
+    final previousWrite = _voteWrites[effectiveItem.id] ?? Future<void>.value();
+    final request = previousWrite.then(
+      (_) =>
+          isAnonymous || rewind
+              ? repository.respondToInteraction(
+                interactionId: effectiveItem.id,
+                type: type,
+                rewind: rewind,
+              )
+              : repository.respondToInteraction(
+                targetUserId: effectiveItem.fromUser,
+                type: type,
+              ),
+    );
+    // Rewind can be tapped before the first answer reaches the server.
+    _voteWrites[effectiveItem.id] = request.then<void>(
+      (_) {},
+      onError: (Object _) {},
+    );
     unawaited(
       request
           .then((response) {
@@ -550,10 +561,10 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
           })
           .catchError((Object error) {
             if (!mounted) return;
-            // 409: the server already has an answer for this card (e.g. a
-            // Rewind re-vote). Keep it answered; there is nothing to retry.
+            // A normal duplicate answer stays answered. A failed rewind must
+            // be reported instead of silently pretending it was saved.
             final alreadyAnswered =
-                error is AppException && error.statusCode == 409;
+                !rewind && error is AppException && error.statusCode == 409;
             // 403 VOTE_BLOCKED: one of the two blocked the other after this
             // card loaded, so the vote can never be saved. Keep the card out
             // of Play for good instead of putting it back.
@@ -580,7 +591,13 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
             }
             // Put the card back so the vote isn't lost; it can be cast again
             // once the cooldown ends.
-            setState(() => _locallyRespondedIds.remove(effectiveItem.id));
+            setState(() {
+              _locallyRespondedIds.remove(effectiveItem.id);
+              if (rewind) {
+                _rewoundItem = effectiveItem;
+                _lastResult = null;
+              }
+            });
             if (limitReached) {
               // The server applied the free limit, so a local Pro flag is
               // stale and would hide the cooldown. Reloading the user lets
@@ -669,6 +686,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
       return;
     }
     _lastVotedItem = effectiveItem;
+    final rewind = _rewoundItem?.id == effectiveItem.id;
 
     final localResult = _buildLocalResult(
       effectiveItem,
@@ -687,6 +705,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
       isAnonymous: isAnonymous,
       localResult: localResult,
       messenger: messenger,
+      rewind: rewind,
     );
     if (localResult.matched) {
       await _showMatchOverlay(localResult);
@@ -752,6 +771,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen>
     final pending = ref.watch(pendingPlayInteractionsProvider);
     final limitStatus = ref.watch(playLimitStatusProvider);
     final safetyFilter = ref.watch(safetyFilterProvider);
+    ref.watch(isProProvider);
 
     // Listen for new matches that the poller should see (arrived from the
     // other side). Never celebrate a match the user just hid or blocked.
@@ -1550,11 +1570,14 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(24),
-                      onTap: () {
+                      onTap: () async {
                         if (ref.read(isProProvider)) {
                           widget.onRewind();
                         } else {
-                          context.push('/pro');
+                          await context.push('/pro');
+                          if (mounted && ref.read(isProProvider)) {
+                            widget.onRewind();
+                          }
                         }
                       },
                       child: Align(
@@ -2077,7 +2100,7 @@ class _PlayQueue extends StatelessWidget {
                                         right: 2,
                                         child: SafetyMenuButton(
                                           onPressed: onReport,
-                                          icon: CupertinoIcons.flag_fill,
+                                          iconAsset: 'assets/icons/report.png',
                                           iconSize: 17,
                                           iconColor: Colors.white,
                                           backgroundColor: Colors.transparent,

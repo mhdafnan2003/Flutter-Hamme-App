@@ -44,5 +44,8 @@ class PlayLimitStatusNotifier extends AsyncNotifier<PlayLimitStatus> {
 
   /// Shows [status], which the server returned with a vote, instead of
   /// fetching it again.
-  void apply(PlayLimitStatus status) => state = AsyncData(status);
+  void apply(PlayLimitStatus status) =>
+      state = AsyncData(
+        ref.read(isProProvider) ? PlayLimitStatus.unrestricted : status,
+      );
 }

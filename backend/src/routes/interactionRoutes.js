@@ -24,6 +24,7 @@ router.post(
       return true;
     }),
     body('type').isIn(['crush', 'friend', 'frenemy']),
+    body('rewind').optional().isBoolean().toBoolean(),
     body('senderUserId').optional({ values: 'falsy' }).trim(),
     body('source').optional({ values: 'falsy' }).trim(),
   ],

@@ -31,6 +31,12 @@ async function respondInteraction(req, res) {
   }
 
   if (authUserId) {
+    if (req.body.rewind === true) {
+      const result = await interactionService.rewindInteraction({
+        currentUserId: authUserId, interactionId, type,
+      });
+      return res.status(200).json(result);
+    }
     if (interactionId) {
       const result = await interactionService.respondToAnonymousInteraction({
         currentUserId: authUserId,
@@ -47,6 +53,9 @@ async function respondInteraction(req, res) {
     return res.status(201).json(result);
   }
 
+  if (req.body.rewind === true) {
+    return res.status(401).json({ message: 'Sign in to rewind a poll.' });
+  }
   const result = await interactionService.createAnonymousInteraction({
     targetUserId,
     type,

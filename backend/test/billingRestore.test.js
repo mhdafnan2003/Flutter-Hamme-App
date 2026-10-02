@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 
-function fixture({ platform = 'android', active = true, old = true, admin = false, attributed = 'old', failSave = false } = {}) {
+function fixture({ platform = 'android', active = true, old = true, admin = false, attributed = 'old', failSave = false, subscriptionState, storeFailure } = {}) {
   let users = new Map();
   let bindings = new Map();
   const token = platform === 'ios' ? 'apple-original' : 'play-token';
@@ -41,7 +41,7 @@ function fixture({ platform = 'android', active = true, old = true, admin = fals
     findOneAndUpdate: async (filter, update) => bindings.set(filter._id, { userId: update.$set.userId }),
   };
   const raw = {
-    subscriptionState: active ? 'SUBSCRIPTION_STATE_ACTIVE' : 'SUBSCRIPTION_STATE_EXPIRED',
+    subscriptionState: subscriptionState || (active ? 'SUBSCRIPTION_STATE_ACTIVE' : 'SUBSCRIPTION_STATE_EXPIRED'),
     lineItems: [{ productId: 'hamme_pro_weekly', expiryTime: new Date(Date.now() + (active ? 86400000 : -86400000)).toISOString() }],
     externalAccountIdentifiers: { obfuscatedExternalAccountId: attributed },
   };
@@ -68,7 +68,7 @@ function fixture({ platform = 'android', active = true, old = true, admin = fals
       };
       if (name === '@googleapis/androidpublisher') return {
         auth: { GoogleAuth: class { async getClient() { return {}; } } },
-        androidpublisher: () => ({ purchases: { subscriptionsv2: { get: async () => ({ data: raw }) } } }),
+        androidpublisher: () => ({ purchases: { subscriptionsv2: { get: async () => { if (storeFailure) throw storeFailure; return { data: raw }; } } } }),
       };
       if (name === '@apple/app-store-server-library') return {
         Environment: { PRODUCTION: 'Production', SANDBOX: 'Sandbox' }, Status: { ACTIVE: 1, BILLING_GRACE_PERIOD: 4 },
@@ -91,6 +91,26 @@ function fixture({ platform = 'android', active = true, old = true, admin = fals
     payload: { platform, productId: 'hamme_pro_weekly', purchaseToken: platform === 'ios' ? signed(appleTransaction) : token },
   };
 }
+
+for (const subscriptionState of ['SUBSCRIPTION_STATE_PENDING', 'SUBSCRIPTION_STATE_ON_HOLD', 'SUBSCRIPTION_STATE_PAUSED', 'SUBSCRIPTION_STATE_EXPIRED', 'SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED']) {
+  test(`Google ${subscriptionState} never grants Pro even with a future expiry`, async () => {
+    const f = fixture({ old: false, attributed: 'new', subscriptionState });
+    await assert.rejects(f.service.verifyPurchase('new', f.payload), e => e.statusCode === 402);
+    assert.equal(f.users().get('new').isPro, false);
+  });
+}
+for (const subscriptionState of ['SUBSCRIPTION_STATE_CANCELED', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD']) {
+  test(`Google ${subscriptionState} keeps access for the paid period`, async () => {
+    const f = fixture({ old: false, attributed: 'new', subscriptionState });
+    assert.equal((await f.service.verifyPurchase('new', f.payload)).isPro, true);
+  });
+}
+test('Google verification outage does not grant or mutate ownership', async () => {
+  const f = fixture({ storeFailure: Object.assign(new Error('Unavailable'), { code: 503 }) });
+  await assert.rejects(f.service.verifyPurchase('new', f.payload), e => e.statusCode === 503);
+  assert.equal(f.users().get('new').isPro, false);
+  assert.equal(f.users().get('old').isPro, true);
+});
 
 for (const platform of ['android', 'ios']) {
   test(`${platform}: linking another profile requires confirmation and makes no changes`, async () => {

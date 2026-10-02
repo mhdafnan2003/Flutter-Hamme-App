@@ -30,6 +30,7 @@ class InteractionRemoteDataSource {
     String? targetUserId,
     String? interactionId,
     required InteractionType type,
+    bool rewind = false,
   }) async {
     assert(
       (targetUserId == null) != (interactionId == null),
@@ -43,6 +44,7 @@ class InteractionRemoteDataSource {
                 if (targetUserId != null) 'targetUserId': targetUserId,
                 if (interactionId != null) 'interactionId': interactionId,
                 'type': type.name,
+                if (rewind) 'rewind': true,
               },
             )
             as Map<String, dynamic>;

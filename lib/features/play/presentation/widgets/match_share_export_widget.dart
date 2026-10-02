@@ -71,7 +71,7 @@ class MatchShareExportWidget extends StatelessWidget {
       avatarRing: Color(0xFF535B97),
       label: 'Frenemy',
       emojiAsset: 'assets/icons/emoji_frenemy.png',
-      emojiSize: 30,
+      emojiSize: 28,
     ),
     InteractionType.crush => const _MatchExportTheme(
       colors: [Color(0xFFCF59E7), Color(0xFFFF3C9E)],
@@ -160,16 +160,10 @@ class MatchShareExportWidget extends StatelessWidget {
                             otherImageUrl: anonymous ? null : otherImageUrl,
                             otherFallbackText: displayName.characters.first,
                             ringColor: theme.avatarRing,
-                            centerIcon: Transform.translate(
-                              offset: Offset(
-                                0,
-                                type == InteractionType.frenemy ? 2 : 0,
-                              ),
-                              child: Image.asset(
-                                theme.emojiAsset,
-                                width: theme.emojiSize,
-                                height: theme.emojiSize,
-                              ),
+                            centerIcon: Image.asset(
+                              theme.emojiAsset,
+                              width: theme.emojiSize,
+                              height: theme.emojiSize,
                             ),
                           ),
                         ),

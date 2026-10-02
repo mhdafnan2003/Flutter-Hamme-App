@@ -32,11 +32,13 @@ class InteractionRepositoryImpl implements InteractionRepository {
     String? targetUserId,
     String? interactionId,
     required InteractionType type,
+    bool rewind = false,
   }) {
     return _remoteDataSource.respondToInteraction(
       targetUserId: targetUserId,
       interactionId: interactionId,
       type: type,
+      rewind: rewind,
     );
   }
 

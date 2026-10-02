@@ -3,7 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hamme_app/features/onboarding/presentation/screens/pro_screen.dart';
 import 'package:hamme_app/providers/billing_providers.dart';
+import 'package:hamme_app/providers/auth_providers.dart';
+import 'package:hamme_app/models/auth_session.dart';
+import 'package:hamme_app/models/app_user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _SignedInAuth extends AuthController {
+  @override
+  Future<AuthSession?> build() async => const AuthSession(
+    accessToken: 'token',
+    user: AppUser(
+      id: 'guest',
+      name: 'Guest',
+      email: '',
+      instagramId: 'guest',
+      shareCode: 'share',
+      termsVersion: 1,
+    ),
+  );
+}
 
 class _FakeBillingController extends BillingController {
   bool get pro => state.isPro;
@@ -53,6 +71,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          authControllerProvider.overrideWith(_SignedInAuth.new),
           billingControllerProvider.overrideWith(
             () => controller ?? _FakeBillingController(),
           ),
@@ -65,6 +84,10 @@ void main() {
         ),
       ),
     );
+    // The app router initializes auth before the paywall is opened.
+    await ProviderScope.containerOf(
+      tester.element(find.byType(ProScreen)),
+    ).read(authControllerProvider.future);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
   }
@@ -118,7 +141,7 @@ void main() {
     expect(find.text('Unlimited Rewinds'), findsOneWidget);
     expect(find.text('Priority Profile'), findsOneWidget);
     expect(find.text('Continue'), findsOneWidget);
-    expect(find.text(r'pro renews for $6.99/wk'), findsOneWidget);
+    expect(find.text('Price available at checkout'), findsOneWidget);
     expect(tester.getRect(find.text('Privacy')).bottom, lessThanOrEqualTo(852));
     expect(tester.getRect(find.text('Restore')).bottom, lessThanOrEqualTo(852));
     expect(tester.getRect(find.text('Terms')).bottom, lessThanOrEqualTo(852));
