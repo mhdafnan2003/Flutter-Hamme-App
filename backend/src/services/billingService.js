@@ -5,21 +5,20 @@ const {
   auth: googleAuth,
 } = require('@googleapis/androidpublisher');
 const mongoose = require('mongoose');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   AppStoreServerAPIClient,
   Environment,
-  ReceiptUtility,
   Status,
+  SignedDataVerifier,
 } = require('@apple/app-store-server-library');
 
 const User = require('../models/User');
+const BillingOwnership = require('../models/BillingOwnership');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 const env = require('../config/env');
-const {
-  createAccessToken,
-  createRefreshToken,
-} = require('./tokenService');
 
 // Product IDs that grant Pro. Override with PRO_PRODUCT_IDS (comma separated).
 const PRO_PRODUCT_IDS = (process.env.PRO_PRODUCT_IDS || 'hamme_pro_weekly')
@@ -286,29 +285,6 @@ function decodeAppleJwsPayload(jws) {
   }
 }
 
-function extractAppleTransactionId(receiptOrJws) {
-  if (typeof receiptOrJws !== 'string' || !receiptOrJws.trim()) {
-    throw new ApiError(400, 'Apple purchase receipt is required.');
-  }
-
-  // StoreKit 2 sends a transaction JWS, while the default Flutter StoreKit
-  // implementation sends a base64 app receipt. Both are supported.
-  if (receiptOrJws.split('.').length === 3) {
-    const transactionId = decodeAppleJwsPayload(receiptOrJws).transactionId;
-    if (transactionId) return transactionId.toString();
-  }
-
-  try {
-    const transactionId = new ReceiptUtility().extractTransactionIdFromAppReceipt(
-      receiptOrJws
-    );
-    if (transactionId) return transactionId;
-  } catch (_) {
-    // The client-visible error below intentionally avoids receipt details.
-  }
-  throw new ApiError(402, 'Apple could not read this purchase receipt.');
-}
-
 function appleStatusIsActive(status, expiresAt, revoked) {
   if (revoked || !expiresAt || expiresAt.getTime() <= Date.now()) return false;
   return status === Status.ACTIVE || status === Status.BILLING_GRACE_PERIOD;
@@ -359,10 +335,12 @@ function appleSubscriptionSnapshot(statusResponse) {
     productIds: [latest.decoded.productId],
     productId: latest.decoded.productId,
     state: `APPLE_${latest.transaction.status || 'UNKNOWN'}`,
-    expiryAt: latest.expiryAt,
+    expiryAt: latest.transaction.status === Status.BILLING_GRACE_PERIOD && latest.renewal?.gracePeriodExpiresDate
+      ? new Date(latest.renewal.gracePeriodExpiresDate) : latest.expiryAt,
     active: appleStatusIsActive(
       latest.transaction.status,
-      latest.expiryAt,
+      latest.transaction.status === Status.BILLING_GRACE_PERIOD && latest.renewal?.gracePeriodExpiresDate
+        ? new Date(latest.renewal.gracePeriodExpiresDate) : latest.expiryAt,
       Boolean(latest.decoded.revocationDate)
     ),
     autoRenewing: latest.renewal?.autoRenewStatus === 1,
@@ -372,7 +350,7 @@ function appleSubscriptionSnapshot(statusResponse) {
   };
 }
 
-async function fetchAppleSubscription(receiptOrJws) {
+async function fetchAppleSubscription(receiptOrJws, trustedTransactionId = false) {
   const isAppleConfigured =
     Boolean(env.appleIapPrivateKeyBase64 &&
     env.appleIapIssuerId &&
@@ -401,7 +379,32 @@ async function fetchAppleSubscription(receiptOrJws) {
     };
   }
 
-  const transactionId = extractAppleTransactionId(receiptOrJws);
+  let transactionId;
+  if (trustedTransactionId) {
+    transactionId = receiptOrJws;
+  } else if (receiptOrJws.split('.').length === 3) {
+    const hint = decodeAppleJwsPayload(receiptOrJws);
+    if (![Environment.PRODUCTION, Environment.SANDBOX].includes(hint.environment)) {
+      throw new ApiError(402, 'Apple purchase environment is invalid.');
+    }
+    const appId = Number(env.appleIapAppId);
+    if (hint.environment === Environment.PRODUCTION && !appId) {
+      throw new ApiError(503, 'APPLE_IAP_APP_ID is required for production purchase verification.');
+    }
+    const verifier = new SignedDataVerifier(
+      [fs.readFileSync(path.join(__dirname, '../certificates/AppleRootCA-G3.cer'))],
+      true, hint.environment, env.appleIapBundleId,
+      hint.environment === Environment.PRODUCTION ? appId : undefined
+    );
+    try {
+      const verified = await verifier.verifyAndDecodeTransaction(receiptOrJws);
+      transactionId = verified.transactionId;
+    } catch (_) {
+      throw new ApiError(402, 'Apple purchase signature could not be verified.');
+    }
+  } else {
+    throw new ApiError(402, 'A signed Apple transaction is required. Update Hamme and restore your purchase again.');
+  }
   let lastError;
   // App Review and TestFlight use Sandbox; production customers use Production.
   // Querying both lets the receipt determine its environment without trusting
@@ -428,12 +431,57 @@ function hasLegacyAdminGrant(user) {
   return user.adminPro || (user.proPlatform === 'admin' && user.isPro);
 }
 
+let ownershipIndexesReady;
+async function ensureOwnershipIndexes() {
+  ownershipIndexesReady ||= (async () => {
+    // MongoDB cannot reuse a unique index key on a different document within
+    // one transaction. Move uniqueness to a stable subscription record first.
+    await BillingOwnership.init();
+    await User.collection.createIndex({ proPurchaseToken: 1 }, {
+      name: 'pro_purchase_lookup',
+      partialFilterExpression: { proPurchaseToken: { $type: 'string' } },
+    });
+    try {
+      await User.collection.dropIndex('proPurchaseToken_1');
+    } catch (error) {
+      if (error.code !== 27 && error.codeName !== 'IndexNotFound') throw error;
+    }
+  })().catch((error) => { ownershipIndexesReady = null; throw error; });
+  return ownershipIndexesReady;
+}
+
 async function saveSubscriptionSnapshot(
   user,
   purchaseToken,
   snapshot,
   platform = 'android'
 ) {
+  await ensureOwnershipIndexes();
+  const session = user.$session();
+  // The ownership update and entitlement save must commit together, including
+  // RTDN and status refreshes racing a profile transfer.
+  if (!session) {
+    const transaction = await mongoose.startSession();
+    try {
+      let saved;
+      await transaction.withTransaction(async () => {
+        const current = await User.findById(user.id).select('+proPurchaseToken').session(transaction);
+        if (!current) throw new ApiError(404, 'User not found.');
+        saved = await saveSubscriptionSnapshot(current, purchaseToken, snapshot, platform);
+      });
+      return saved;
+    } finally {
+      await transaction.endSession();
+    }
+  }
+  const key = `${platform}:${purchaseToken}`;
+  const ownership = await BillingOwnership.findById(key).session(session);
+  if (ownership && ownership.userId.toString() !== user.id) {
+    throw new ApiError(409, 'Restore this subscription to your current profile.', { code: 'RESTORE_REQUIRED' });
+  }
+  await BillingOwnership.findOneAndUpdate({ _id: key }, {
+    $set: { userId: user.id }, $inc: { revision: 1 },
+  }, { upsert: true, session });
   // Migrate an old admin grant into its dedicated field before overwriting
   // legacy proPlatform data with the store platform.
   user.adminPro = hasLegacyAdminGrant(user);
@@ -454,7 +502,8 @@ async function saveSubscriptionSnapshot(
     if (error?.code === 11000) {
       throw new ApiError(
         409,
-        'This Google Play purchase is already linked to another Hamme account.'
+        'This subscription is already linked to another Hamme profile. Restore it to this profile.',
+        { code: 'RESTORE_REQUIRED' }
       );
     }
     throw error;
@@ -463,15 +512,15 @@ async function saveSubscriptionSnapshot(
 }
 
 async function markStoreSubscriptionInactive(user, state) {
-  user.adminPro = hasLegacyAdminGrant(user);
-  user.storeProActive = false;
-  user.isPro = user.adminPro;
-  user.proSubscriptionState = state;
-  user.proAutoRenewing = false;
-  user.proLastVerifiedAt = new Date();
-  user.proUpdatedAt = new Date();
-  await user.save();
-  return user;
+  const adminPro = hasLegacyAdminGrant(user);
+  await User.updateOne({ _id: user.id, proPurchaseToken: user.proPurchaseToken }, {
+    $set: {
+      adminPro, storeProActive: false, isPro: adminPro,
+      proSubscriptionState: state, proAutoRenewing: false,
+      proLastVerifiedAt: new Date(), proUpdatedAt: new Date(),
+    },
+  });
+  return User.findById(user.id).select('+proPurchaseToken');
 }
 
 async function assertTokenOwnership(userId, purchaseToken, linkedPurchaseToken) {
@@ -481,7 +530,8 @@ async function assertTokenOwnership(userId, purchaseToken, linkedPurchaseToken) 
   if (tokenOwner && tokenOwner._id.toString() !== userId.toString()) {
     throw new ApiError(
       409,
-      'This Google Play purchase is already linked to another Hamme account.'
+      'Restore this subscription to your current Hamme profile.',
+      { code: 'RESTORE_REQUIRED' }
     );
   }
 
@@ -494,7 +544,8 @@ async function assertTokenOwnership(userId, purchaseToken, linkedPurchaseToken) 
     if (linkedOwner && linkedOwner._id.toString() !== userId.toString()) {
       throw new ApiError(
         409,
-        'The previous subscription is linked to another Hamme account.'
+        'Restore this subscription to your current Hamme profile.',
+        { code: 'RESTORE_REQUIRED' }
       );
     }
   }
@@ -546,10 +597,13 @@ async function verifyPurchase(userId, payload) {
   }
   const googleAccountId =
     snapshot.raw.externalAccountIdentifiers?.obfuscatedExternalAccountId;
-  if (googleAccountId && googleAccountId !== userId.toString()) {
+  const currentOwner = await User.findOne({ proPurchaseToken: purchaseToken }).lean();
+  if (googleAccountId && googleAccountId !== userId.toString() &&
+      currentOwner?._id.toString() !== userId.toString()) {
     throw new ApiError(
       409,
-      'This Google Play purchase was started by another Hamme account.'
+      'Restore this subscription to your current Hamme profile.',
+      { code: 'RESTORE_REQUIRED' }
     );
   }
   if (!snapshot.active) {
@@ -563,7 +617,7 @@ async function verifyPurchase(userId, payload) {
 
   const user = await User.findById(userId).select('+proPurchaseToken');
   if (!user) throw new ApiError(404, 'User not found.');
-  await saveSubscriptionSnapshot(user, ownershipToken, snapshot, platform);
+  const verifiedUser = await saveSubscriptionSnapshot(user, ownershipToken, snapshot, platform);
 
   if (snapshot.acknowledgementPending) {
     try {
@@ -582,98 +636,79 @@ async function verifyPurchase(userId, payload) {
     }
   }
 
-  return user;
+  return verifiedUser;
 }
 
-/**
- * Recovers the original Hamme session after reinstall. Possession of a Play
- * purchase token alone is not trusted: Google must verify that it belongs to
- * this package, contains an approved active product, and is already linked to
- * the returned Hamme account (by stored token or Google's obfuscated account
- * identifier).
+/** Restore a store-verified subscription to the authenticated current profile.
+ * The transaction revokes the old owner's store grant and assigns the new one
+ * together. A store purchase never acts as a login credential for profile data.
  */
-async function restoreSessionFromPurchase(payload) {
-  const { platform = 'android', productId, purchaseToken } = payload || {};
-  if (!productId || !purchaseToken) {
-    throw new ApiError(400, 'productId and purchaseToken are required.');
+async function restorePurchase(userId, payload) {
+  const { platform = 'android', productId, purchaseToken, confirmTransfer } = payload || {};
+  if (!['android', 'ios'].includes(platform) || !purchaseToken ||
+      !PRO_PRODUCT_IDS.includes(productId)) {
+    throw new ApiError(400, 'A supported platform, Pro product and purchase token are required.');
   }
-  if (!PRO_PRODUCT_IDS.includes(productId)) {
-    throw new ApiError(400, 'Unknown product id.');
-  }
-
-  const isIos = platform === 'ios';
-  const snapshot = isIos
+  const snapshot = platform === 'ios'
     ? await fetchAppleSubscription(purchaseToken)
     : await fetchSubscription(purchaseToken, payload.packageName);
-  if (!snapshot.productIds.includes(productId)) {
-    throw new ApiError(402, 'Purchase token does not match the requested product.');
+  if (!snapshot.productIds.includes(productId) || !snapshot.active) {
+    throw new ApiError(402, 'No active Pro subscription was found. Check the store account used to purchase Pro.');
   }
-  if (!snapshot.active) {
-    throw new ApiError(402, 'The subscription is not currently entitled to Pro.');
+  const ownershipToken = platform === 'ios' ? snapshot.originalTransactionId : purchaseToken;
+  const tokens = [ownershipToken, snapshot.linkedPurchaseToken].filter(Boolean);
+  let restoredUser;
+  await ensureOwnershipIndexes();
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const user = await User.findById(userId).select('+proPurchaseToken').session(session);
+      if (!user) throw new ApiError(404, 'User not found.');
+      const owners = await User.find({ proPurchaseToken: { $in: tokens } })
+        .select('+proPurchaseToken').session(session);
+      if (user.proPurchaseToken !== ownershipToken && confirmTransfer !== true) {
+        throw new ApiError(409, 'An active Pro subscription was found. Restore it to this Hamme profile?',
+          { code: 'RESTORE_REQUIRED' });
+      }
+      if (user.proPurchaseToken && !tokens.includes(user.proPurchaseToken) && user.storeProActive &&
+          user.proExpiryAt && user.proExpiryAt > new Date()) {
+        throw new ApiError(409, 'This profile already has another active subscription. Manage it in its store before restoring a different one.');
+      }
+      // Updating a stable record makes competing restores conflict/retry.
+      for (const token of tokens) {
+        await BillingOwnership.findOneAndUpdate({ _id: `${platform}:${token}` }, {
+          $set: { userId: user.id }, $inc: { revision: 1 },
+        }, { upsert: true, session });
+      }
+      for (const owner of owners) {
+        if (owner.id === user.id) continue;
+        owner.adminPro = hasLegacyAdminGrant(owner);
+        owner.isPro = owner.adminPro;
+        owner.storeProActive = false;
+        owner.proPurchaseToken = null;
+        owner.proProductId = null;
+        owner.proPlatform = owner.adminPro ? 'admin' : null;
+        owner.proSubscriptionState = 'TRANSFERRED';
+        owner.proExpiryAt = null;
+        owner.proAutoRenewing = false;
+        owner.proLastVerifiedAt = new Date();
+        owner.proUpdatedAt = new Date();
+        await owner.save({ session });
+      }
+      // Documents loaded in the transaction retain their session for save().
+      restoredUser = await saveSubscriptionSnapshot(user, ownershipToken, snapshot, platform);
+    });
+  } finally {
+    await session.endSession();
   }
-
-  const ownershipToken = isIos
-    ? snapshot.originalTransactionId
-    : purchaseToken;
-  let user = await User.findOne({ proPurchaseToken: ownershipToken }).select(
-    '+proPurchaseToken'
-  );
-  if (!user) {
-    const externalAccountId =
-      snapshot.raw.externalAccountIdentifiers?.obfuscatedExternalAccountId;
-    if (mongoose.isValidObjectId(externalAccountId)) {
-      const attributedUser = await User.findById(externalAccountId).select(
-        '+proPurchaseToken'
-      );
-      const tokenIsCompatible =
-        attributedUser &&
-        (!attributedUser.proPurchaseToken ||
-          attributedUser.proPurchaseToken === purchaseToken ||
-          attributedUser.proPurchaseToken === snapshot.linkedPurchaseToken);
-      if (tokenIsCompatible) user = attributedUser;
-    }
-  }
-
-  if (!user) {
-    throw new ApiError(
-      404,
-      'No Hamme profile is linked to this Google Play subscription.'
-    );
-  }
-
-  await saveSubscriptionSnapshot(user, ownershipToken, snapshot, platform);
-
   if (snapshot.acknowledgementPending) {
     try {
-      await acknowledgeSubscription(
-        purchaseToken,
-        snapshot.productId,
-        payload.packageName
-      );
+      await acknowledgeSubscription(purchaseToken, snapshot.productId, payload.packageName);
     } catch (error) {
-      logger.error('Restored subscription acknowledgement failed', {
-        userId: user.id,
-        message: error.message,
-      });
+      logger.error('Restored subscription acknowledgement failed', { userId, message: error.message });
     }
   }
-
-  const accessToken = createAccessToken(user);
-  const refreshToken = createRefreshToken(user);
-  await User.findByIdAndUpdate(user.id, {
-    $push: {
-      refreshTokens: {
-        $each: [refreshToken],
-        $slice: -10,
-      },
-    },
-  });
-
-  return {
-    accessToken,
-    refreshToken,
-    user,
-  };
+  return restoredUser;
 }
 
 /**
@@ -705,7 +740,7 @@ async function syncUserSubscription(userId) {
   try {
     const isIos = user.proPlatform === 'ios';
     const snapshot = isIos
-      ? await fetchAppleSubscription(user.proPurchaseToken)
+      ? await fetchAppleSubscription(user.proPurchaseToken, true)
       : await fetchSubscription(user.proPurchaseToken);
     return saveSubscriptionSnapshot(
       user,
@@ -831,6 +866,20 @@ async function processRtdn(pubsubEnvelope) {
     }).select('+proPurchaseToken');
   }
   if (!user) {
+    const ownership = await BillingOwnership.findById(`android:${purchaseToken}`).lean()
+      || (snapshot.linkedPurchaseToken
+        ? await BillingOwnership.findById(`android:${snapshot.linkedPurchaseToken}`).lean() : null);
+    if (ownership) {
+      user = await User.findById(ownership.userId).select('+proPurchaseToken');
+      // Do not revive the original attribution after a transfer/deletion or
+      // overwrite a newer subscription with an old token's delayed event.
+      if (!user || (user.proPurchaseToken !== purchaseToken &&
+          user.proPurchaseToken !== snapshot.linkedPurchaseToken)) {
+        return { test: false, updated: false, ignored: true };
+      }
+    }
+  }
+  if (!user) {
     const externalAccountId =
       snapshot.raw.externalAccountIdentifiers?.obfuscatedExternalAccountId;
     if (mongoose.isValidObjectId(externalAccountId)) {
@@ -869,7 +918,7 @@ async function processRtdn(pubsubEnvelope) {
 module.exports = {
   PRO_PRODUCT_IDS,
   processRtdn,
-  restoreSessionFromPurchase,
+  restorePurchase,
   syncUserSubscription,
   verifyPurchase,
   verifyRtdnAuthorization,

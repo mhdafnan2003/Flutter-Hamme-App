@@ -218,12 +218,12 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// A Google purchase token may belong to only one Hamme account. The partial
-// index avoids indexing the many users whose token is null.
+// BillingOwnership serializes subscription transfers. User tokens are indexed
+// for reconciliation, but uniqueness lives in the stable ownership record.
 userSchema.index(
   { proPurchaseToken: 1 },
   {
-    unique: true,
+    name: 'pro_purchase_lookup',
     partialFilterExpression: { proPurchaseToken: { $type: 'string' } },
   }
 );

@@ -11,18 +11,23 @@ const router = express.Router();
 // Google-signed OIDC bearer token, not a Hamme user token.
 router.post('/google-play/rtdn', billingController.rtdn);
 
-// Re-establishes the original Hamme login after reinstall, but only after the
-// supplied subscription token is independently verified with Google Play.
+// Purchases are entitlement proofs, never credentials for another profile.
+router.post('/restore-session', (_req, res) => res.status(410).json({
+  message: 'Update Hamme and use Restore Purchases on your current profile.',
+}));
+
 router.post(
-  '/restore-session',
+  '/restore',
+  authMiddleware,
   [
-    body('platform').optional({ values: 'falsy' }).isIn(['android', 'ios']),
+    body('platform').isIn(['android', 'ios']),
     body('productId').trim().notEmpty(),
     body('purchaseToken').trim().notEmpty(),
+    body('confirmTransfer').optional().isBoolean({ strict: true }),
     body('packageName').optional({ values: 'falsy' }).trim(),
   ],
   validateRequest,
-  billingController.restoreSession
+  billingController.restore
 );
 
 router.get('/status', authMiddleware, billingController.status);

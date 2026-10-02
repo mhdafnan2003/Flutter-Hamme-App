@@ -10,7 +10,7 @@ This is the complete setup checklist for selling Hamme Pro through Google Play.
 | Subscription product ID | `hamme_pro_weekly` |
 | Suggested base plan ID | `weekly` |
 | Purchase verification endpoint | `POST /api/v1/billing/verify` |
-| Reinstall session recovery endpoint | `POST /api/v1/billing/restore-session` |
+| Restore onto current profile | `POST /api/v1/billing/restore` |
 | Entitlement reconciliation endpoint | `GET /api/v1/billing/status` |
 | Google RTDN push endpoint | `POST /api/v1/billing/google-play/rtdn` |
 
@@ -27,21 +27,20 @@ The backend is required to:
 - Verify purchase and restoration tokens directly with Google Play.
 - Confirm the Android package, product ID, subscription state and paid expiry.
 - Bind each Google purchase token to only one Hamme profile.
-- Restore the original Hamme profile after an uninstall.
-- Issue new Hamme access and refresh tokens when local login storage was removed.
+- Restore Pro onto the new/current Hamme profile after confirmation.
+- Move store Pro from the previous profile atomically without restoring its data.
 - Process renewals, cancellations, grace periods, account hold, recovery,
   revocation and expiry through RTDN.
 - Preserve admin-granted Pro independently from paid Pro.
 
-The automatic reinstall flow uses:
+Android checks owned subscriptions before checkout and offers restoration to
+this profile. The Restore button uses the same flow. The authenticated endpoint
+is `POST /api/v1/billing/restore`; `confirmTransfer: true` links the subscription
+after confirmation. `/restore-session` returns HTTP 410 and no longer issues
+another profile's login tokens.
 
-```text
-POST /api/v1/billing/restore-session
-```
-
-Without the updated backend, the updated Flutter app cannot securely restore the
-original Hamme login after reinstall. Automatic restoration will fail even when
-Google Play reports that the subscription is already owned.
+See [Pro restore release checklist](pro-restore-release.md) for database
+requirements, iOS configuration, and release tests.
 
 Deploy in this order:
 
@@ -50,7 +49,7 @@ Deploy in this order:
 3. Confirm the backend health endpoint and RTDN endpoint are reachable.
 4. Create and activate the Play subscription and base plan.
 5. Upload the updated Android AAB to the internal-testing track.
-6. Test purchase, uninstall, reinstall and automatic restoration.
+6. Test purchase, uninstall, reinstall, new profile setup and confirmed restoration.
 7. Release the Android update to production only after the complete internal
    test succeeds.
 
@@ -427,10 +426,11 @@ Official testing guidance:
 1. Uninstall Hamme while the test subscription is active.
 2. Keep the subscribing Google Play account on the device.
 3. Reinstall Hamme from Google Play.
-4. Confirm the original Hamme profile and Pro access restore automatically.
-5. If automatic restoration has not completed, open the Pro screen and select
-   **Restore Purchases**.
-6. Confirm the app does not ask the user to buy the already-owned plan again.
+4. Complete setup of a new Hamme profile.
+5. Open Pro and select **Continue** or **Restore**.
+6. Confirm restoration links Pro here without another charge or profile data
+   recovery.
+7. Repeat after deleting the original account.
 
 ### Admin grant isolation
 

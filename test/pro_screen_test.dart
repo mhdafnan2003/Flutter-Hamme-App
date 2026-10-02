@@ -6,8 +6,32 @@ import 'package:hamme_app/providers/billing_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeBillingController extends BillingController {
+  bool get pro => state.isPro;
+
+  int confirmations = 0;
+  int dismissals = 0;
+
   @override
   BillingState build() => const BillingState();
+
+  @override
+  Future<bool> restorePurchases() async {
+    state = state.copyWith(restoreRequired: true);
+    return false;
+  }
+
+  @override
+  Future<bool> confirmRestore() async {
+    confirmations++;
+    state = state.copyWith(restoreRequired: false);
+    return false;
+  }
+
+  @override
+  void dismissRestore() {
+    dismissals++;
+    state = state.copyWith(restoreRequired: false);
+  }
 }
 
 void main() {
@@ -19,6 +43,7 @@ void main() {
     WidgetTester tester, {
     required Size size,
     EdgeInsets padding = EdgeInsets.zero,
+    _FakeBillingController? controller,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
@@ -28,7 +53,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          billingControllerProvider.overrideWith(_FakeBillingController.new),
+          billingControllerProvider.overrideWith(
+            () => controller ?? _FakeBillingController(),
+          ),
         ],
         child: MaterialApp(
           home: MediaQuery(
@@ -41,6 +68,46 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
   }
+
+  testWidgets('restore asks before linking and cancel leaves Pro unchanged', (
+    tester,
+  ) async {
+    final controller = _FakeBillingController();
+    await pumpProScreen(
+      tester,
+      size: const Size(393, 852),
+      controller: controller,
+    );
+    await tester.tap(find.text('Restore'));
+    await tester.pumpAndSettle();
+    expect(find.text('Restore your Pro subscription?'), findsOneWidget);
+    expect(
+      find.textContaining('You will not be charged again.'),
+      findsOneWidget,
+    );
+    expect(controller.confirmations, 0);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(controller.dismissals, 1);
+    expect(controller.confirmations, 0);
+    expect(controller.pro, isFalse);
+  });
+
+  testWidgets('linking uses explicit Restore Pro confirmation', (tester) async {
+    final controller = _FakeBillingController();
+    await pumpProScreen(
+      tester,
+      size: const Size(393, 852),
+      controller: controller,
+    );
+    await tester.tap(find.text('Restore'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restore Pro'));
+    await tester.pumpAndSettle();
+    expect(controller.confirmations, 1);
+    expect(controller.dismissals, 0);
+    expect(find.text('Restore your Pro subscription?'), findsNothing);
+  });
 
   testWidgets('matches the reference Pro content and CTA size', (tester) async {
     await pumpProScreen(tester, size: const Size(393, 852));

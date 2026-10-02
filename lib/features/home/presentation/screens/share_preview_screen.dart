@@ -73,7 +73,7 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                                       PlatformPill(
                                         selected: _isInstagram,
                                         iconPath:
-                                            'assets/icons/insta-outline.png',
+                                            'assets/icons/insta-outline-white.png',
                                         onTap: () {
                                           if (_isInstagram) return;
                                           setState(() {
@@ -115,7 +115,7 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
                                       iconPath:
                                           _step == 4
                                               ? (_isInstagram
-                                                  ? 'assets/icons/insta-outline.png'
+                                                  ? 'assets/icons/insta-outline-white.png'
                                                   : 'assets/icons/snap-fill.png')
                                               : null,
                                       onTap:

@@ -41,6 +41,7 @@ dependencies:
 
   # In-App Purchases (Google Play / App Store billing)
   in_app_purchase: ^3.2.3
+  in_app_purchase_android: ^0.5.1
 
   # Routing
   go_router: ^17.0.0

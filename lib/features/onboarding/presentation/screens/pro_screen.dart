@@ -65,8 +65,7 @@ class _ProScreenState extends ConsumerState<ProScreen> {
   /// finishing signup are separate concerns — same as the X (skip) button
   /// already treats them.
   Future<void> _continueOnboardingWithPurchase() async {
-    unawaited(_buyPro());
-    await _completeOnboarding();
+    await _buyPro();
   }
 
   Future<void> _uploadSelectedProfileImageInBackground() async {
@@ -120,31 +119,75 @@ class _ProScreenState extends ConsumerState<ProScreen> {
           await ref.read(billingControllerProvider.notifier).restorePurchases();
       if (!purchaseRestored || !mounted) return;
 
-      // A verified restore has already signed in the purchase's profile
-      // (billing restore-session). Fall back to the saved session only when
-      // it did not, instead of fetching and re-registering the same session.
-      if (ref.read(authControllerProvider).valueOrNull == null) {
-        final restored =
-            await ref.read(authControllerProvider.notifier).restoreProProfile();
-        if (!restored) {
-          throw const AppException(
-            'No saved Pro profile was found on this device.',
-          );
-        }
+      if (widget.isOnboarding) {
+        await _completeOnboarding();
+      } else if (mounted) {
+        _showRestored();
       }
-      if (!mounted) return;
-      context.go('/home');
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _errorText =
             error is AppException
                 ? error.message
-                : 'Could not restore your Pro profile. Please try again.';
+                : 'Could not restore Pro. Please try again.';
       });
     } finally {
       if (mounted) {
         setState(() => _isRestoringProfile = false);
+      }
+    }
+  }
+
+  void _showRestored() {
+    AppSnackBar.show(
+      context,
+      'Pro restored to this profile.',
+      type: AppSnackBarType.success,
+    );
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
+  Future<void> _confirmSubscriptionRestore() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Restore your Pro subscription?'),
+            content: const Text(
+              'An active Pro subscription was found on your store account. Link it to this Hamme profile? If it is linked to another profile, Pro access will move here. Your old profile and its data will not be restored. You will not be charged again.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Restore Pro'),
+              ),
+            ],
+          ),
+    );
+    if (!mounted) return;
+    final controller = ref.read(billingControllerProvider.notifier);
+    if (confirmed != true) {
+      controller.dismissRestore();
+      return;
+    }
+    setState(() => _isRestoringProfile = true);
+    final restored = await controller.confirmRestore();
+    if (!mounted) return;
+    setState(() => _isRestoringProfile = false);
+    if (restored) {
+      if (widget.isOnboarding) {
+        await _completeOnboarding();
+      } else {
+        _showRestored();
       }
     }
   }
@@ -207,18 +250,30 @@ class _ProScreenState extends ConsumerState<ProScreen> {
     final footerBottomPadding = (MediaQuery.paddingOf(context).bottom - 5)
         .clamp(20.0, double.infinity);
 
+    ref.listen<bool>(
+      billingControllerProvider.select((s) => s.restoreRequired),
+      (previous, next) {
+        if (next && previous != true) unawaited(_confirmSubscriptionRestore());
+      },
+    );
+
     // A new Pro purchase can dismiss the paywall. A restored purchase goes
-    // through _restoreProProfile so its old profile is restored explicitly.
+    // through the explicit confirmation flow to link this profile.
     ref.listen<bool>(isProProvider, (previous, next) {
       if (next == true && (previous != true)) {
-        if (_isRestoringProfile) return;
+        if (_isRestoringProfile ||
+            ref.read(billingControllerProvider).restoreRequired) {
+          return;
+        }
         if (!mounted) return;
         AppSnackBar.show(
           context,
           'You are now Pro! 🎉',
           type: AppSnackBarType.success,
         );
-        if (context.canPop()) {
+        if (widget.isOnboarding) {
+          unawaited(_completeOnboarding());
+        } else if (context.canPop()) {
           context.pop();
         } else {
           context.go('/home');
@@ -228,11 +283,11 @@ class _ProScreenState extends ConsumerState<ProScreen> {
 
     // The big CTA performs a real purchase in the upgrade flow and just
     // continues onboarding otherwise.
-    final bool ctaBusy = isUpgrade ? billing.busy : _isSubmitting;
+    final bool ctaBusy = billing.busy || _isSubmitting || _isRestoringProfile;
     final String ctaLabel = 'Continue';
     final Future<void> Function() onCta =
         isUpgrade ? _buyPro : _continueOnboardingWithPurchase;
-    final String? errorText = _errorText ?? (isUpgrade ? billing.error : null);
+    final String? errorText = _errorText ?? billing.error;
 
     return Scaffold(
       backgroundColor: TColors.white,

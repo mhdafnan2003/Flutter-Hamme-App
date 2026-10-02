@@ -113,7 +113,7 @@ void main() {
         matching: find.byType(Image),
       ),
     );
-    expect(icon.image, const AssetImage('assets/icons/insta-outline.png'));
+    expect(icon.image, const AssetImage('assets/icons/insta-outline-white.png'));
     expect(tester.takeException(), isNull);
   });
 
@@ -127,7 +127,7 @@ void main() {
         matching: find.byType(Image),
       ),
     );
-    expect(icon.image, const AssetImage('assets/icons/insta-outline.png'));
+    expect(icon.image, const AssetImage('assets/icons/insta-outline-white.png'));
   });
 
   testWidgets('keeps anonymous profiles hidden and offers no Reply', (
@@ -179,7 +179,7 @@ void main() {
         matching: find.byType(Image),
       ),
     );
-    expect(icon.image, const AssetImage('assets/icons/insta-outline.png'));
+    expect(icon.image, const AssetImage('assets/icons/insta-outline-white.png'));
   });
 
   testWidgets('empty Instagram handle falls back to registered Snapchat', (

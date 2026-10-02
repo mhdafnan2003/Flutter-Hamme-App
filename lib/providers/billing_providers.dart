@@ -3,10 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/utils/app_exception.dart';
-import '../models/auth_session.dart';
+import '../models/app_user.dart';
 import 'api_providers.dart';
 import 'auth_providers.dart';
 
@@ -34,10 +35,13 @@ class BillingState {
     this.purchasePending = false,
     this.restoring = false,
     this.error,
+    this.restoreRequired = false,
   });
 
   /// Whether the user currently owns the Pro entitlement.
   final bool isPro;
+
+  final bool restoreRequired;
 
   /// Whether the underlying store (Play/App Store) is reachable.
   final bool storeAvailable;
@@ -65,6 +69,7 @@ class BillingState {
 
   BillingState copyWith({
     bool? isPro,
+    bool? restoreRequired,
     bool? storeAvailable,
     List<ProductDetails>? products,
     bool? purchasePending,
@@ -73,6 +78,7 @@ class BillingState {
   }) {
     return BillingState(
       isPro: isPro ?? this.isPro,
+      restoreRequired: restoreRequired ?? this.restoreRequired,
       storeAvailable: storeAvailable ?? this.storeAvailable,
       products: products ?? this.products,
       purchasePending: purchasePending ?? this.purchasePending,
@@ -99,8 +105,11 @@ class BillingController extends Notifier<BillingState> {
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   Completer<bool>? _restoreCompleter;
   Future<void>? _serverRefreshInFlight;
-  bool _allowSessionRecovery = false;
-  bool _automaticRestoreAttempted = false;
+  PurchaseDetails? _purchaseToRestore;
+  String? _restoreUserId;
+  bool _restoreSawPurchase = false;
+  bool _disposed = false;
+  Future<void> _purchaseQueue = Future<void>.value();
 
   @override
   BillingState build() {
@@ -109,7 +118,7 @@ class BillingController extends Notifier<BillingState> {
         defaultTargetPlatform == TargetPlatform.android) {
       _iap = InAppPurchase.instance;
       _subscription = _iap!.purchaseStream.listen(
-        _onPurchasesUpdated,
+        _enqueuePurchases,
         onError: (Object error) {
           state = state.copyWith(
             purchasePending: false,
@@ -118,13 +127,14 @@ class BillingController extends Notifier<BillingState> {
           );
         },
       );
-      ref.onDispose(() => _subscription?.cancel());
+      ref.onDispose(() {
+        _disposed = true;
+        _subscription?.cancel();
+        _completeRestore(false);
+      });
     }
 
     final initialUser = ref.read(authControllerProvider).valueOrNull?.user;
-    // The reinstall restore is only for installs that start signed out; never
-    // sign a user back in after they log out or delete their account.
-    if (initialUser != null) _automaticRestoreAttempted = true;
 
     // Reflect the server-side entitlement once the auth session resolves.
     ref.listen(authControllerProvider, (previous, next) {
@@ -144,15 +154,12 @@ class BillingController extends Notifier<BillingState> {
         unawaited(_revokeEntitlement());
       }
       if (user != null) {
-        _automaticRestoreAttempted = true;
         // The session already carries the server's isPro, so only reconcile a
         // subscriber with the store, and only when a different user signs in —
         // not on every session write (app resume, profile edits).
         if (serverPro && user.id != previous?.valueOrNull?.user.id) {
           unawaited(_refreshServerEntitlement());
         }
-      } else if (!next.hasError) {
-        unawaited(_maybeRestoreAfterReinstall());
       }
     });
 
@@ -171,7 +178,7 @@ class BillingController extends Notifier<BillingState> {
 
     // Server is the source of truth when a session is available.
     final sessionPro = ref.read(authControllerProvider).value?.user.isPro;
-    final entitlement = sessionPro ?? savedEntitlement;
+    final entitlement = sessionPro ?? false;
     if (sessionPro == true && !savedEntitlement) {
       await prefs.setBool(_entitlementKey, true);
     } else if (sessionPro == false && savedEntitlement) {
@@ -209,7 +216,6 @@ class BillingController extends Notifier<BillingState> {
         debugPrint('[Billing] product ids not found: ${response.notFoundIDs}');
       }
       state = state.copyWith(products: response.productDetails);
-      unawaited(_maybeRestoreAfterReinstall());
     } catch (error) {
       debugPrint('[Billing] queryProductDetails failed: $error');
       state = state.copyWith(error: 'Could not load products.');
@@ -218,7 +224,7 @@ class BillingController extends Notifier<BillingState> {
 
   /// Starts the purchase flow for the Pro subscription.
   Future<void> buyPro() async {
-    if (state.busy) return;
+    if (state.busy || state.restoreRequired || state.isPro) return;
 
     if (_iap == null || !state.storeAvailable) {
       state = state.copyWith(
@@ -227,6 +233,13 @@ class BillingController extends Notifier<BillingState> {
       return;
     }
 
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final restored = await _restoreOwnedPurchases(
+        showProgress: false,
+        showNotFoundError: false,
+      );
+      if (restored || state.restoreRequired || state.error != null) return;
+    }
     final product = state.proProduct;
     if (product == null) {
       state = state.copyWith(
@@ -258,14 +271,13 @@ class BillingController extends Notifier<BillingState> {
       );
       if (!started) {
         // Google commonly returns false when this Play account already owns
-        // the subscription. Query owned purchases and recover the original
+        // the subscription. Query owned purchases and offer restoration to the current
         // Hamme profile instead of presenting an "already subscribed" failure.
         final restored = await _restoreOwnedPurchases(
           showProgress: false,
           showNotFoundError: false,
-          allowSessionRecovery: true,
         );
-        if (!restored) {
+        if (!restored && !state.restoreRequired) {
           state = state.copyWith(
             purchasePending: false,
             error: 'Could not start the purchase.',
@@ -274,6 +286,16 @@ class BillingController extends Notifier<BillingState> {
       }
     } catch (error) {
       debugPrint('[Billing] buyPro failed: $error');
+      final message = error.toString().toLowerCase();
+      if (message.contains('already_owned') ||
+          message.contains('already owned') ||
+          message.contains('duplicate_product')) {
+        await _restoreOwnedPurchases(
+          showProgress: true,
+          showNotFoundError: true,
+        );
+        return;
+      }
       state = state.copyWith(
         purchasePending: false,
         error: 'Purchase failed. Please try again.',
@@ -284,42 +306,16 @@ class BillingController extends Notifier<BillingState> {
   /// Restores previously purchased entitlements.
   Future<bool> restorePurchases() async {
     if (state.busy) return false;
-    return _restoreOwnedPurchases(
-      showProgress: true,
-      showNotFoundError: true,
-      allowSessionRecovery: true,
-    );
-  }
-
-  /// On a fresh Android installation, local auth storage can be gone while the
-  /// Play account still owns Pro. Query Play once and let the verified purchase
-  /// recover the original Hamme session automatically.
-  Future<void> _maybeRestoreAfterReinstall() async {
-    if (_automaticRestoreAttempted ||
-        defaultTargetPlatform != TargetPlatform.android ||
-        _iap == null ||
-        !state.storeAvailable) {
-      return;
-    }
-    final auth = ref.read(authControllerProvider);
-    if (auth.isLoading || auth.hasError || auth.value?.user != null) return;
-
-    _automaticRestoreAttempted = true;
-    await _restoreOwnedPurchases(
-      showProgress: false,
-      showNotFoundError: false,
-      allowSessionRecovery: true,
-    );
+    return _restoreOwnedPurchases(showProgress: true, showNotFoundError: true);
   }
 
   Future<bool> _restoreOwnedPurchases({
     required bool showProgress,
     required bool showNotFoundError,
-    required bool allowSessionRecovery,
   }) async {
     final existingRestore = _restoreCompleter;
     if (existingRestore != null) return existingRestore.future;
-    if (_iap == null) {
+    if (_iap == null || !state.storeAvailable) {
       if (showProgress) {
         state = state.copyWith(
           error: 'In-app purchases are not available on this platform.',
@@ -327,14 +323,44 @@ class BillingController extends Notifier<BillingState> {
       }
       return false;
     }
-    if (showProgress) {
-      state = state.copyWith(restoring: true, error: null);
+    if (ref.read(authControllerProvider).value?.user == null) {
+      state = state.copyWith(
+        error: 'Finish setting up your Hamme profile before restoring Pro.',
+      );
+      return false;
     }
+    state = state.copyWith(restoring: true, error: null);
     final restoreCompleter = Completer<bool>();
     _restoreCompleter = restoreCompleter;
-    _allowSessionRecovery = allowSessionRecovery;
+    _restoreSawPurchase = false;
     try {
       final user = ref.read(authControllerProvider).value?.user;
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final result = await _iap!
+            .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>()
+            .queryPastPurchases(applicationUserName: user?.id);
+        if (result.error != null) {
+          throw const AppException('Could not query Google Play purchases.');
+        }
+        final ownedPro =
+            result.pastPurchases
+                .where((p) => ProProducts.ids.contains(p.productID))
+                .toList();
+        if (ownedPro.isEmpty) {
+          state = state.copyWith(
+            restoring: false,
+            purchasePending: false,
+            error:
+                showNotFoundError
+                    ? 'No active Pro subscription was found. Check the Google Play account used to purchase Pro.'
+                    : null,
+          );
+          _completeRestore(false);
+        } else {
+          await _enqueuePurchases(ownedPro);
+        }
+        return restoreCompleter.future;
+      }
       await _iap!.restorePurchases(applicationUserName: user?.id);
     } catch (error) {
       debugPrint('[Billing] restorePurchases failed: $error');
@@ -344,20 +370,22 @@ class BillingController extends Notifier<BillingState> {
         // re-sets it to true before calling this with showProgress: false,
         // and nothing else would reset it if restorePurchases() throws.
         purchasePending: false,
-        error: showProgress ? 'Could not restore purchases.' : null,
+        error: 'Could not check your store purchases. Please try again.',
       );
       if (!restoreCompleter.isCompleted) restoreCompleter.complete(false);
       if (identical(_restoreCompleter, restoreCompleter)) {
         _restoreCompleter = null;
-        _allowSessionRecovery = false;
       }
       return false;
     }
 
     // The actual result arrives via the purchase stream. If the store returns
-    // no restored purchase, finish after a short grace period.
-    Future<void>.delayed(const Duration(seconds: 3), () {
-      if (identical(_restoreCompleter, restoreCompleter)) {
+    // no restored purchase, finish after a grace period. Android queries above
+    // return an explicit result and never depend on this timer.
+    Future<void>.delayed(const Duration(seconds: 15), () {
+      if (!_disposed &&
+          identical(_restoreCompleter, restoreCompleter) &&
+          !_restoreSawPurchase) {
         state = state.copyWith(
           restoring: false,
           purchasePending: false,
@@ -366,14 +394,33 @@ class BillingController extends Notifier<BillingState> {
         );
         if (!restoreCompleter.isCompleted) restoreCompleter.complete(false);
         _restoreCompleter = null;
-        _allowSessionRecovery = false;
       }
     });
     return restoreCompleter.future;
   }
 
+  Future<void> _enqueuePurchases(List<PurchaseDetails> purchases) {
+    _purchaseQueue = _purchaseQueue
+        .then((_) async {
+          if (_disposed) return;
+          await _onPurchasesUpdated(purchases);
+        })
+        .catchError((Object error) {
+          debugPrint('[Billing] purchase processing failed: $error');
+          if (_disposed) return;
+          state = state.copyWith(
+            purchasePending: false,
+            restoring: false,
+            error: 'Could not process your purchase. Please restore it again.',
+          );
+          _completeRestore(false);
+        });
+    return _purchaseQueue;
+  }
+
   Future<void> _onPurchasesUpdated(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
+      bool verified = false;
       // On Android, backing out of the Play Billing sheet leaves no real
       // purchase to read a product id from: in_app_purchase_android emits a
       // synthetic PurchaseDetails with productID: '' for canceled/error
@@ -397,13 +444,14 @@ class BillingController extends Notifier<BillingState> {
               '${purchase.error?.message ?? ''} ${purchase.error?.details ?? ''}'
                   .toLowerCase();
           if (errorText.contains('itemalreadyowned') ||
-              errorText.contains('already owned')) {
+              errorText.contains('already owned') ||
+              purchase.error?.code == 'item_already_owned' ||
+              purchase.error?.code == '7') {
             state = state.copyWith(purchasePending: true, error: null);
             unawaited(
               _restoreOwnedPurchases(
                 showProgress: false,
                 showNotFoundError: true,
-                allowSessionRecovery: true,
               ),
             );
             break;
@@ -419,16 +467,16 @@ class BillingController extends Notifier<BillingState> {
           state = state.copyWith(
             purchasePending: false,
             restoring: false,
-            error: 'Payment failed. Please try again.',
+            error: null,
           );
           _completeRestore(false);
           break;
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
-          // IMPORTANT: In production you should verify the purchase server-side
-          // before granting entitlement. See _verifyPurchase below.
+          _restoreSawPurchase = true;
           final verificationError = await _verifyPurchase(purchase);
           if (verificationError == null) {
+            verified = true;
             await _grantEntitlement();
             state = state.copyWith(
               isPro: true,
@@ -448,9 +496,15 @@ class BillingController extends Notifier<BillingState> {
           break;
       }
 
-      // Always complete the purchase so the store stops re-delivering it.
-      if (purchase.pendingCompletePurchase) {
-        await _iap!.completePurchase(purchase);
+      // Finish only verified transactions; failed verification can be retried.
+      if (purchase.pendingCompletePurchase &&
+          verified &&
+          !state.restoreRequired) {
+        try {
+          await _iap!.completePurchase(purchase);
+        } catch (error) {
+          debugPrint('[Billing] purchase completion failed: $error');
+        }
       }
     }
   }
@@ -462,37 +516,124 @@ class BillingController extends Notifier<BillingState> {
     final token = purchase.verificationData.serverVerificationData;
     if (token.isEmpty) return 'Missing purchase verification data.';
 
+    final verifyingUserId = ref.read(authControllerProvider).value?.user.id;
     try {
       final api = ref.read(apiServiceProvider);
       final platform =
           defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
-      final recoverSession =
-          _allowSessionRecovery ||
-          ref.read(authControllerProvider).value?.user == null;
+      final user = ref.read(authControllerProvider).value?.user;
+      if (user == null) {
+        return 'Finish setting up your Hamme profile before restoring Pro.';
+      }
+      final restoring =
+          purchase.status == PurchaseStatus.restored ||
+          _restoreCompleter != null;
       final response = await api.post(
-        recoverSession ? '/billing/restore-session' : '/billing/verify',
-        authenticated: !recoverSession,
+        restoring ? '/billing/restore' : '/billing/verify',
+        authenticated: true,
         body: {
           'platform': platform,
           'productId': purchase.productID,
           'purchaseToken': token,
+          if (restoring) 'confirmTransfer': false,
         },
       );
-      if (recoverSession) {
-        if (response is! Map<String, dynamic>) return 'Invalid restore response.';
-        final session = AuthSession.fromJson(response);
-        await ref
-            .read(authControllerProvider.notifier)
-            .acceptBillingRestoredSession(session);
+      if (ref.read(authControllerProvider).value?.user.id != user.id) {
+        return 'Your Hamme profile changed. Restore Pro again on your current profile.';
       }
+      if (response is! Map<String, dynamic> ||
+          response['isPro'] != true ||
+          response['user'] is! Map<String, dynamic>) {
+        return 'Could not verify your Pro subscription.';
+      }
+      ref
+          .read(authControllerProvider.notifier)
+          .setUser(AppUser.fromJson(response['user'] as Map<String, dynamic>));
       // A 2xx response means the backend verified the purchase and granted Pro.
       return null;
     } catch (error) {
       debugPrint('[Billing] backend verification failed: $error');
       if (error is AppException) {
+        if (error.code == 'RESTORE_REQUIRED') {
+          if (ref.read(authControllerProvider).value?.user.id !=
+              verifyingUserId) {
+            return 'Your profile changed. Please restore again.';
+          }
+          _purchaseToRestore = purchase;
+          _restoreUserId = ref.read(authControllerProvider).value?.user.id;
+          state = state.copyWith(restoreRequired: true);
+          return 'An existing Pro subscription was found. Restore it to this profile.';
+        }
         return error.message;
       }
       return 'Could not verify purchase.';
+    }
+  }
+
+  void dismissRestore() {
+    _purchaseToRestore = null;
+    _restoreUserId = null;
+    state = state.copyWith(restoreRequired: false, error: null);
+  }
+
+  Future<bool> confirmRestore() async {
+    final purchase = _purchaseToRestore;
+    final userId = _restoreUserId;
+    if (purchase == null || userId == null || state.busy) return false;
+    state = state.copyWith(
+      restoring: true,
+      restoreRequired: false,
+      error: null,
+    );
+    try {
+      if (ref.read(authControllerProvider).value?.user.id != userId) {
+        throw const AppException('Your profile changed. Please restore again.');
+      }
+      final response = await ref
+          .read(apiServiceProvider)
+          .post(
+            '/billing/restore',
+            authenticated: true,
+            body: {
+              'platform':
+                  defaultTargetPlatform == TargetPlatform.iOS
+                      ? 'ios'
+                      : 'android',
+              'productId': purchase.productID,
+              'purchaseToken': purchase.verificationData.serverVerificationData,
+              'confirmTransfer': true,
+            },
+          );
+      if (ref.read(authControllerProvider).value?.user.id != userId) {
+        return false;
+      }
+      if (response is! Map<String, dynamic> || response['isPro'] != true) {
+        throw const AppException('Could not restore your Pro subscription.');
+      }
+      ref
+          .read(authControllerProvider.notifier)
+          .setUser(AppUser.fromJson(response['user'] as Map<String, dynamic>));
+      await _grantEntitlement();
+      state = state.copyWith(isPro: true);
+      dismissRestore();
+      if (purchase.pendingCompletePurchase) {
+        try {
+          await _iap!.completePurchase(purchase);
+        } catch (error) {
+          debugPrint('[Billing] restored purchase completion failed: $error');
+        }
+      }
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        error:
+            error is AppException
+                ? error.message
+                : 'Could not restore Pro. Please try again.',
+      );
+      return false;
+    } finally {
+      state = state.copyWith(restoring: false, purchasePending: false);
     }
   }
 
@@ -502,7 +643,6 @@ class BillingController extends Notifier<BillingState> {
       completer.complete(restored);
     }
     _restoreCompleter = null;
-    _allowSessionRecovery = false;
   }
 
   /// Reconciles the cached entitlement with Google through the backend. RTDN
@@ -516,12 +656,21 @@ class BillingController extends Notifier<BillingState> {
 
   Future<void> _doRefreshServerEntitlement() async {
     try {
+      final userId = ref.read(authControllerProvider).value?.user.id;
+      if (userId == null) return;
       final api = ref.read(apiServiceProvider);
       final response = await api.get('/billing/status', authenticated: true);
+      if (ref.read(authControllerProvider).value?.user.id != userId) return;
       if (response is! Map<String, dynamic>) return;
       final entitlement = response['isPro'];
       if (entitlement is! bool) return;
 
+      final user = response['user'];
+      if (user is Map<String, dynamic>) {
+        ref
+            .read(authControllerProvider.notifier)
+            .setUser(AppUser.fromJson(user));
+      }
       state = state.copyWith(isPro: entitlement);
       if (entitlement) {
         await _grantEntitlement();

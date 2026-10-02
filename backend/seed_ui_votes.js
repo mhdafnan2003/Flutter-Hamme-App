@@ -1,4 +1,4 @@
-// Run from backend: node seed_ui_votes.js [--cleanup]
+// Run from backend: node seed_ui_votes.js [shareCode] [--cleanup]
 require('dotenv').config({ quiet: true });
 const crypto = require('node:crypto');
 const mongoose = require('mongoose');
@@ -6,7 +6,8 @@ const bcrypt = require('bcryptjs');
 const User = require('./src/models/User');
 const Interaction = require('./src/models/Interaction');
 
-const shareCode = 'jiiiii-a4ec73';
+const shareCode = process.argv.slice(2).find(arg => !arg.startsWith('--')) || 'jiiiii-a4ec73';
+if (!/^[a-z0-9._-]+$/.test(shareCode)) throw new Error('Invalid share code');
 const seedBatch = `ui-votes-${shareCode}-20261001`;
 const types = ['crush', 'friend', 'frenemy'];
 const accounts = Array.from({ length: 9 }, (_, i) => ({
@@ -49,12 +50,18 @@ async function main() {
       createdAt: new Date(now - i * 37 * 60 * 1000),
       metadata: {
         seedBatch, seedSlot: slot, isTestData: true, source: 'ui-test-seed',
-        ...(anonymous ? { sessionId: `${seedBatch}-${slot}` } : {}),
+        ...(anonymous ? { anonymous: true, sessionId: `${seedBatch}-${slot}` } : {}),
       },
     };
     const existing = await Interaction.exists({ ...filter, 'metadata.seedSlot': slot });
     if (!existing) await Interaction.create(data);
   }
+  // Repair the first seed batch as well as any existing votes in this batch.
+  await Interaction.updateMany({
+    fromUser: null,
+    'metadata.isTestData': true,
+    'metadata.seedBatch': { $in: [seedBatch, 'ui-votes-jiiiii-a4ec73-20261001'] },
+  }, { $set: { 'metadata.anonymous': true } });
   const votes = await Interaction.find(filter).lean();
   if (votes.length !== 18) throw new Error(`Expected 18 seeded votes; found ${votes.length}`);
   console.log(JSON.stringify({ profile: shareCode, seedBatch, total: votes.length,

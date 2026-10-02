@@ -272,7 +272,7 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
                                           height: 38,
                                           child: Center(
                                             child: Image.asset(
-                                              'assets/icons/insta-outline.png',
+                                              'assets/icons/insta-outline-white.png',
                                               width: 20,
                                               height: 20,
                                               color: Colors.white,
@@ -347,7 +347,7 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
                                           : Image.asset(
                                             _isSnapchat
                                                 ? 'assets/icons/snap-fill.png'
-                                                : 'assets/icons/insta-outline.png',
+                                                : 'assets/icons/insta-outline-white.png',
                                             width: 24,
                                             height: 24,
                                             color: Colors.white,
