@@ -28,7 +28,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   }
 
-  testWidgets('poll missing handle Continue invokes its callback', (
+  testWidgets('named poll missing handle keeps Reply and does not dismiss', (
     tester,
   ) async {
     var dismissed = 0;
@@ -42,10 +42,25 @@ void main() {
       ),
       const Size(320, 480),
     );
-    await tester.ensureVisible(find.text('Continue'));
-    await tester.tap(find.text('Continue'));
+    expect(find.text('Continue'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName ==
+                'assets/icons/insta-outline-white.png',
+      ),
+      findsNWidgets(2),
+    );
+    await tester.ensureVisible(find.text('Reply'));
+    await tester.tap(find.text('Reply'));
     await tester.pump();
-    expect(dismissed, 1);
+    expect(dismissed, 0);
+    expect(
+      find.text('This match hasn’t added an Instagram or Snapchat handle yet.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
     expect(find.byType(SafetyMenuButton), findsNothing);
   });

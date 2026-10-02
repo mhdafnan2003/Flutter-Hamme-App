@@ -1574,15 +1574,17 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.18),
+                                    color: Colors.white.withValues(alpha: 0.20),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: Image.asset(
-                                    'assets/icons/Right Arrow Curving Left.png',
-                                    width: 28,
-                                    height: 28,
-                                    fit: BoxFit.contain,
-                                    semanticLabel: 'Rewind',
+                                  child: Center(
+                                    child: Image.asset(
+                                      'assets/icons/Right Arrow Curving Left.png',
+                                      width: 28,
+                                      height: 28,
+                                      fit: BoxFit.contain,
+                                      semanticLabel: 'Rewind',
+                                    ),
                                   ),
                                 ),
                                 SizedBox(
@@ -1742,7 +1744,7 @@ class _NotAMatchViewState extends ConsumerState<_NotAMatchView>
                         height: 56,
                         decoration: BoxDecoration(
                           color: const Color(0xFFF5F0FF),
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(18),
                           border: Border.all(
                             color: const Color(0xFF9B6AFF),
                             width: 1,

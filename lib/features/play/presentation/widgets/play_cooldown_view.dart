@@ -99,11 +99,6 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
 
   @override
   Widget build(BuildContext context) {
-    final maxCards = widget.status.maxCards;
-    final message =
-        'You’ve seen all ${maxCards == null ? '' : '$maxCards '}free profiles\n'
-        'Your next match could be in the queue${maxCards == null ? '😳' : ''}';
-
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -118,8 +113,24 @@ class _PlayCooldownViewState extends State<PlayCooldownView> {
                   progress: _progress,
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  message,
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(
+                        text:
+                            'You’ve seen all free profiles\nYour next match could be in the queue ',
+                      ),
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: Image.asset(
+                          'assets/icons/emoji_flushed_face.png',
+                          width: 16,
+                          height: 16,
+                          semanticLabel: 'Flushed face',
+                        ),
+                      ),
+                    ],
+                  ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: TFonts.nunito,

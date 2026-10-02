@@ -69,25 +69,25 @@ class HammeBottomNavBar extends StatelessWidget {
                       ),
                       if ((playBadgeCount ?? 0) > 0)
                         Positioned(
-                          top: -6,
-                          right: -14,
+                          top: 6,
+                          left: 28,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
+                              horizontal: 6,
+                              vertical: 1,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF0037),
-                              borderRadius: BorderRadius.circular(10),
+                              color: const Color(0xFFFF002F),
+                              borderRadius: BorderRadius.circular(24),
                             ),
                             child: Text(
                               playBadgeCount! > 99 ? '99+' : '$playBadgeCount',
                               style: const TextStyle(
                                 color: TColors.white,
                                 fontFamily: TFonts.nunito,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                height: 1,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                height: 4 / 3,
                               ),
                             ),
                           ),

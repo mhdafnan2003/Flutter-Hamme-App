@@ -318,8 +318,8 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                   child: _ActionButton(
                                     height: 52,
                                     onPressed: _isSharing ? null : _shareMatch,
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF30415A),
+                                    backgroundColor: const Color(0xFFF1F5F9),
+                                    foregroundColor: const Color(0xFF334155),
                                     child:
                                         _isSharing
                                             ? const SizedBox(
@@ -338,9 +338,9 @@ class _MatchSuccessOverlayState extends State<MatchSuccessOverlay> {
                                                 children: [
                                                   Icon(
                                                     Icons.ios_share,
-                                                    size: 22,
+                                                    size: 24,
                                                   ),
-                                                  SizedBox(width: 8),
+                                                  SizedBox(width: 2),
                                                   Text(
                                                     'Share this match with friends',
                                                     style: TextStyle(
@@ -429,8 +429,9 @@ class _ActionButton extends StatelessWidget {
           disabledBackgroundColor: backgroundColor.withValues(alpha: 0.8),
           disabledForegroundColor: foregroundColor,
           elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
           ),
         ),
         child: child,

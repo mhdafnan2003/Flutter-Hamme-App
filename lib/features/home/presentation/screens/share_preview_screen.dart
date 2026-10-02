@@ -40,7 +40,9 @@ class _SharePreviewScreenState extends ConsumerState<SharePreviewScreen> {
         children: [
           ClipRect(
             child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              // Figma's tutorial overlay uses a 100px glass blur radius.
+              // Approximate its soft backdrop with a broad Gaussian blur.
+              filter: ui.ImageFilter.blur(sigmaX: 50, sigmaY: 50),
               child: ColoredBox(color: Colors.black.withValues(alpha: 0.62)),
             ),
           ),

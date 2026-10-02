@@ -8,6 +8,7 @@ import 'package:hamme_app/features/safety/presentation/widgets/safety_actions.da
 import 'package:hamme_app/features/safety/presentation/widgets/safety_menu_button.dart';
 import 'package:hamme_app/models/match_record.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
+import 'package:hamme_app/utils/popups/app_snack_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Details shown when a user opens an existing match from the Matches list.
@@ -71,7 +72,14 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
   }
 
   Future<void> _openSocial() async {
-    if (_isAnonymous || _handle.isEmpty) return;
+    if (_isAnonymous) return;
+    if (_handle.isEmpty) {
+      AppSnackBar.show(
+        context,
+        'This match hasn’t added an Instagram or Snapchat handle yet.',
+      );
+      return;
+    }
 
     final appUrl =
         _isSnapchat
@@ -325,12 +333,7 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
                                 width: double.infinity,
                                 height: 62,
                                 child: ElevatedButton.icon(
-                                  onPressed:
-                                      _handle.isEmpty
-                                          ? (widget.continueWhenUnavailable
-                                              ? _dismiss
-                                              : null)
-                                          : _openSocial,
+                                  onPressed: _openSocial,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.black,
                                     foregroundColor: Colors.white,
@@ -340,24 +343,17 @@ class _MatchReplyScreenState extends State<MatchReplyScreen> {
                                     ),
                                     elevation: 0,
                                   ),
-                                  icon:
-                                      _handle.isEmpty &&
-                                              widget.continueWhenUnavailable
-                                          ? const SizedBox.shrink()
-                                          : Image.asset(
-                                            _isSnapchat
-                                                ? 'assets/icons/snap-fill.png'
-                                                : 'assets/icons/insta-outline-white.png',
-                                            width: 24,
-                                            height: 24,
-                                            color: Colors.white,
-                                          ),
-                                  label: Text(
-                                    _handle.isEmpty &&
-                                            widget.continueWhenUnavailable
-                                        ? 'Continue'
-                                        : 'Reply',
-                                    style: const TextStyle(
+                                  icon: Image.asset(
+                                    _isSnapchat
+                                        ? 'assets/icons/snap-fill.png'
+                                        : 'assets/icons/insta-outline-white.png',
+                                    width: 24,
+                                    height: 24,
+                                    color: Colors.white,
+                                  ),
+                                  label: const Text(
+                                    'Reply',
+                                    style: TextStyle(
                                       fontFamily: TFonts.nunito,
                                       fontSize: 20,
                                       fontWeight: FontWeight.w800,
