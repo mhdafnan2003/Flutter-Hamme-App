@@ -2378,9 +2378,21 @@ class _CompletedQueueView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Align(alignment: Alignment(0, -0.26), child: PlayEmptyState()),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: LayoutBuilder(
+        builder:
+            (context, constraints) => SingleChildScrollView(
+              clipBehavior: Clip.none,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: const Align(
+                  alignment: Alignment(0, -0.305),
+                  child: PlayEmptyState(),
+                ),
+              ),
+            ),
+      ),
     );
   }
 }
