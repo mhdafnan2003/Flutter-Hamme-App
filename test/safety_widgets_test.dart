@@ -249,7 +249,7 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('a named match can be blocked from the Matches list', (
+  testWidgets('a named match can be blocked inside its detail screen', (
     tester,
   ) async {
     final repository = FakeSafetyRepository();
@@ -263,6 +263,11 @@ void main() {
       ],
     );
     expect(find.text('Sam'), findsOneWidget);
+
+    expect(find.byTooltip('Report or block Sam'), findsNothing);
+    await tester.tap(find.text('Sam'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     await tester.tap(find.byTooltip('Report or block Sam'));
     await tester.pump();
