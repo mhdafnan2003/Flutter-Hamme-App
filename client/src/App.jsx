@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import friendEmoji from '../../assets/icons/emoji_friend.png';
-import crushEmoji from '../../assets/icons/emoji_crush.png';
-import frenemyEmoji from '../../assets/icons/emoji_frenemy.png';
-import eyesEmoji from '../../assets/icons/emoji_eyes.png';
-import monkeyEmoji from '../../assets/icons/emoji_monkey.png';
-import pointingUp from '../../assets/icons/inbox_pointing_up.svg';
-import revealArrowRight from '../../assets/icons/icon_line/reveal_arrow_right.svg';
+import friendEmoji from './assets/icons/emoji_friend.png';
+import crushEmoji from './assets/icons/emoji_crush.png';
+import frenemyEmoji from './assets/icons/emoji_frenemy.png';
+import eyesEmoji from './assets/icons/emoji_eyes.png';
+import monkeyEmoji from './assets/icons/emoji_monkey.png';
+import pointingUp from './assets/icons/inbox_pointing_up.svg';
+import revealArrowRight from './assets/icons/icon_line/reveal_arrow_right.svg';
 
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1';

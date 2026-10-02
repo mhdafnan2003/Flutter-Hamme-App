@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: Nunito;
-  src: url("../../assets/fonts/Nunito-VariableFont_wght.ttf") format("truetype");
+  src: url("./assets/fonts/Nunito-VariableFont_wght.ttf") format("truetype");
   font-style: normal;
   font-weight: 200 1000;
   font-display: swap;
@@ -10,7 +10,7 @@
 
 @font-face {
   font-family: "Schibsted Grotesk";
-  src: url("../../assets/fonts/SchibstedGrotesk-VariableFont_wght.ttf") format("truetype");
+  src: url("./assets/fonts/SchibstedGrotesk-VariableFont_wght.ttf") format("truetype");
   font-style: normal;
   font-weight: 400 900;
   font-display: swap;
