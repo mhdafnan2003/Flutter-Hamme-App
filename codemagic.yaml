@@ -15,10 +15,12 @@ workflows:
     scripts:
       - name: Create .env
         script: |
+          # ios2: APP_SCHEME is iOS-only (Android keeps "hamme"). TODO: once the second
+          # web deployment exists, point SHARE_LINK_BASE and APP_HOST at it.
           cat <<EOF > .env
           API_BASE_URL=https://backend-three-kappa-24.vercel.app/api/v1
           API_BASE_URL_PROD=https://backend-three-kappa-24.vercel.app/api/v1
-          APP_SCHEME=hamme
+          APP_SCHEME=hamme2
           SHARE_LINK_BASE=https://client-sigma-beryl-15.vercel.app/poll
           APP_HOST=client-sigma-beryl-15.vercel.app
           EOF
