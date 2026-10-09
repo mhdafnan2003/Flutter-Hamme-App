@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 
-function fixture({ platform = 'android', active = true, old = true, admin = false, attributed = 'old', failSave = false, subscriptionState, storeFailure } = {}) {
+function fixture({ platform = 'android', active = true, old = true, admin = false, attributed = 'old', failSave = false, subscriptionState, storeFailure, appleBundleId = 'com.hamme.app', extraApps = '' } = {}) {
   let users = new Map();
   let bindings = new Map();
   const token = platform === 'ios' ? 'apple-original' : 'play-token';
@@ -46,7 +46,7 @@ function fixture({ platform = 'android', active = true, old = true, admin = fals
     externalAccountIdentifiers: { obfuscatedExternalAccountId: attributed },
   };
   const signed = (value) => `header.${Buffer.from(JSON.stringify(value)).toString('base64url')}.signature`;
-  const appleTransaction = { transactionId: 'apple-tx', originalTransactionId: 'apple-original', productId: 'hamme_pro_weekly', expiresDate: Date.now() + (active ? 86400000 : -86400000), environment: 'Sandbox' };
+  const appleTransaction = { transactionId: 'apple-tx', originalTransactionId: 'apple-original', productId: 'hamme_pro_weekly', bundleId: appleBundleId, expiresDate: Date.now() + (active ? 86400000 : -86400000), environment: 'Sandbox' };
   const ApiError = require('../src/utils/ApiError');
   const sandbox = {
     module: { exports: {} }, Buffer, Date, Set, Map, console, __dirname: path.resolve(__dirname, '../src/services'),
@@ -56,7 +56,7 @@ function fixture({ platform = 'android', active = true, old = true, admin = fals
       if (name === '../models/BillingOwnership') return Ownership;
       if (name === '../utils/ApiError') return ApiError;
       if (name === '../utils/logger') return { warn() {}, info() {}, error() {} };
-      if (name === '../config/env') return { appleIapPrivateKeyBase64: Buffer.from('-----BEGIN PRIVATE KEY-----').toString('base64'), appleIapIssuerId: 'issuer', appleIapKeyId: 'key', appleIapBundleId: 'com.hamme.app' };
+      if (name === '../config/env') return { appleIapPrivateKeyBase64: Buffer.from('-----BEGIN PRIVATE KEY-----').toString('base64'), appleIapIssuerId: 'issuer', appleIapKeyId: 'key', appleIapBundleId: 'com.hamme.app', appleIapExtraApps: extraApps };
       if (name === 'mongoose') return {
         isValidObjectId: () => false,
         startSession: async () => ({
@@ -72,13 +72,18 @@ function fixture({ platform = 'android', active = true, old = true, admin = fals
       };
       if (name === '@apple/app-store-server-library') return {
         Environment: { PRODUCTION: 'Production', SANDBOX: 'Sandbox' }, Status: { ACTIVE: 1, BILLING_GRACE_PERIOD: 4 },
-        SignedDataVerifier: class { async verifyAndDecodeTransaction(value) {
-          if (value !== signed(appleTransaction)) throw new Error('invalid signature');
+        SignedDataVerifier: class {
+          constructor(certs, online, environment, bundleId) { this.bundleId = bundleId; }
+          async verifyAndDecodeTransaction(value) {
+          if (value !== signed(appleTransaction) || this.bundleId !== appleBundleId) throw new Error('invalid signature');
           return appleTransaction;
         } },
         ReceiptUtility: class {},
-        AppStoreServerAPIClient: class { async getAllSubscriptionStatuses() {
-          return { bundleId: 'com.hamme.app', data: [{ lastTransactions: [{ status: active ? 1 : 2, originalTransactionId: 'apple-original', signedTransactionInfo: signed(appleTransaction) }] }] };
+        AppStoreServerAPIClient: class {
+          constructor(key, keyId, issuerId, bundleId) { this.bundleId = bundleId; }
+          async getAllSubscriptionStatuses() {
+          if (this.bundleId !== appleBundleId) throw new Error('transaction not found');
+          return { bundleId: appleBundleId, data: [{ lastTransactions: [{ status: active ? 1 : 2, originalTransactionId: 'apple-original', signedTransactionInfo: signed(appleTransaction) }] }] };
         } },
       };
       return require(name);
@@ -188,4 +193,22 @@ test('delayed Google notification cannot revive old attribution after token repl
   assert.equal(result.ignored, true);
   assert.equal(f.users().get('old').isPro, false);
   assert.equal(f.users().get('new').proPurchaseToken, 'newer-play-token');
+});
+
+test('Apple purchases from an extra configured app are accepted', async () => {
+  const f = fixture({ platform: 'ios', old: false, appleBundleId: 'com.akash.hammeapp', extraApps: 'com.akash.hammeapp:111' });
+  const user = await f.service.verifyPurchase('new', f.payload);
+  assert.equal(user.isPro, true);
+});
+test('Apple purchases from an unconfigured app are rejected', async () => {
+  const f = fixture({ platform: 'ios', old: false, appleBundleId: 'com.other.app', extraApps: 'com.akash.hammeapp:111' });
+  await assert.rejects(f.service.verifyPurchase('new', f.payload), e => e.statusCode === 402);
+  assert.equal(f.users().get('new').isPro, false);
+});
+test('Apple status refresh finds the owning app among several configured apps', async () => {
+  const f = fixture({ platform: 'ios', appleBundleId: 'com.akash.hammeapp', extraApps: 'com.akash.hammeapp:111' });
+  await f.service.restorePurchase('new', { ...f.payload, confirmTransfer: true });
+  f.users().get('new').proLastVerifiedAt = null;
+  const user = await f.service.syncUserSubscription('new');
+  assert.equal(user.isPro, true);
 });

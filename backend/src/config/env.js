@@ -43,6 +43,8 @@ module.exports = {
   appleIapKeyId: process.env.APPLE_IAP_KEY_ID || '',
   appleIapBundleId: process.env.APPLE_IAP_BUNDLE_ID || '',
   appleIapAppId: process.env.APPLE_IAP_APP_ID || '',
+  // Additional iOS listings allowed to buy Pro: "bundleId:appleId,bundleId:appleId".
+  appleIapExtraApps: process.env.APPLE_IAP_EXTRA_APPS || '',
   appleIapPrivateKeyBase64: process.env.APPLE_IAP_PRIVATE_KEY_BASE64 || '',
   // Full Firebase service-account JSON (single line), used by firebase-admin
   // to send push notifications via FCM. Leave empty to disable push sending.

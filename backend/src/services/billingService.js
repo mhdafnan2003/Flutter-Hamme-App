@@ -257,18 +257,41 @@ function applePrivateKey() {
   return privateKey;
 }
 
-function getAppleClient(environment) {
-  const existing = appleClients.get(environment);
+// Every iOS app (bundle id + numeric Apple ID) allowed to buy Pro. The primary
+// app comes from APPLE_IAP_BUNDLE_ID / APPLE_IAP_APP_ID; additional listings
+// (for example the old and new App Store apps running side by side) come from
+// APPLE_IAP_EXTRA_APPS="bundleId:appleId,bundleId:appleId". They must belong to
+// the same App Store Connect team as the in-app purchase key.
+function appleApps() {
+  const apps = [];
+  if (env.appleIapBundleId) {
+    apps.push({
+      bundleId: env.appleIapBundleId.trim(),
+      appId: (env.appleIapAppId || '').trim(),
+    });
+  }
+  for (const entry of String(env.appleIapExtraApps || '').split(',')) {
+    const [bundleId, appId = ''] = entry.split(':').map((part) => part.trim());
+    if (bundleId && !apps.some((app) => app.bundleId === bundleId)) {
+      apps.push({ bundleId, appId });
+    }
+  }
+  return apps;
+}
+
+function getAppleClient(environment, bundleId) {
+  const key = `${environment}:${bundleId}`;
+  const existing = appleClients.get(key);
   if (existing) return existing;
 
   const client = new AppStoreServerAPIClient(
     applePrivateKey(),
     env.appleIapKeyId,
     env.appleIapIssuerId,
-    env.appleIapBundleId,
+    bundleId,
     environment
   );
-  appleClients.set(environment, client);
+  appleClients.set(key, client);
   return client;
 }
 
@@ -290,14 +313,14 @@ function appleStatusIsActive(status, expiresAt, revoked) {
   return status === Status.ACTIVE || status === Status.BILLING_GRACE_PERIOD;
 }
 
-function appleSubscriptionSnapshot(statusResponse) {
-  if (statusResponse.bundleId !== env.appleIapBundleId) {
+function appleSubscriptionSnapshot(statusResponse, app) {
+  if (statusResponse.bundleId !== app.bundleId) {
     throw new ApiError(402, 'Apple purchase does not belong to this app.');
   }
   if (
     statusResponse.environment === Environment.PRODUCTION &&
-    env.appleIapAppId &&
-    String(statusResponse.appAppleId || '') !== env.appleIapAppId.trim()
+    app.appId &&
+    String(statusResponse.appAppleId || '') !== app.appId
   ) {
     throw new ApiError(402, 'Apple purchase does not belong to this app.');
   }
@@ -379,7 +402,11 @@ async function fetchAppleSubscription(receiptOrJws, trustedTransactionId = false
     };
   }
 
+  const apps = appleApps();
   let transactionId;
+  // The app that owns the transaction. Known after verifying a signed
+  // transaction; for a stored transaction id every configured app is tried.
+  let matchedApp = null;
   if (trustedTransactionId) {
     transactionId = receiptOrJws;
   } else if (receiptOrJws.split('.').length === 3) {
@@ -387,37 +414,64 @@ async function fetchAppleSubscription(receiptOrJws, trustedTransactionId = false
     if (![Environment.PRODUCTION, Environment.SANDBOX].includes(hint.environment)) {
       throw new ApiError(402, 'Apple purchase environment is invalid.');
     }
-    const appId = Number(env.appleIapAppId);
-    if (hint.environment === Environment.PRODUCTION && !appId) {
-      throw new ApiError(503, 'APPLE_IAP_APP_ID is required for production purchase verification.');
-    }
-    const verifier = new SignedDataVerifier(
-      [fs.readFileSync(path.join(__dirname, '../certificates/AppleRootCA-G3.cer'))],
-      true, hint.environment, env.appleIapBundleId,
-      hint.environment === Environment.PRODUCTION ? appId : undefined
+    // Try the app named in the (still unverified) payload first; the verifier
+    // below is what actually proves the transaction belongs to that app.
+    const candidates = [...apps].sort(
+      (a, b) => Number(b.bundleId === hint.bundleId) - Number(a.bundleId === hint.bundleId)
     );
-    try {
-      const verified = await verifier.verifyAndDecodeTransaction(receiptOrJws);
-      transactionId = verified.transactionId;
-    } catch (_) {
+    let appIdMissing = false;
+    for (const candidate of candidates) {
+      const appId = Number(candidate.appId);
+      if (hint.environment === Environment.PRODUCTION && !appId) {
+        appIdMissing = true;
+        continue;
+      }
+      const verifier = new SignedDataVerifier(
+        [fs.readFileSync(path.join(__dirname, '../certificates/AppleRootCA-G3.cer'))],
+        true, hint.environment, candidate.bundleId,
+        hint.environment === Environment.PRODUCTION ? appId : undefined
+      );
+      try {
+        const verified = await verifier.verifyAndDecodeTransaction(receiptOrJws);
+        transactionId = verified.transactionId;
+        matchedApp = candidate;
+        break;
+      } catch (_) {
+        // Not signed for this app; try the next configured one.
+      }
+    }
+    if (!matchedApp) {
+      if (appIdMissing) {
+        throw new ApiError(503, 'APPLE_IAP_APP_ID is required for production purchase verification.');
+      }
       throw new ApiError(402, 'Apple purchase signature could not be verified.');
     }
   } else {
     throw new ApiError(402, 'A signed Apple transaction is required. Update Hamme and restore your purchase again.');
   }
   let lastError;
+  let bundleMismatch = false;
   // App Review and TestFlight use Sandbox; production customers use Production.
   // Querying both lets the receipt determine its environment without trusting
   // a client-supplied environment field.
-  for (const environment of [Environment.PRODUCTION, Environment.SANDBOX]) {
-    try {
-      const statusResponse = await getAppleClient(environment)
-        .getAllSubscriptionStatuses(transactionId);
-      return appleSubscriptionSnapshot(statusResponse);
-    } catch (error) {
-      if (error instanceof ApiError) throw error;
-      lastError = error;
+  for (const app of matchedApp ? [matchedApp] : apps) {
+    for (const environment of [Environment.PRODUCTION, Environment.SANDBOX]) {
+      try {
+        const statusResponse = await getAppleClient(environment, app.bundleId)
+          .getAllSubscriptionStatuses(transactionId);
+        if (statusResponse.bundleId !== app.bundleId) {
+          bundleMismatch = true;
+          continue;
+        }
+        return appleSubscriptionSnapshot(statusResponse, app);
+      } catch (error) {
+        if (error instanceof ApiError) throw error;
+        lastError = error;
+      }
     }
+  }
+  if (bundleMismatch) {
+    throw new ApiError(402, 'Apple purchase does not belong to this app.');
   }
 
   logger.error('Apple subscription lookup failed', {
