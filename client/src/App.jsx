@@ -125,12 +125,18 @@ function generatePendingToken() {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function buildDeepLink({ shareCode, type, token }) {
+const ANDROID_SCHEME = 'hamme';
+// iOS custom URL scheme. The second iOS listing registers its own scheme
+// (hamme2) so it does not clash with the old iOS app; set VITE_IOS_APP_SCHEME
+// on that web deployment. Android always keeps `hamme`.
+const IOS_SCHEME = import.meta.env.VITE_IOS_APP_SCHEME || ANDROID_SCHEME;
+
+function buildDeepLink({ shareCode, type, token, scheme = ANDROID_SCHEME }) {
   const params = new URLSearchParams();
   if (shareCode) params.set('code', shareCode);
   if (type) params.set('type', type);
   if (token) params.set('token', token);
-  return `hamme://open?${params.toString()}`;
+  return `${scheme}://open?${params.toString()}`;
 }
 
 function App() {
@@ -1610,7 +1616,12 @@ function RevealScreen({
     const isAndroid = /android/i.test(userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
 
-    const deepLink = buildDeepLink({ shareCode, type: selectedType, token: pendingToken });
+    const deepLink = buildDeepLink({
+      shareCode,
+      type: selectedType,
+      token: pendingToken,
+      scheme: isIOS ? IOS_SCHEME : ANDROID_SCHEME,
+    });
 
     const referrerParams = new URLSearchParams();
     if (pendingToken) referrerParams.set('hamme_token', pendingToken);
@@ -1625,8 +1636,8 @@ function RevealScreen({
     // Navigating to play.google.com from the timer below is no longer a user
     // gesture, so Chrome just loads the store web page instead.
     const androidIntentUrl =
-      `intent://${deepLink.slice('hamme://'.length)}` +
-      `#Intent;scheme=hamme;package=com.hamme.app;` +
+      `intent://${deepLink.slice(`${ANDROID_SCHEME}://`.length)}` +
+      `#Intent;scheme=${ANDROID_SCHEME};package=com.hamme.app;` +
       `S.market_referrer=${encodeURIComponent(referrerParams.toString())};end`;
 
     window.location.href = isAndroid ? androidIntentUrl : deepLink;
