@@ -62,7 +62,9 @@ class _HammeAppState extends ConsumerState<HammeApp> {
 
   void _handleDeepLink(Uri uri) {
     debugPrint('[DeepLink] Incoming: $uri');
-    if (uri.scheme == 'hamme') {
+    // 'hamme' is the Android scheme; the second iOS listing registers its own
+    // (APP_SCHEME, e.g. hamme2) so two installed iOS apps don't fight over links.
+    if (uri.scheme == 'hamme' || uri.scheme == AppConstants.appScheme) {
       if (uri.host == 'reveal') {
         final token =
             uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
