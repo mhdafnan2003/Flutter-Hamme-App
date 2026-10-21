@@ -2,20 +2,26 @@ import Flutter
 import UIKit
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
-    if let registrar = self.registrar(forPlugin: "HammeShareStory") {
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // With the UIScene lifecycle (required since iOS 27) the Flutter engine is
+  // created by the scene, after didFinishLaunching, so plugins and channels
+  // must be registered here instead.
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "HammeShareStory") {
       let channel = FlutterMethodChannel(
         name: "hamme/share_story",
         binaryMessenger: registrar.messenger()
       )
       channel.setMethodCallHandler(handleShareStory)
     }
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   private func handleShareStory(call: FlutterMethodCall, result: @escaping FlutterResult) {
