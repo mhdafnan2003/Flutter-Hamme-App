@@ -75,8 +75,7 @@ dependencies:
   flutter_rating_bar: ^4.0.1
   capped_progress_indicator: ^0.0.2
   share_plus: ^11.0.0
-  appinio_social_share: ^0.3.2
-  app_links: ^6.3.3
+  app_links: ^7.2.2
   play_install_referrer: ^0.5.0
   path_provider: ^2.1.5
   screenshot: ^3.0.0
@@ -84,8 +83,8 @@ dependencies:
   google_fonts: ^8.1.0
 
   # Push notifications (Android + iOS only — Windows desktop is not supported)
-  firebase_core: ^3.8.0
-  firebase_messaging: ^15.1.0
+  firebase_core: ^4.14.0
+  firebase_messaging: ^16.7.0
   flutter_local_notifications: ^18.0.0
 
   #--------------- ./ PACKAGES END ------------------#
