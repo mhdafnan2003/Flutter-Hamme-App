@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node --check src/services/interactionService.js)",
+      "Bash(node --check src/services/pushService.js)",
+      "Bash(node --check src/services/userService.js)",
+      "Bash(node --check src/controllers/profileController.js)",
+      "Bash(node --check src/routes/profileRoutes.js)",
+      "Bash(node --check src/models/User.js)",
+      "Bash(node --check src/config/env.js)",
+      "Bash(npm run *)",
+      "Bash(node -e \"require\\('./src/app.js'\\); console.log\\('app loaded OK'\\);\")",
+      "Bash(node -e \"console.log\\(require\\('dotenv/package.json'\\).version\\)\")",
+      "Bash(flutter --version)",
+      "Bash(git rm *)",
+      "Bash(flutter pub *)",
+      "Bash(flutter analyze *)"
+    ]
+  }
+}

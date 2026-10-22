@@ -16,7 +16,6 @@ import 'package:hamme_app/utils/constants/colors.dart';
 import 'package:hamme_app/utils/constants/fonts.dart';
 import 'package:hamme_app/utils/constants/image_strings.dart';
 
-import '../widgets/avatar_bubble.dart';
 import '../widgets/footer_link.dart';
 import '../widgets/pro_feature.dart';
 import 'package:hamme_app/utils/popups/app_snack_bar.dart';
@@ -384,7 +383,6 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                       final fixedContentHeight =
                           titleHeight +
                           featureCardHeight +
-                          24 +
                           ctaHeight +
                           billingHeight;
                       final footerHeight = 19.0 + footerBottomPadding;
@@ -492,11 +490,6 @@ class _ProScreenState extends ConsumerState<ProScreen> {
                                         ),
                                       ),
                                       SizedBox(height: gap(40)),
-                                      const SizedBox(
-                                        height: 24,
-                                        child: _ProSocialProof(),
-                                      ),
-                                      SizedBox(height: gap(14)),
                                       SizedBox(
                                         height: ctaHeight,
                                         child: OverflowBox(
@@ -746,73 +739,3 @@ class _UnlimitedPlayIcon extends StatelessWidget {
   }
 }
 
-class _ProSocialProof extends StatelessWidget {
-  const _ProSocialProof();
-
-  @override
-  Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 104,
-            height: 24,
-            child: Stack(
-              children: const [
-                Positioned(
-                  left: 0,
-                  child: AvatarBubble(label: 'N', color: Color(0xFFFF457E)),
-                ),
-                Positioned(
-                  left: 20,
-                  child: AvatarBubble(
-                    label: 'K',
-                    color: Color(0xFF30E584),
-                    showBorder: true,
-                  ),
-                ),
-                Positioned(
-                  left: 40,
-                  child: AvatarBubble(
-                    label: 'A',
-                    color: Color(0xFF4694FF),
-                    showBorder: true,
-                  ),
-                ),
-                Positioned(
-                  left: 60,
-                  child: AvatarBubble(
-                    label: 'S',
-                    color: Color(0xFFFFDB45),
-                    showBorder: true,
-                  ),
-                ),
-                Positioned(
-                  left: 80,
-                  child: AvatarBubble(
-                    label: 'R',
-                    color: Color(0xFFFF5353),
-                    showBorder: true,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            '1000+ went PRO today',
-            style: TextStyle(
-              fontFamily: TFonts.nunito,
-              fontSize: 12,
-              height: 16 / 12,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFFB2B2B2),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
