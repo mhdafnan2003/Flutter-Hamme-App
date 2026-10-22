@@ -492,7 +492,18 @@ const avatarCutout = {
   maskImage: 'radial-gradient(circle at 32px 12px, transparent 13.5px, #000 14.5px)',
 };
 
+// Fisher-Yates on a copy; the initializer below keeps the order stable for the whole visit.
+function shuffled(items) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 function FriendsPlaying() {
+  const [friends] = useState(() => shuffled(playingFriends));
   return (
     <div className="friends-playing mb-[clamp(24px,11.25vh,90px)] flex flex-col items-center gap-2" role="status" aria-label="6 friends playing now">
       <div className="flex h-6 w-[118px] items-center gap-1.5" aria-hidden="true">
@@ -501,11 +512,11 @@ function FriendsPlaying() {
           <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22ff44] shadow-[0_0_8px_3px_rgba(34,255,68,0.55)]" />
         </span>
         <div className="flex items-center">
-          {playingFriends.map((friend, index) => (
+          {friends.map((friend, index) => (
             <span
               key={friend.letter}
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold ${friend.className} ${index > 0 ? '-ml-1' : ''}`}
-              style={index < playingFriends.length - 1 ? avatarCutout : undefined}
+              style={index < friends.length - 1 ? avatarCutout : undefined}
             >
               {friend.letter}
             </span>
