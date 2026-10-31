@@ -4,7 +4,6 @@ import crushEmoji from './assets/icons/emoji_crush.png';
 import frenemyEmoji from './assets/icons/emoji_frenemy.png';
 import eyesEmoji from './assets/icons/emoji_eyes.png';
 import monkeyEmoji from './assets/icons/emoji_monkey.png';
-import pointingUp from './assets/icons/inbox_pointing_up.svg';
 import revealArrowRight from './assets/icons/icon_line/reveal_arrow_right.svg';
 
 const fallbackProfileImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80';
@@ -459,7 +458,6 @@ function ShareFlowApp() {
         )}
 
         <footer className="mt-auto flex flex-col items-center">
-          {!alreadyVoted && <FriendsPlaying />}
           <h1 className="m-0 leading-none">
             <img src="/weblogohome.png" alt="Hamme" width={88} height={33} className="h-[33px] w-[88px] object-contain" />
           </h1>
@@ -474,61 +472,6 @@ function ShareFlowApp() {
         </footer>
       </section>
     </main>
-  );
-}
-
-const playingFriends = [
-  { letter: 'S', className: 'bg-[#ff457e] text-white' },
-  { letter: 'K', className: 'bg-[#30e584] text-white' },
-  { letter: 'R', className: 'bg-[#4694ff] text-white' },
-  { letter: 'N', className: 'bg-[#ffdb45] text-white' },
-  { letter: 'A', className: 'bg-[#ff5353] text-white' },
-];
-
-// Cuts a transparent 1.5px ring around the next avatar (24px wide, overlapped by 4px),
-// so the gap always matches the page background.
-const avatarCutout = {
-  WebkitMaskImage: 'radial-gradient(circle at 32px 12px, transparent 13.5px, #000 14.5px)',
-  maskImage: 'radial-gradient(circle at 32px 12px, transparent 13.5px, #000 14.5px)',
-};
-
-// Fisher-Yates on a copy; the initializer below keeps the order stable for the whole visit.
-function shuffled(items) {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-function FriendsPlaying() {
-  const [friends] = useState(() => shuffled(playingFriends));
-  return (
-    <div className="friends-playing mb-[clamp(24px,11.25vh,90px)] flex flex-col items-center gap-2" role="status" aria-label="6 friends playing now">
-      <div className="flex h-6 w-[118px] items-center gap-1.5" aria-hidden="true">
-        <span className="relative flex h-2 w-2 shrink-0">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-[#22ff44] opacity-70 motion-safe:animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22ff44] shadow-[0_0_8px_3px_rgba(34,255,68,0.55)]" />
-        </span>
-        <div className="flex items-center">
-          {friends.map((friend, index) => (
-            <span
-              key={friend.letter}
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold ${friend.className} ${index > 0 ? '-ml-1' : ''}`}
-              style={index < friends.length - 1 ? avatarCutout : undefined}
-            >
-              {friend.letter}
-            </span>
-          ))}
-        </div>
-      </div>
-      <p className="flex h-[22px] w-[202px] items-center justify-center whitespace-nowrap text-[14px] font-extrabold leading-none tracking-[-0.01em]">
-        <img src={pointingUp} alt="" width={16} height={16} className="mr-1" />
-        6 friends playing now
-        <img src={pointingUp} alt="" width={16} height={16} className="ml-1" />
-      </p>
-    </div>
   );
 }
 
@@ -1572,14 +1515,6 @@ function QuestionScreen({ onAnswer, profileImage, submittingType, submitError, v
         </div>
 
       </div>
-      <p className="mt-1 max-w-[320px] text-[11px] font-medium leading-[14px] text-white/75">
-        By voting, you agree to our{' '}
-        <a href="/terms-of-service" className="font-bold text-white underline underline-offset-2">Terms</a> and{' '}
-        <a href="/community-guidelines" className="font-bold text-white underline underline-offset-2">
-          Community Guidelines
-        </a>
-        . Bullying and harassment aren't allowed.
-      </p>
     </>
   );
 }
